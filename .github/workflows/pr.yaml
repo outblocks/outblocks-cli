@@ -1,0 +1,97 @@
+name: CI
+on:
+  push:
+    tags:
+      - v*
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2.5.2
+        with:
+          version: latest
+          skip-build-cache: true
+      - name: Run go list
+        run: go list -json -m all > go.list
+      - name: Nancy
+        uses: sonatype-nexus-community/nancy-github-action@v1.0.2
+
+  tests-on-windows:
+    needs: lint
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        golang:
+          - 1.16
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.golang }}
+      - uses: actions/cache@v2
+        with:
+          path: ~/Go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.golang }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.golang }}-
+      - name: Unit test with coverage
+        run: make.exe test-coverage
+        continue-on-error: true
+      - name: Integration test
+        run: make.exe integration-test
+        continue-on-error: true
+
+  tests-on-macos:
+    needs: lint
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        golang:
+          - 1.16
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.golang }}
+      - uses: actions/cache@v2
+        with:
+          path: ~/Go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.golang }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.golang }}-
+      - name: Unit test with coverage
+        run: make test-coverage
+      - name: Integration test
+        run: make integration-test
+
+  tests-on-unix:
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        golang:
+          - 1.16
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.golang }}
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ matrix.golang }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ matrix.golang }}-
+      - name: Unit test with coverage
+        run: make test-coverage
+      - name: Integration test
+        run: make integration-test

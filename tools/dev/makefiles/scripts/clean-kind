@@ -1,0 +1,15 @@
+#!/bin/bash -e
+
+CLUSTER_NAME="${CLUSTER_NAME:-local}"
+
+reg_name='kind-registry'
+
+cluster_running="$(kind get clusters 2>/dev/null | grep "${CLUSTER_NAME}" || true)"
+if [ "${cluster_running}" == "${CLUSTER_NAME}" ]; then
+  kind delete cluster --name "${CLUSTER_NAME}" || true
+fi
+
+registry_running="$(docker inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true)"
+if [ "${registry_running}" == 'true' ]; then
+  docker rm --force kind-registry &>/dev/null|| true
+fi

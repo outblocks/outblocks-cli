@@ -1,0 +1,5 @@
+bin/
+vendor/
+outblocks-cli
+example/
+.outblocks

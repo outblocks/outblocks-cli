@@ -1,0 +1,75 @@
+{
+  "title": "JSON schema for OutBlocks project configuration files",
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$ref": "#/definitions/OutblocksProject",
+  "definitions": {
+    "OutblocksProject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "description": "Project-wide state source.",
+          "$ref": "#/definitions/State"
+        },
+        "dependencies": {
+          "description": "Project-wide dependencies to provision.",
+          "$ref": "#/definitions/Dependencies"
+        },
+        "plugins": {
+          "description": "Project-wide plugins.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Plugin"
+          }
+        }
+      },
+      "required": [],
+      "title": "Outblocks"
+    },
+    "State": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "State"
+    },
+    "Dependencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "description": "The type of the dependency.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      },
+      "title": "Dependencies"
+    },
+    "Plugin": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Plugin"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "title": "JSON schema for OutBlocks database table files",
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$ref": "#/definitions/OutblocksTable",
+  "definitions": {
+    "OutblocksTable": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "$ref": "#/definitions/Fields"
+        }
+      },
+      "required": [],
+      "title": "OutblocksTable"
+    },
+    "Fields": {
+      "type": "object",
+      "additionalProperties": true,
+      "patternProperties": {
+        "^[_a-zA-Z][a-zA-Z0-9_-]*$": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "description": "The type of the field.",
+              "type": "string"
+            },
+            "default": {
+              "description": "Default value of the field."
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      },
+      "title": "Fields"
+    }
+  }
+}

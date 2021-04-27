@@ -1,0 +1,85 @@
+project_name: ok
+
+release:
+  github:
+    owner: outblocks
+    name: outblocks-cli
+
+before:
+  hooks:
+    - go mod download
+builds:
+  - binary: ok
+    goos:
+      - darwin
+      - linux
+      - windows
+      - freebsd
+    goarch:
+      - amd64
+      - arm64
+      - arm
+      - 386
+    goarm:
+      - 6
+      - 7
+    ignore:
+      - goos: darwin
+        goarch: 386
+      - goos: freebsd
+        goarch: arm64
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags: -s -w -X internal.version.version={{.Version}} -X internal.version.gitCommit={{.ShortCommit}} -X internal.version.date={{.Date}}
+
+archives:
+  - name_template: '{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    wrap_in_directory: true
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: '{{ .ProjectName }}-{{ .Version }}-checksums.txt'
+
+snapshot:
+  name_template: SNAPSHOT-{{ .Commit }}
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^dev:'
+      - 'README'
+      - Merge pull request
+      - Merge branch
+
+brews:
+  - tap:
+      owner: outblocks
+      name: homebrew-tap
+    folder: Formula
+    homepage: https://outblocks.io
+    description: Auto devops.
+    dependencies:
+      - name: git
+    install: |
+      bin.install "ok"
+      output = Utils.popen_read("#{bin}/ok completion bash")
+      (bash_completion/"ok").write output
+      output = Utils.popen_read("#{bin}/ok completion zsh")
+      (zsh_completion/"_ok").write output
+      output = Utils.popen_read("#{bin}/ok completion fish")
+      (fish_completion/"eksctl.fish").write output
+      prefix.install_metafiles
+    test: |
+      system "#{bin}/ok --version"
+

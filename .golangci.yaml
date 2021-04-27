@@ -1,0 +1,92 @@
+run:
+  timeout: 2m
+  tests: false
+  skip-dirs:
+    - assets
+    - proto
+    - mocks
+
+issues:
+  exclude-rules:
+    - text: declaration of "err" shadows declaration
+      linters:
+        - govet
+
+linters-settings:
+  govet:
+    check-shadowing: true
+    disable:
+      - structtag
+  golint:
+    min-confidence: 0
+  gocyclo:
+    min-complexity: 20
+  maligned:
+    suggest-new: true
+  dupl:
+    threshold: 200
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  misspell:
+    locale: US
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - whyNoLint
+      - commentedOutCode
+
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - exportloopref
+    - errcheck
+    - exhaustive
+    - goconst
+    - godot
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - golint
+    - goprintffuncname
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - nestif
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
+    - wsl
+
+    # don't enable:
+    # - funlen
+    # - gochecknoglobals
+    # - gochecknoinits
+    # - godox
+    # - gocognit
+    # - gomnd
+    # - gosec
+    # - lll
+    # - maligned
