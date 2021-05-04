@@ -1,12 +1,20 @@
 package plugins
 
 import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net"
+	"os"
+	"os/exec"
 	"reflect"
+	"runtime"
 
 	"github.com/blang/semver/v4"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/outblocks/outblocks-cli/internal/version"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
+	"github.com/outblocks/outblocks-plugin-go/communication"
 )
 
 type Plugin struct {
@@ -18,6 +26,7 @@ type Plugin struct {
 	Actions        []string       `json:"actions"`
 	Hooks          []*PluginHooks `json:"hooks"`
 	Supports       []string       `json:"supports"`
+	StateTypes     []string       `json:"state_types"`
 	SupportedTypes []*PluginType  `json:"supported_types"`
 
 	Path     string `json:"-"`
@@ -26,6 +35,8 @@ type Plugin struct {
 	source   string
 	data     []byte
 	actions  []Action
+	cmd      *exec.Cmd
+	conn     net.Conn
 }
 
 type Action int
@@ -39,13 +50,15 @@ func (p *Plugin) Validate() error {
 	return validation.ValidateStruct(p,
 		validation.Field(&p.Name, validation.Required),
 		validation.Field(&p.Actions, validation.Required),
+		validation.Field(&p.Hooks),
+		validation.Field(&p.SupportedTypes),
 	)
 }
 
 func (p *Plugin) Locked() *lockfile.Plugin {
 	return &lockfile.Plugin{
 		Name:    p.Name,
-		Version: &version.SemverVersion{Version: p.version},
+		Version: p.version,
 		Source:  p.source,
 	}
 }
@@ -77,7 +90,7 @@ func mapMatch(m, other map[string]interface{}) bool {
 
 func (p *Plugin) SupportsType(typ, dep string, other map[string]interface{}) bool {
 	for _, t := range p.SupportedTypes {
-		if t.Type == typ && (t.Match == nil || (t.Match.Deploy == dep || mapMatch(t.Match.Other, other))) {
+		if t.Type == typ && (t.Match == nil || ((t.Match.Deploy == "" || t.Match.Deploy == dep) && mapMatch(t.Match.Other, other))) {
 			return true
 		}
 	}
@@ -85,17 +98,88 @@ func (p *Plugin) SupportsType(typ, dep string, other map[string]interface{}) boo
 	return false
 }
 
-type PluginType struct {
-	Type  string       `json:"type"`
-	Match *PluginMatch `json:"match"`
+func (p *Plugin) SupportsApp(app string) bool {
+	for _, a := range p.Supports {
+		if a == app {
+			return true
+		}
+	}
+
+	return false
 }
 
-type PluginMatch struct {
-	Deploy string                 `json:"deploy"`
-	Other  map[string]interface{} `yaml:"-,remain"`
+func (p *Plugin) Start(projectPath string) error {
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd", "/C", p.Run)
+	} else {
+		cmd = exec.Command("sh", "-c", p.Run)
+	}
+
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("OUTBLOCKS_BIN=%s", os.Args[0]),
+		fmt.Sprintf("OUTBLOCKS_PLUGIN_DIR=%s", p.Path),
+		fmt.Sprintf("OUTBLOCKS_PROJECT_PATH=%s", projectPath),
+	)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+
+	stderr := new(bytes.Buffer)
+	cmd.Stderr = stderr
+
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	// Process handshake.
+	r := bufio.NewReader(stdout)
+	line, _ := r.ReadBytes('\n')
+
+	var handshake *communication.Handshake
+
+	if err := json.Unmarshal(line, &handshake); err != nil {
+		return fmt.Errorf("handshake error: %w", err)
+	}
+
+	if handshake == nil {
+		return errorAppend("handshake not returned by plugin", stderr.String())
+	}
+
+	if err := handshake.Validate(); err != nil {
+		return fmt.Errorf("invalid handshake: %w", err)
+	}
+
+	p.cmd = cmd
+	p.conn, err = net.Dial("tcp", handshake.Addr)
+	// TODO: send init
+
+	return err
 }
 
-type PluginHooks struct {
-	Type string `json:"type"`
-	Name string `json:"name"`
+func errorAppend(msg, stderr string) error {
+	if stderr == "" {
+		return fmt.Errorf(msg)
+	}
+
+	return fmt.Errorf("%s: %s", msg, stderr)
+}
+
+func (p *Plugin) Stop() error {
+	if p.cmd == nil {
+		return nil
+	}
+
+	if err := p.cmd.Process.Kill(); err != nil {
+		return err
+	}
+
+	if p.conn != nil {
+		_ = p.conn.Close()
+	}
+
+	return p.cmd.Wait()
 }

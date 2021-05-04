@@ -2,31 +2,32 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/goccy/go-yaml"
+	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/pterm/pterm"
 )
 
-type FunctionConfig struct {
-	Name   string                 `json:"name"`
-	URL    string                 `json:"url"`
-	Deploy string                 `json:"deploy"`
-	Needs  map[string]*Need       `json:"needs"`
-	Other  map[string]interface{} `yaml:"-,remain"`
+const (
+	TypeFunction = "function"
+)
 
-	Path string `json:"-"`
-	data []byte
+type FunctionConfig struct {
+	BasicApp `json:",inline"`
 }
 
-func LoadFunctionConfigData(path string, data []byte) (*FunctionConfig, error) {
-	out := &FunctionConfig{
-		Path: path,
-		data: data,
-	}
+func LoadFunctionConfigData(path string, data []byte) (App, error) {
+	out := &FunctionConfig{}
 
-	if err := yaml.Unmarshal(data, out); err != nil {
+	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatError(err, pterm.PrintColor, true))
 	}
+
+	out.Path = filepath.Dir(path)
+	out.yamlPath = path
+	out.data = data
+	out.typ = TypeFunction
 
 	return out, nil
 }

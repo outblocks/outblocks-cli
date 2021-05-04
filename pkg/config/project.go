@@ -7,14 +7,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
+	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/pterm/pterm"
 )
-
-// TODO: add state support
 
 const (
 	ProjectYAMLName = "project.outblocks"
@@ -24,9 +24,9 @@ const (
 
 var (
 	DefaultKnownTypes = map[string][]string{
-		"function": {"functions"},
-		"static":   {"statics"},
-		"service":  {"services"},
+		TypeFunction: {"functions"},
+		TypeStatic:   {"statics"},
+		TypeService:  {"services"},
 	}
 )
 
@@ -35,25 +35,22 @@ type ProjectConfig struct {
 	Dependencies map[string]*ProjectDependency `json:"dependencies,omitempty"`
 	Plugins      []*ProjectPlugin              `json:"plugins,omitempty"`
 
-	functions []*FunctionConfig
-	services  []*ServiceConfig
-	static    []*StaticConfig
+	apps []App
 
 	plugins []*plugins.Plugin
 
-	Path    string `json:"-"`
-	BaseDir string `json:"-"`
-	data    []byte
-	lock    *lockfile.Lockfile
+	Path     string `json:"-"`
+	yamlPath string
+	data     []byte
+	lock     *lockfile.Lockfile
+	vars     map[string]interface{}
 }
 
-type ProjectDependency struct {
-	Type   string                 `json:"type"`
-	Deploy string                 `json:"deploy"`
-	Other  map[string]interface{} `yaml:"-,remain"`
-
-	deployPlugin *plugins.Plugin
-	runPlugin    *plugins.Plugin
+func (p *ProjectConfig) Validate() error {
+	return validation.ValidateStruct(p,
+		validation.Field(&p.State, validation.Required),
+		validation.Field(&p.Dependencies),
+	)
 }
 
 func LoadProjectConfig(vars map[string]interface{}) (*ProjectConfig, error) {
@@ -83,7 +80,7 @@ func LoadProjectConfig(vars map[string]interface{}) (*ProjectConfig, error) {
 		}
 	}
 
-	p, err := LoadProjectConfigData(f, data, lock)
+	p, err := LoadProjectConfigData(f, data, vars, lock)
 	if err != nil {
 		return nil, err
 	}
@@ -91,15 +88,21 @@ func LoadProjectConfig(vars map[string]interface{}) (*ProjectConfig, error) {
 	return p, err
 }
 
-func LoadProjectConfigData(path string, data []byte, lock *lockfile.Lockfile) (*ProjectConfig, error) {
-	out := &ProjectConfig{
-		Path:    path,
-		BaseDir: filepath.Dir(path),
-		data:    data,
-		lock:    lock,
+func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}, lock *lockfile.Lockfile) (*ProjectConfig, error) {
+	data, err := NewYAMLEvaluator(vars).Expand(data)
+	if err != nil {
+		return nil, fmt.Errorf("load project config %s error: \n%w", path, err)
 	}
 
-	if err := yaml.Unmarshal(data, out); err != nil {
+	out := &ProjectConfig{
+		yamlPath: path,
+		Path:     filepath.Dir(path),
+		data:     data,
+		lock:     lock,
+		vars:     vars,
+	}
+
+	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, fmt.Errorf("load project config %s error: \n%s", path, yaml.FormatError(err, pterm.PrintColor, true))
 	}
 
@@ -107,8 +110,7 @@ func LoadProjectConfigData(path string, data []byte, lock *lockfile.Lockfile) (*
 }
 
 func (p *ProjectConfig) LoadApps() error {
-	base := filepath.Dir(p.Path)
-	files := fileutil.FindYAMLFiles(base, AppYAMLName)
+	files := fileutil.FindYAMLFiles(p.Path, AppYAMLName)
 
 	if err := p.LoadFiles(files); err != nil {
 		return err
@@ -135,7 +137,7 @@ type fileType struct {
 	Type string
 }
 
-func (p *ProjectConfig) KnownType(typ string) string {
+func KnownType(typ string) string {
 	typ = strings.TrimSpace(strings.ToLower(typ))
 
 	if _, ok := DefaultKnownTypes[typ]; ok {
@@ -160,6 +162,11 @@ func (p *ProjectConfig) LoadFile(file string) error {
 		return fmt.Errorf("cannot read yaml: %w", err)
 	}
 
+	data, err = NewYAMLEvaluator(p.vars).Expand(data)
+	if err != nil {
+		return fmt.Errorf("load application file %s error: \n%w", file, err)
+	}
+
 	typ := deduceType(file)
 	if typ == "" {
 		var f fileType
@@ -172,35 +179,38 @@ func (p *ProjectConfig) LoadFile(file string) error {
 		}
 	}
 
-	typ = p.KnownType(typ)
+	typ = KnownType(typ)
 	if typ == "" {
 		return fmt.Errorf("application type not supported: %s\nfile: %s", typ, file)
 	}
 
+	var app App
+
 	switch typ {
 	case "function":
-		f, err := LoadFunctionConfigData(file, data)
-		if err != nil {
-			return err
-		}
-
-		p.functions = append(p.functions, f)
+		app, err = LoadFunctionConfigData(file, data)
 
 	case "service":
-		f, err := LoadServiceConfigData(file, data)
-		if err != nil {
-			return err
-		}
-
-		p.services = append(p.services, f)
+		app, err = LoadServiceConfigData(file, data)
 
 	case "static":
-		f, err := LoadStaticConfigData(file, data)
-		if err != nil {
-			return err
-		}
+		app, err = LoadStaticConfigData(file, data)
+	}
 
-		p.static = append(p.static, f)
+	if err != nil {
+		return err
+	}
+
+	p.apps = append(p.apps, app)
+
+	return nil
+}
+
+func (p *ProjectConfig) FindDependency(n string) *ProjectDependency {
+	for name, dep := range p.Dependencies {
+		if name == n {
+			return dep
+		}
 	}
 
 	return nil

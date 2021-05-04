@@ -4,9 +4,6 @@ package version
 import (
 	"runtime"
 	"strings"
-
-	"github.com/blang/semver/v4"
-	"github.com/goccy/go-yaml"
 )
 
 var (
@@ -51,26 +48,4 @@ func Get() BuildInfo {
 	}
 
 	return v
-}
-
-type SemverVersion struct {
-	*semver.Version
-}
-
-func (v *SemverVersion) MarshalYAML() ([]byte, error) {
-	return yaml.Marshal(v.String())
-}
-
-func (v *SemverVersion) UnmarshalYAML(data []byte) (err error) {
-	var versionString string
-
-	if err = yaml.Unmarshal(data, &versionString); err != nil {
-		return
-	}
-
-	var ver semver.Version
-	ver, err = semver.Parse(versionString)
-	*v = SemverVersion{Version: &ver}
-
-	return
 }

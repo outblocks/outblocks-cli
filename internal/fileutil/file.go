@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/enescakir/emoji"
 	"github.com/goccy/go-yaml"
@@ -129,8 +130,13 @@ func YAMLError(path, msg string, data []byte) error {
 
 	source, err := yamlPath.AnnotateSource(data, pterm.PrintColor)
 	if err != nil {
-		panic(err)
+		idx := strings.LastIndex(path, ".")
+		if idx == -1 {
+			panic(err)
+		}
+
+		return YAMLError(path[:idx], msg, data)
 	}
 
-	return fmt.Errorf("%s\n%s  %s", source, emoji.Warning, msg)
+	return fmt.Errorf("%s\n\n%s  %s", source, emoji.Warning, msg)
 }

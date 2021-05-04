@@ -29,7 +29,7 @@ func (p *PluginNormalizer) Normalize() error {
 		for i, typ := range p.Actions {
 			t, ok := pluginTypes[strings.ToLower(typ)]
 			if !ok {
-				return p.yamlError(fmt.Sprintf("$.actions[%d]", i), "Plugin.Action is invalid")
+				return p.yamlError(fmt.Sprintf("$.actions[%d]", i), "plugin.action is invalid")
 			}
 
 			p.actions[i] = t
@@ -39,12 +39,12 @@ func (p *PluginNormalizer) Normalize() error {
 	}()
 
 	if err != nil {
-		return fmt.Errorf("plugin config validation failed.\nfile: %s\n%s", p.yamlPath, err)
+		return fmt.Errorf("plugin config validation failed.\nfile: %s\n\n%s", p.yamlPath, err)
 	}
 
 	return nil
 }
 
-func (p *PluginNormalizer) yamlError(path, s string) error {
-	return fileutil.YAMLError(path, s, p.data)
+func (p *PluginNormalizer) yamlError(path, msg string) error {
+	return fileutil.YAMLError(path, msg, p.data)
 }

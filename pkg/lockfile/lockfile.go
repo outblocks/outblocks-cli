@@ -13,8 +13,8 @@ import (
 type Lockfile struct {
 	Plugins []*Plugin `json:"plugins,omitempty"`
 
-	Path string `json:"-"`
-	data []byte
+	yamlPath string
+	data     []byte
 }
 
 func (l *Lockfile) Validate() error {
@@ -39,11 +39,11 @@ func LoadLockfile(f string) (*Lockfile, error) {
 
 func LoadLockfileData(path string, data []byte) (*Lockfile, error) {
 	out := &Lockfile{
-		Path: path,
-		data: data,
+		yamlPath: path,
+		data:     data,
 	}
 
-	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator()), yaml.Strict()); err != nil {
+	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator()), yaml.UseJSONUnmarshaler(), yaml.Strict()); err != nil {
 		return nil, fmt.Errorf("load lockfile %s error: \n%s", path, yaml.FormatError(err, pterm.PrintColor, true))
 	}
 

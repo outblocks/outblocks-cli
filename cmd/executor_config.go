@@ -18,22 +18,21 @@ func (e *Executor) loadProjectConfig(ctx *cli.Context, vals map[string]interface
 		return err
 	}
 
-	v := config.NewProjectConfigNormalizer(cfg)
-	if err := v.Normalize(); err != nil {
+	if err := cfg.LoadApps(); err != nil {
 		return err
 	}
 
-	e.loader = plugins.NewLoader(filepath.Dir(cfg.Path), e.v.GetString("plugins_cache_dir"))
+	if err := cfg.Normalize(); err != nil {
+		return err
+	}
+
+	e.loader = plugins.NewLoader(cfg.Path, e.v.GetString("plugins_cache_dir"))
 
 	if err := e.loadPlugins(ctx, cfg); err != nil {
 		return err
 	}
 
-	if err := cfg.LoadApps(); err != nil {
-		return err
-	}
-
-	if err := v.FullCheck(); err != nil {
+	if err := cfg.FullCheck(); err != nil {
 		return err
 	}
 
@@ -90,12 +89,12 @@ func (e *Executor) loadPlugins(ctx *cli.Context, cfg *config.ProjectConfig) erro
 func (e *Executor) saveLockfile() error {
 	lock := e.cfg.Lockfile()
 
-	data, err := yaml.Marshal(lock)
+	data, err := yaml.MarshalWithOptions(lock, yaml.UseJSONMarshaler())
 	if err != nil {
 		return fmt.Errorf("marshaling lockfile error: %w", err)
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(e.cfg.BaseDir, config.LockfileName), data, 0755); err != nil {
+	if err := ioutil.WriteFile(filepath.Join(e.cfg.Path, config.LockfileName), data, 0755); err != nil {
 		return fmt.Errorf("writing lockfile error: %w", err)
 	}
 

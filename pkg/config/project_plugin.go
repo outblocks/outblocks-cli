@@ -34,8 +34,12 @@ func (p *ProjectConfig) LoadPlugins(plugs []*plugins.Plugin) error {
 		}
 	}
 
-	// TODO: actually process plugins
-	fmt.Println("PROCESSING PLUGINS")
+	// Start plugins.
+	for _, plug := range p.plugins {
+		if err := plug.Start(p.Path); err != nil {
+			return fmt.Errorf("error starting plugin '%s': %w", plug.Name, err)
+		}
+	}
 
 	return nil
 }

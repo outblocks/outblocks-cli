@@ -81,7 +81,7 @@ func (e *Executor) Execute(ctx context.Context) error {
 	}
 
 	// Load config file.
-	if err := e.loadProjectConfig(c, v); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+	if err := e.loadProjectConfig(c, map[string]interface{}{"var": v}); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
 		return err
 	}
 

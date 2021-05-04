@@ -221,7 +221,7 @@ func (l *Loader) loadPlugin(pi *pluginInfo, path string, ver *semver.Version) (*
 		source:   pi.source,
 	}
 
-	if err := yaml.UnmarshalWithOptions(data, &plugin, yaml.Validator(validator.DefaultValidator()), yaml.Strict()); err != nil {
+	if err := yaml.UnmarshalWithOptions(data, &plugin, yaml.Validator(validator.DefaultValidator()), yaml.UseJSONUnmarshaler(), yaml.Strict()); err != nil {
 		return nil, fmt.Errorf("plugin config load failed.\nfile: %s\n%s", p, err)
 	}
 

@@ -60,7 +60,7 @@ func newPluginInfo(name, src string, verRange semver.Range, lock *lockfile.Plugi
 	src = source(name, src)
 
 	// If there is both a lock version and verRange but lock version doesn't match verRange, ignore it.
-	if lock != nil && verRange != nil && !verRange(*lock.Version.Version) {
+	if lock != nil && verRange != nil && !verRange(*lock.Version) {
 		lock = nil
 	}
 

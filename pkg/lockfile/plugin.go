@@ -3,17 +3,16 @@ package lockfile
 import (
 	"github.com/blang/semver/v4"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/outblocks/outblocks-cli/internal/version"
 )
 
 type Plugin struct {
-	Name    string                 `json:"name" valid:"required"`
-	Version *version.SemverVersion `json:"version" valid:"required"`
-	Source  string                 `json:"source" valid:"required"`
+	Name    string          `json:"name" valid:"required"`
+	Version *semver.Version `json:"version" valid:"required"`
+	Source  string          `json:"source" valid:"required"`
 }
 
 func (p *Plugin) Matches(name string, ver *semver.Version, source string) bool {
-	return p.Name == name && p.Version.Version.EQ(*ver) && p.Source == source
+	return p.Name == name && p.Version.EQ(*ver) && p.Source == source
 }
 
 func (p *Plugin) Validate() error {
