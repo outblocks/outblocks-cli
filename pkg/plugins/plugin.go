@@ -2,10 +2,8 @@ package plugins
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"reflect"
@@ -13,8 +11,10 @@ import (
 
 	"github.com/blang/semver/v4"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/outblocks/outblocks-cli/pkg/cli"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
-	"github.com/outblocks/outblocks-plugin-go/communication"
+	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
+	comm "github.com/outblocks/outblocks-plugin-go"
 )
 
 type Plugin struct {
@@ -36,7 +36,7 @@ type Plugin struct {
 	data     []byte
 	actions  []Action
 	cmd      *exec.Cmd
-	conn     net.Conn
+	conn     *client.Client
 }
 
 type Action int
@@ -108,7 +108,7 @@ func (p *Plugin) SupportsApp(app string) bool {
 	return false
 }
 
-func (p *Plugin) Start(projectPath string) error {
+func (p *Plugin) Start(ctx *cli.Context, projectPath string, props map[string]interface{}) error {
 	var cmd *exec.Cmd
 
 	if runtime.GOOS == "windows" {
@@ -123,49 +123,56 @@ func (p *Plugin) Start(projectPath string) error {
 		fmt.Sprintf("OUTBLOCKS_PROJECT_PATH=%s", projectPath),
 	)
 
-	stdout, err := cmd.StdoutPipe()
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
 	}
 
-	stderr := new(bytes.Buffer)
-	cmd.Stderr = stderr
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
 
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
 	// Process handshake.
-	r := bufio.NewReader(stdout)
-	line, _ := r.ReadBytes('\n')
+	stdout := bufio.NewReader(stdoutPipe)
+	line, _ := stdout.ReadBytes('\n')
 
-	var handshake *communication.Handshake
+	go func() {
+		s := bufio.NewScanner(stderrPipe)
+		for s.Scan() {
+			ctx.Log.Errorf("plugin '%s' error: %s", p.Name, s.Text())
+		}
+	}()
+
+	var handshake *comm.Handshake
 
 	if err := json.Unmarshal(line, &handshake); err != nil {
 		return fmt.Errorf("handshake error: %w", err)
 	}
 
 	if handshake == nil {
-		return errorAppend("handshake not returned by plugin", stderr.String())
-	}
-
-	if err := handshake.Validate(); err != nil {
-		return fmt.Errorf("invalid handshake: %w", err)
+		return fmt.Errorf("handshake not returned by plugin")
 	}
 
 	p.cmd = cmd
-	p.conn, err = net.Dial("tcp", handshake.Addr)
-	// TODO: send init
 
-	return err
-}
-
-func errorAppend(msg, stderr string) error {
-	if stderr == "" {
-		return fmt.Errorf(msg)
+	p.conn, err = client.NewClient(ctx, handshake)
+	if err != nil {
+		return err
 	}
 
-	return fmt.Errorf("%s: %s", msg, stderr)
+	// TODO: oauth cli flow
+
+	err = p.conn.Init(props)
+	if err != nil {
+		return fmt.Errorf("plugin init error: %w", err)
+	}
+
+	return err
 }
 
 func (p *Plugin) Stop() error {
@@ -175,10 +182,6 @@ func (p *Plugin) Stop() error {
 
 	if err := p.cmd.Process.Kill(); err != nil {
 		return err
-	}
-
-	if p.conn != nil {
-		_ = p.conn.Close()
 	}
 
 	return p.cmd.Wait()

@@ -7,10 +7,6 @@ import (
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 )
 
-type PluginNormalizer struct {
-	*Plugin
-}
-
 var (
 	pluginTypes = map[string]Action{
 		"deploy": ActionDeploy,
@@ -18,11 +14,7 @@ var (
 	}
 )
 
-func NewPluginNormalizer(p *Plugin) *PluginNormalizer {
-	return &PluginNormalizer{p}
-}
-
-func (p *PluginNormalizer) Normalize() error {
+func (p *Plugin) Normalize() error {
 	err := func() error {
 		p.actions = make([]Action, len(p.Actions))
 
@@ -45,6 +37,6 @@ func (p *PluginNormalizer) Normalize() error {
 	return nil
 }
 
-func (p *PluginNormalizer) yamlError(path, msg string) error {
+func (p *Plugin) yamlError(path, msg string) error {
 	return fileutil.YAMLError(path, msg, p.data)
 }

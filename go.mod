@@ -27,11 +27,12 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	golang.org/x/oauth2 v0.0.0-20210413134643-5e61552d6c78
+	golang.org/x/sync v0.0.0-20200625203802-6e8e738ad208
 	golang.org/x/sys v0.0.0-20210423082822-04245dca01da // indirect
 	golang.org/x/text v0.3.6 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 )
 
-replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.20210429122454-991083c26f61
+replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.20210506194251-5f39d746e4b1
 
 replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go

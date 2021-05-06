@@ -83,7 +83,22 @@ func (e *Executor) loadPlugins(ctx *cli.Context, cfg *config.ProjectConfig) erro
 		_, _ = prog.Stop()
 	}
 
-	return cfg.LoadPlugins(plugs)
+	// Normalize and start plugins.
+	for _, plug := range plugs {
+		if err := plug.Normalize(); err != nil {
+			return err
+		}
+	}
+
+	for i, plug := range plugs {
+		if err := plug.Start(ctx, cfg.Path, cfg.Plugins[i].Other); err != nil {
+			return fmt.Errorf("error starting plugin '%s': %w", plug.Name, err)
+		}
+	}
+
+	cfg.SetPlugins(plugs)
+
+	return nil
 }
 
 func (e *Executor) saveLockfile() error {
