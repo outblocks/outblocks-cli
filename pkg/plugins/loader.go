@@ -214,7 +214,7 @@ func (l *Loader) loadPlugin(pi *pluginInfo, path string, ver *semver.Version) (*
 	}
 
 	plugin := Plugin{
-		data:     data,
+		yamlData: data,
 		Path:     path,
 		yamlPath: p,
 		version:  ver,

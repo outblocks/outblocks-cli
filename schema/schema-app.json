@@ -4,6 +4,7 @@
   "$ref": "#/definitions/OutblocksApp",
   "definitions": {
     "OutblocksApp": {
+      "title": "OutblocksApp",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -24,10 +25,10 @@
           "$ref": "#/definitions/Build"
         }
       },
-      "required": [],
-      "title": "Outblocks"
+      "required": []
     },
     "Needs": {
+      "title": "Needs",
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
@@ -41,10 +42,10 @@
             }
           ]
         }
-      },
-      "title": "Needs"
+      }
     },
     "Build": {
+      "title": "Build",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -57,8 +58,7 @@
       },
       "required": [
         "command"
-      ],
-      "title": "Build"
+      ]
     }
   }
 }

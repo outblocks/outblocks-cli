@@ -9,6 +9,7 @@ import (
 
 var (
 	pluginTypes = map[string]Action{
+		"dns":    ActionDNS,
 		"deploy": ActionDeploy,
 		"run":    ActionRun,
 	}
@@ -31,12 +32,12 @@ func (p *Plugin) Normalize() error {
 	}()
 
 	if err != nil {
-		return fmt.Errorf("plugin config validation failed.\nfile: %s\n\n%s", p.yamlPath, err)
+		return fmt.Errorf("plugin config validation failed.\nfile: %s\n%s", p.yamlPath, err)
 	}
 
 	return nil
 }
 
 func (p *Plugin) yamlError(path, msg string) error {
-	return fileutil.YAMLError(path, msg, p.data)
+	return fileutil.YAMLError(path, msg, p.yamlData)
 }

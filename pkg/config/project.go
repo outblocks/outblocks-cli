@@ -31,17 +31,18 @@ var (
 )
 
 type ProjectConfig struct {
-	State        *ProjectState                 `json:"state,omitempty"`
-	Dependencies map[string]*ProjectDependency `json:"dependencies,omitempty"`
-	Plugins      []*ProjectPlugin              `json:"plugins,omitempty"`
+	Name         string                 `json:"name,omitempty"`
+	State        *State                 `json:"state,omitempty"`
+	Dependencies map[string]*Dependency `json:"dependencies,omitempty"`
+	Plugins      []*Plugin              `json:"plugins,omitempty"`
+	DNS          []*DNS                 `json:"dns,omitempty"`
 
-	apps []App
+	Apps []App  `json:"-"`
+	Path string `json:"-"`
 
-	plugins []*plugins.Plugin
-
-	Path     string `json:"-"`
+	plugins  []*plugins.Plugin
 	yamlPath string
-	data     []byte
+	yamlData []byte
 	lock     *lockfile.Lockfile
 	vars     map[string]interface{}
 }
@@ -97,7 +98,7 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 	out := &ProjectConfig{
 		yamlPath: path,
 		Path:     filepath.Dir(path),
-		data:     data,
+		yamlData: data,
 		lock:     lock,
 		vars:     vars,
 	}
@@ -188,28 +189,66 @@ func (p *ProjectConfig) LoadFile(file string) error {
 
 	switch typ {
 	case "function":
-		app, err = LoadFunctionConfigData(file, data)
+		app, err = LoadFunctionAppData(file, data)
 
 	case "service":
-		app, err = LoadServiceConfigData(file, data)
+		app, err = LoadServiceAppData(file, data)
 
 	case "static":
-		app, err = LoadStaticConfigData(file, data)
+		app, err = LoadStaticAppData(file, data)
 	}
 
 	if err != nil {
 		return err
 	}
 
-	p.apps = append(p.apps, app)
+	p.Apps = append(p.Apps, app)
 
 	return nil
 }
 
-func (p *ProjectConfig) FindDependency(n string) *ProjectDependency {
+func (p *ProjectConfig) FindDependency(n string) *Dependency {
 	for name, dep := range p.Dependencies {
 		if name == n {
 			return dep
+		}
+	}
+
+	return nil
+}
+
+func (p *ProjectConfig) SetPlugins(plugs []*plugins.Plugin) {
+	p.plugins = plugs
+}
+
+func (p *ProjectConfig) LoadedPlugins() []*plugins.Plugin {
+	return p.plugins
+}
+
+func (p *ProjectConfig) PluginLock(plug *Plugin) *lockfile.Plugin {
+	return p.lock.PluginByName(plug.Name)
+}
+
+func (p *ProjectConfig) YAMLData() []byte {
+	return p.yamlData
+}
+
+func (p *ProjectConfig) FindDNSPlugin(url string) *plugins.Plugin {
+	url = strings.SplitN(url, "/", 2)[0]
+
+	for _, dns := range p.DNS {
+		if strings.HasSuffix(url, dns.Domain) {
+			return dns.plugin
+		}
+	}
+
+	return nil
+}
+
+func (p *ProjectConfig) FindLoadedPlugin(name string) *plugins.Plugin {
+	for _, plug := range p.plugins {
+		if plug.Name == name {
+			return plug
 		}
 	}
 

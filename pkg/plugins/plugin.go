@@ -1,20 +1,18 @@
 package plugins
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"reflect"
 	"runtime"
+	"syscall"
 
 	"github.com/blang/semver/v4"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/pkg/cli"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
-	comm "github.com/outblocks/outblocks-plugin-go"
 )
 
 type Plugin struct {
@@ -33,10 +31,10 @@ type Plugin struct {
 	yamlPath string
 	version  *semver.Version
 	source   string
-	data     []byte
+	yamlData []byte
 	actions  []Action
 	cmd      *exec.Cmd
-	conn     *client.Client
+	client   *client.Client
 }
 
 type Action int
@@ -44,6 +42,7 @@ type Action int
 const (
 	ActionDeploy Action = iota
 	ActionRun
+	ActionDNS
 )
 
 func (p *Plugin) Validate() error {
@@ -61,6 +60,10 @@ func (p *Plugin) Locked() *lockfile.Plugin {
 		Version: p.version,
 		Source:  p.source,
 	}
+}
+
+func (p *Plugin) Client() *client.Client {
+	return p.client
 }
 
 func (p *Plugin) HasAction(a Action) bool {
@@ -108,8 +111,11 @@ func (p *Plugin) SupportsApp(app string) bool {
 	return false
 }
 
-func (p *Plugin) Start(ctx *cli.Context, projectPath string, props map[string]interface{}) error {
-	var cmd *exec.Cmd
+func (p *Plugin) Prepare(ctx *cli.Context, projectPath string, props map[string]interface{}, yamlPrefix string, yamlData []byte) error {
+	var (
+		cmd *exec.Cmd
+		err error
+	)
 
 	if runtime.GOOS == "windows" {
 		cmd = exec.Command("cmd", "/C", p.Run)
@@ -123,54 +129,7 @@ func (p *Plugin) Start(ctx *cli.Context, projectPath string, props map[string]in
 		fmt.Sprintf("OUTBLOCKS_PROJECT_PATH=%s", projectPath),
 	)
 
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	// Process handshake.
-	stdout := bufio.NewReader(stdoutPipe)
-	line, _ := stdout.ReadBytes('\n')
-
-	go func() {
-		s := bufio.NewScanner(stderrPipe)
-		for s.Scan() {
-			ctx.Log.Errorf("plugin '%s' error: %s", p.Name, s.Text())
-		}
-	}()
-
-	var handshake *comm.Handshake
-
-	if err := json.Unmarshal(line, &handshake); err != nil {
-		return fmt.Errorf("handshake error: %w", err)
-	}
-
-	if handshake == nil {
-		return fmt.Errorf("handshake not returned by plugin")
-	}
-
-	p.cmd = cmd
-
-	p.conn, err = client.NewClient(ctx, handshake)
-	if err != nil {
-		return err
-	}
-
-	// TODO: oauth cli flow
-
-	err = p.conn.Init(props)
-	if err != nil {
-		return fmt.Errorf("plugin init error: %w", err)
-	}
+	p.client, err = client.NewClient(ctx, p.Name, cmd, props, yamlPrefix, yamlData)
 
 	return err
 }
@@ -180,9 +139,7 @@ func (p *Plugin) Stop() error {
 		return nil
 	}
 
-	if err := p.cmd.Process.Kill(); err != nil {
-		return err
-	}
+	_ = p.cmd.Process.Signal(syscall.SIGTERM)
 
 	return p.cmd.Wait()
 }

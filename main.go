@@ -36,7 +36,7 @@ func main() {
 	close(ch)
 
 	if err != nil {
-		exec.Ctx.Log.Error(err)
+		exec.Ctx.Log.Errorln(err)
 
 		os.Exit(1) // nolint: gocritic
 	}

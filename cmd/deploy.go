@@ -3,15 +3,16 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/outblocks/outblocks-cli/pkg/actions"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/spf13/cobra"
 )
 
-func (e *Executor) newRunCmd() *cobra.Command {
+func (e *Executor) newDeployCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "run",
-		Short: "Runs stack locally",
-		Long:  `Runs Outblocks stack and dependencies locally.`,
+		Use:   "deploy",
+		Short: "Deploy stack",
+		Long:  `Deploys Outblocks stack and dependencies.`,
 		Annotations: map[string]string{
 			cmdGroupAnnotation: cmdGroupMain,
 		},
@@ -21,11 +22,9 @@ func (e *Executor) newRunCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
-			fmt.Println("RUNE")
+			fmt.Println(e.Ctx.Ctx)
 
-			// spew.Dump(e.opts.cfg)
-
-			return nil
+			return actions.NewDeploy(e.Ctx, e.cfg).Run()
 		},
 	}
 

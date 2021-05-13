@@ -21,3 +21,7 @@ func (c *Context) WithContext(ctx context.Context) *Context {
 
 	return &c2
 }
+
+func (c *Context) SetContext(ctx context.Context) {
+	c.Ctx = ctx
+}

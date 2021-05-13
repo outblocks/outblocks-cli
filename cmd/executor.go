@@ -60,7 +60,7 @@ func setupEnvVars(env *cli.Environment) {
 }
 
 func (e *Executor) Execute(ctx context.Context) error {
-	c := e.Ctx.WithContext(ctx)
+	e.Ctx.SetContext(ctx)
 
 	if err := e.initConfig(); err != nil {
 		return err
@@ -76,22 +76,29 @@ func (e *Executor) Execute(ctx context.Context) error {
 
 	// Load values.
 	v, err := e.opts.valueOpts.MergeValues(ctx, getter.All())
-	if err != nil {
+	if err != nil && (len(e.opts.valueOpts.ValueFiles) != 1 || e.opts.valueOpts.ValueFiles[0] != defaultValuesYAML) {
 		return err
 	}
 
 	// Load config file.
-	if err := e.loadProjectConfig(c, map[string]interface{}{"var": v}); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+	if err := e.loadProjectConfig(e.Ctx, map[string]interface{}{"var": v}); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
 		return err
 	}
 
 	if e.cfg != nil {
 		if err := e.saveLockfile(); err != nil {
+			_ = e.cleanupProject()
 			return err
 		}
 	}
 
-	return e.rootCmd.ExecuteContext(ctx)
+	err = e.rootCmd.ExecuteContext(ctx)
+	if err != nil {
+		_ = e.cleanupProject()
+		return err
+	}
+
+	return e.cleanupProject()
 }
 
 func (e *Executor) setupLogging() error {
@@ -129,7 +136,7 @@ func (e *Executor) initConfig() error {
 
 	// If a config file is found, read it in.
 	if err := e.v.ReadInConfig(); err == nil {
-		e.Ctx.Log.Info("Using config file:", e.v.ConfigFileUsed())
+		e.Ctx.Log.Infoln("Using config file:", e.v.ConfigFileUsed())
 	}
 
 	return nil

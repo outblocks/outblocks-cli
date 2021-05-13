@@ -4,9 +4,17 @@
   "$ref": "#/definitions/OutblocksProject",
   "definitions": {
     "OutblocksProject": {
+      "title": "Outblocks",
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "name": {
+          "type": "string"
+        },
+        "dns": {
+          "description": "Project-wide DNS setup.",
+          "$ref": "#/definitions/DNS"
+        },
         "state": {
           "description": "Project-wide state source.",
           "$ref": "#/definitions/State"
@@ -23,8 +31,25 @@
           }
         }
       },
-      "required": [],
-      "title": "Outblocks"
+      "required": []
+    },
+    "DNS": {
+      "title": "DNS",
+      "type": "array",
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "plugin": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain"
+        ]
+      }
     },
     "State": {
       "type": "object",
@@ -40,6 +65,7 @@
       "title": "State"
     },
     "Dependencies": {
+      "title": "Dependencies",
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
@@ -55,10 +81,10 @@
             "type"
           ]
         }
-      },
-      "title": "Dependencies"
+      }
     },
     "Plugin": {
+      "title": "Plugin",
       "type": "object",
       "additionalProperties": true,
       "properties": {
@@ -68,8 +94,7 @@
       },
       "required": [
         "name"
-      ],
-      "title": "Plugin"
+      ]
     }
   }
 }

@@ -10,15 +10,15 @@ import (
 )
 
 const (
-	TypeStatic = "static"
+	TypeService = "service"
 )
 
-type StaticConfig struct {
+type ServiceApp struct {
 	BasicApp `json:",inline"`
 }
 
-func LoadStaticConfigData(path string, data []byte) (*StaticConfig, error) {
-	out := &StaticConfig{}
+func LoadServiceAppData(path string, data []byte) (App, error) {
+	out := &ServiceApp{}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatError(err, pterm.PrintColor, true))
@@ -26,8 +26,8 @@ func LoadStaticConfigData(path string, data []byte) (*StaticConfig, error) {
 
 	out.Path = filepath.Dir(path)
 	out.yamlPath = path
-	out.data = data
-	out.typ = TypeStatic
+	out.yamlData = data
+	out.typ = TypeService
 
 	return out, nil
 }

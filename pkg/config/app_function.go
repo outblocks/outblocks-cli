@@ -10,15 +10,15 @@ import (
 )
 
 const (
-	TypeService = "service"
+	TypeFunction = "function"
 )
 
-type ServiceConfig struct {
+type FunctionApp struct {
 	BasicApp `json:",inline"`
 }
 
-func LoadServiceConfigData(path string, data []byte) (App, error) {
-	out := &ServiceConfig{}
+func LoadFunctionAppData(path string, data []byte) (App, error) {
+	out := &FunctionApp{}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatError(err, pterm.PrintColor, true))
@@ -26,8 +26,8 @@ func LoadServiceConfigData(path string, data []byte) (App, error) {
 
 	out.Path = filepath.Dir(path)
 	out.yamlPath = path
-	out.data = data
-	out.typ = TypeService
+	out.yamlData = data
+	out.typ = TypeFunction
 
 	return out, nil
 }

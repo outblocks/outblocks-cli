@@ -43,7 +43,7 @@ func (e *Executor) loadProjectConfig(ctx *cli.Context, vals map[string]interface
 
 func (e *Executor) loadPlugins(ctx *cli.Context, cfg *config.ProjectConfig) error {
 	plugs := make([]*plugins.Plugin, len(cfg.Plugins))
-	pluginsToDownload := make(map[int]*config.ProjectPlugin)
+	pluginsToDownload := make(map[int]*config.Plugin)
 
 	for i, plug := range cfg.Plugins {
 		plugin, err := e.loader.LoadPlugin(plug.Name, plug.Source, plug.VerRange(), cfg.PluginLock(plug))
@@ -91,12 +91,30 @@ func (e *Executor) loadPlugins(ctx *cli.Context, cfg *config.ProjectConfig) erro
 	}
 
 	for i, plug := range plugs {
-		if err := plug.Start(ctx, cfg.Path, cfg.Plugins[i].Other); err != nil {
+		plug := plug
+		cfgPlug := cfg.Plugins[i]
+		prefix := fmt.Sprintf("$.plugins[%d]", i)
+
+		if err := plug.Prepare(ctx, cfg.Path, cfgPlug.Other, prefix, cfg.YAMLData()); err != nil {
 			return fmt.Errorf("error starting plugin '%s': %w", plug.Name, err)
 		}
 	}
 
 	cfg.SetPlugins(plugs)
+
+	return nil
+}
+
+func (e *Executor) cleanupProject() error {
+	if e.cfg == nil {
+		return nil
+	}
+
+	for _, plug := range e.cfg.LoadedPlugins() {
+		if err := plug.Stop(); err != nil {
+			return fmt.Errorf("error stopping plugin '%s': %w", plug.Name, err)
+		}
+	}
 
 	return nil
 }

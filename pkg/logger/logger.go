@@ -29,7 +29,7 @@ func (l *Logger) Debugf(format string, a ...interface{}) {
 	l.debug.Printf(format, a...)
 }
 
-func (l *Logger) Debug(a ...interface{}) {
+func (l *Logger) Debugln(a ...interface{}) {
 	if l.logLevel > LogLevelDebug {
 		return
 	}
@@ -45,7 +45,7 @@ func (l *Logger) Infof(format string, a ...interface{}) {
 	l.info.Printf(format, a...)
 }
 
-func (l *Logger) Info(a ...interface{}) {
+func (l *Logger) Infoln(a ...interface{}) {
 	if l.logLevel > LogLevelInfo {
 		return
 	}
@@ -61,7 +61,7 @@ func (l *Logger) Warnf(format string, a ...interface{}) {
 	l.warn.Printf(format, a...)
 }
 
-func (l *Logger) Warn(a ...interface{}) {
+func (l *Logger) Warnln(a ...interface{}) {
 	if l.logLevel > LogLevelWarn {
 		return
 	}
@@ -73,7 +73,7 @@ func (l *Logger) Errorf(format string, a ...interface{}) {
 	l.err.Printf(format, a...)
 }
 
-func (l *Logger) Error(a ...interface{}) {
+func (l *Logger) Errorln(a ...interface{}) {
 	l.err.Println(a...)
 }
 

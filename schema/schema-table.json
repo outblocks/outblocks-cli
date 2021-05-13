@@ -4,6 +4,7 @@
   "$ref": "#/definitions/OutblocksTable",
   "definitions": {
     "OutblocksTable": {
+      "title": "OutblocksTable",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -11,10 +12,10 @@
           "$ref": "#/definitions/Fields"
         }
       },
-      "required": [],
-      "title": "OutblocksTable"
+      "required": []
     },
     "Fields": {
+      "title": "Fields",
       "type": "object",
       "additionalProperties": true,
       "patternProperties": {
@@ -33,8 +34,7 @@
             "type"
           ]
         }
-      },
-      "title": "Fields"
+      }
     }
   }
 }

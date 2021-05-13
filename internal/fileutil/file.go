@@ -138,5 +138,5 @@ func YAMLError(path, msg string, data []byte) error {
 		return YAMLError(path[:idx], msg, data)
 	}
 
-	return fmt.Errorf("%s\n\n%s  %s", source, emoji.Warning, msg)
+	return fmt.Errorf("\n%s\n\n%s  %s", source, emoji.Warning, msg)
 }
