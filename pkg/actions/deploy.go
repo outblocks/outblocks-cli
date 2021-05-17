@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/outblocks/outblocks-cli/pkg/cli"
 	"github.com/outblocks/outblocks-cli/pkg/config"
+	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 	"github.com/outblocks/outblocks-plugin-go/types"
@@ -13,49 +13,55 @@ import (
 )
 
 type deployParams struct {
-	apps []*types.App
+	apps []*types.AppPlanRequest
 	deps []*types.Dependency
 }
 
 type Deploy struct {
-	ctx *cli.Context
-	cfg *config.ProjectConfig
+	log logger.Logger
 }
 
-func NewDeploy(ctx *cli.Context, cfg *config.ProjectConfig) *Deploy {
+func NewDeploy(log logger.Logger) *Deploy {
 	return &Deploy{
-		ctx: ctx,
-		cfg: cfg,
+		log: log,
 	}
 }
 
-func (d *Deploy) Run() error {
-	planMap, err := plan(d.ctx.Ctx, d.cfg.Apps, d.cfg.Dependencies)
+func (d *Deploy) Run(ctx context.Context, cfg *config.ProjectConfig) error {
+	planMap, err := plan(ctx, cfg.Apps, cfg.Dependencies)
 	if err != nil {
 		return err
 	}
 
 	// TODO: prompt
 
-	return apply(d.ctx.Ctx, planMap)
+	return apply(ctx, planMap)
 }
 
 func plan(ctx context.Context, apps []config.App, deps map[string]*config.Dependency) (map[*plugins.Plugin]*plugin_go.PlanResponse, error) {
 	deployMap := make(map[*plugins.Plugin]*deployParams)
 
 	for _, app := range apps {
-		t := app.PluginType()
-
+		dnsPlugin := app.DNSPlugin()
 		deployPlugin := app.DeployPlugin()
+		appType := app.PluginType()
+
+		includeDNS := dnsPlugin == nil || dnsPlugin == deployPlugin
+
 		if _, ok := deployMap[deployPlugin]; !ok {
 			deployMap[deployPlugin] = &deployParams{}
 		}
 
-		deployMap[deployPlugin].apps = append(deployMap[deployPlugin].apps, t)
+		appReq := &types.AppPlanRequest{
+			IsDeploy: true,
+			IsDNS:    includeDNS,
+			App:      appType,
+		}
 
-		// Add DNS plugin if needed.
-		dnsPlugin := app.DNSPlugin()
-		if dnsPlugin == nil || dnsPlugin == deployPlugin {
+		deployMap[deployPlugin].apps = append(deployMap[deployPlugin].apps, appReq)
+
+		// Add DNS plugin if not already included (handled by same plugin).
+		if includeDNS {
 			continue
 		}
 
@@ -63,7 +69,13 @@ func plan(ctx context.Context, apps []config.App, deps map[string]*config.Depend
 			deployMap[dnsPlugin] = &deployParams{}
 		}
 
-		deployMap[dnsPlugin].apps = append(deployMap[dnsPlugin].apps, t)
+		appReq = &types.AppPlanRequest{
+			IsDeploy: false,
+			IsDNS:    true,
+			App:      appType,
+		}
+
+		deployMap[dnsPlugin].apps = append(deployMap[dnsPlugin].apps, appReq)
 	}
 
 	for _, dep := range deps {

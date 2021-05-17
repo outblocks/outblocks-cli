@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,8 +11,8 @@ import (
 
 	"github.com/blang/semver/v4"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/outblocks/outblocks-cli/pkg/cli"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
+	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
 )
 
@@ -111,7 +112,7 @@ func (p *Plugin) SupportsApp(app string) bool {
 	return false
 }
 
-func (p *Plugin) Prepare(ctx *cli.Context, projectPath string, props map[string]interface{}, yamlPrefix string, yamlData []byte) error {
+func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, projectPath string, props map[string]interface{}, yamlPrefix string, yamlData []byte) error {
 	var (
 		cmd *exec.Cmd
 		err error
@@ -129,7 +130,7 @@ func (p *Plugin) Prepare(ctx *cli.Context, projectPath string, props map[string]
 		fmt.Sprintf("OUTBLOCKS_PROJECT_PATH=%s", projectPath),
 	)
 
-	p.client, err = client.NewClient(ctx, p.Name, cmd, props, yamlPrefix, yamlData)
+	p.client, err = client.NewClient(ctx, log, p.Name, cmd, props, yamlPrefix, yamlData)
 
 	return err
 }

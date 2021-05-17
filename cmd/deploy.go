@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/outblocks/outblocks-cli/pkg/actions"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/spf13/cobra"
@@ -22,9 +20,7 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
-			fmt.Println(e.Ctx.Ctx)
-
-			return actions.NewDeploy(e.Ctx, e.cfg).Run()
+			return actions.NewDeploy(e.Log()).Run(cmd.Context(), e.cfg)
 		},
 	}
 

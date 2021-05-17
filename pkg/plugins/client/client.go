@@ -2,6 +2,7 @@ package client
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,12 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/outblocks/outblocks-cli/pkg/cli"
+	"github.com/outblocks/outblocks-cli/pkg/logger"
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 )
 
 type Client struct {
-	ctx *cli.Context
+	ctx context.Context
+	log logger.Logger
 
 	cmd  *exec.Cmd
 	addr string
@@ -32,9 +34,10 @@ const (
 	defaultTimeout = 10 * time.Second
 )
 
-func NewClient(ctx *cli.Context, name string, cmd *exec.Cmd, props map[string]interface{}, yamlPrefix string, yamlData []byte) (*Client, error) {
+func NewClient(ctx context.Context, log logger.Logger, name string, cmd *exec.Cmd, props map[string]interface{}, yamlPrefix string, yamlData []byte) (*Client, error) {
 	return &Client{
 		ctx: ctx,
+		log: log,
 		cmd: cmd,
 
 		name:       name,
@@ -66,7 +69,7 @@ func (c *Client) lazyInit() error {
 	go func() {
 		s := bufio.NewScanner(stderrPipe)
 		for s.Scan() {
-			c.ctx.Log.Errorf("plugin '%s' error: %s", c.name, s.Text())
+			c.log.Errorf("plugin '%s' error: %s", c.name, s.Text())
 		}
 	}()
 
@@ -359,13 +362,13 @@ func (c *Client) handleResponse(conn net.Conn, in <-chan plugin_go.Request, res 
 	case *plugin_go.MessageResponse:
 		switch r.Level() {
 		case "debug":
-			c.ctx.Log.Debugln(r.Message)
+			c.log.Debugln(r.Message)
 		case "info":
-			c.ctx.Log.Infoln(r.Message)
+			c.log.Infoln(r.Message)
 		case "warn":
-			c.ctx.Log.Warnln(r.Message)
+			c.log.Warnln(r.Message)
 		case "error":
-			c.ctx.Log.Errorln(r.Message)
+			c.log.Errorln(r.Message)
 		}
 		// TODO: handle message
 	case *plugin_go.UnhandledResponse:

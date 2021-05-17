@@ -16,12 +16,38 @@ const (
 	LogLevelError
 )
 
-type Logger struct {
+type Log struct {
 	logLevel               LogLevel
 	debug, info, warn, err pterm.PrefixPrinter
 }
 
-func (l *Logger) Debugf(format string, a ...interface{}) {
+func NewLogger() Logger {
+	l := &Log{
+		logLevel: LogLevelDebug,
+		debug:    pterm.Debug,
+		info:     pterm.Info,
+		warn:     pterm.Warning,
+		err:      pterm.Error,
+	}
+
+	l.debug.Debugger = false
+
+	return l
+}
+
+func (l *Log) Printf(format string, a ...interface{}) {
+	pterm.Printf(format, a...)
+}
+
+func (l *Log) Println(a ...interface{}) {
+	pterm.Println(a...)
+}
+
+func (l *Log) Printo(a ...interface{}) {
+	pterm.Printo(a...)
+}
+
+func (l *Log) Debugf(format string, a ...interface{}) {
 	if l.logLevel > LogLevelDebug {
 		return
 	}
@@ -29,7 +55,7 @@ func (l *Logger) Debugf(format string, a ...interface{}) {
 	l.debug.Printf(format, a...)
 }
 
-func (l *Logger) Debugln(a ...interface{}) {
+func (l *Log) Debugln(a ...interface{}) {
 	if l.logLevel > LogLevelDebug {
 		return
 	}
@@ -37,7 +63,7 @@ func (l *Logger) Debugln(a ...interface{}) {
 	l.debug.Println(a...)
 }
 
-func (l *Logger) Infof(format string, a ...interface{}) {
+func (l *Log) Infof(format string, a ...interface{}) {
 	if l.logLevel > LogLevelInfo {
 		return
 	}
@@ -45,7 +71,7 @@ func (l *Logger) Infof(format string, a ...interface{}) {
 	l.info.Printf(format, a...)
 }
 
-func (l *Logger) Infoln(a ...interface{}) {
+func (l *Log) Infoln(a ...interface{}) {
 	if l.logLevel > LogLevelInfo {
 		return
 	}
@@ -53,7 +79,7 @@ func (l *Logger) Infoln(a ...interface{}) {
 	l.info.Println(a...)
 }
 
-func (l *Logger) Warnf(format string, a ...interface{}) {
+func (l *Log) Warnf(format string, a ...interface{}) {
 	if l.logLevel > LogLevelWarn {
 		return
 	}
@@ -61,7 +87,7 @@ func (l *Logger) Warnf(format string, a ...interface{}) {
 	l.warn.Printf(format, a...)
 }
 
-func (l *Logger) Warnln(a ...interface{}) {
+func (l *Log) Warnln(a ...interface{}) {
 	if l.logLevel > LogLevelWarn {
 		return
 	}
@@ -69,15 +95,15 @@ func (l *Logger) Warnln(a ...interface{}) {
 	l.warn.Println(a...)
 }
 
-func (l *Logger) Errorf(format string, a ...interface{}) {
+func (l *Log) Errorf(format string, a ...interface{}) {
 	l.err.Printf(format, a...)
 }
 
-func (l *Logger) Errorln(a ...interface{}) {
+func (l *Log) Errorln(a ...interface{}) {
 	l.err.Println(a...)
 }
 
-func (l *Logger) SetLevel(logLevel string) error {
+func (l *Log) SetLevel(logLevel string) error {
 	var level LogLevel
 
 	switch strings.ToLower(logLevel) {
@@ -98,20 +124,6 @@ func (l *Logger) SetLevel(logLevel string) error {
 	return nil
 }
 
-func (l *Logger) Level() LogLevel {
+func (l *Log) Level() LogLevel {
 	return l.logLevel
-}
-
-func NewLogger() *Logger {
-	l := &Logger{
-		logLevel: LogLevelDebug,
-		debug:    pterm.Debug,
-		info:     pterm.Info,
-		warn:     pterm.Warning,
-		err:      pterm.Error,
-	}
-
-	l.debug.Debugger = false
-
-	return l
 }

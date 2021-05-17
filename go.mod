@@ -33,6 +33,6 @@ require (
 	gopkg.in/ini.v1 v1.62.0 // indirect
 )
 
-replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.20210506194251-5f39d746e4b1
+replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.20210513211449-7c6c82dc3f03
 
 replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go

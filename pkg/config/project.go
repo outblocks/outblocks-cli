@@ -13,7 +13,6 @@ import (
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
-	"github.com/pterm/pterm"
 )
 
 const (
@@ -104,7 +103,7 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
-		return nil, fmt.Errorf("load project config %s error: \n%s", path, yaml.FormatError(err, pterm.PrintColor, true))
+		return nil, fmt.Errorf("load project config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
 	return out, nil

@@ -8,7 +8,7 @@ import (
 
 type Context struct {
 	Ctx context.Context
-	Log *logger.Logger
+	Log *logger.Log
 }
 
 func (c *Context) Debug() bool {

@@ -131,7 +131,6 @@ func (a *BasicApp) PluginType() *types.App {
 		Path:       a.Path,
 		Type:       a.Type(),
 		URL:        a.URL,
-		Deploy:     a.Deploy,
 		Needs:      needs,
 		Properties: a.Other,
 	}

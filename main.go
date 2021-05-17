@@ -26,7 +26,7 @@ func main() {
 
 	defer func() {
 		if r := recover(); r != nil {
-			exec.Ctx.Log.Errorf("Critical Error! %q\n%s", r, debug.Stack())
+			exec.Log().Errorf("Critical Error! %q\n%s", r, debug.Stack())
 		}
 	}()
 
@@ -36,7 +36,7 @@ func main() {
 	close(ch)
 
 	if err != nil {
-		exec.Ctx.Log.Errorln(err)
+		exec.Log().Errorln(err)
 
 		os.Exit(1) // nolint: gocritic
 	}

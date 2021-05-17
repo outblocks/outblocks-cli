@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
@@ -14,7 +15,6 @@ import (
 	"github.com/otiai10/copy"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/validator"
-	"github.com/outblocks/outblocks-cli/pkg/cli"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 )
 
@@ -66,7 +66,7 @@ func (l *Loader) LoadPlugin(name, src string, verRange semver.Range, lock *lockf
 	return l.loadPlugin(pi, path, ver)
 }
 
-func (l *Loader) DownloadPlugin(ctx *cli.Context, name string, verRange semver.Range, src string, lock *lockfile.Plugin) (*Plugin, error) {
+func (l *Loader) DownloadPlugin(ctx context.Context, name string, verRange semver.Range, src string, lock *lockfile.Plugin) (*Plugin, error) {
 	pi := newPluginInfo(name, src, verRange, lock)
 
 	from, ver, err := l.downloadPlugin(ctx, pi)
@@ -154,8 +154,8 @@ func (l *Loader) selectDownloader(src string) Downloader {
 	return l.downloader.vcs
 }
 
-func (l *Loader) downloadPlugin(ctx *cli.Context, pi *pluginInfo) (string, *semver.Version, error) {
-	download, err := l.selectDownloader(pi.source).Download(ctx.Ctx, pi)
+func (l *Loader) downloadPlugin(ctx context.Context, pi *pluginInfo) (string, *semver.Version, error) {
+	download, err := l.selectDownloader(pi.source).Download(ctx, pi)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to download plugin %s: %w", pi.name, err)
 	}

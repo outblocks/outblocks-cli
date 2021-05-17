@@ -23,6 +23,10 @@
         "build": {
           "description": "Build override.",
           "$ref": "#/definitions/Build"
+        },
+        "routing": {
+          "description": "Routing type (defaults to 'react').",
+          "type": "string"
         }
       },
       "required": []

@@ -8,7 +8,6 @@ import (
 
 	"github.com/enescakir/emoji"
 	"github.com/goccy/go-yaml"
-	"github.com/pterm/pterm"
 )
 
 func FileExists(path string) bool {
@@ -128,7 +127,7 @@ func YAMLError(path, msg string, data []byte) error {
 		panic(err)
 	}
 
-	source, err := yamlPath.AnnotateSource(data, pterm.PrintColor)
+	source, err := yamlPath.AnnotateSourceDefault(data)
 	if err != nil {
 		idx := strings.LastIndex(path, ".")
 		if idx == -1 {

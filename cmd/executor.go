@@ -24,8 +24,8 @@ type Executor struct {
 	rootCmd *cobra.Command
 	env     *cli.Environment
 	loader  *plugins.Loader
+	log     logger.Logger
 
-	Ctx *cli.Context
 	cfg *config.ProjectConfig
 
 	opts struct {
@@ -39,9 +39,7 @@ func NewExecutor() *Executor {
 	e := &Executor{
 		v:   v,
 		env: cli.NewEnvironment(v),
-		Ctx: &cli.Context{
-			Log: logger.NewLogger(),
-		},
+		log: logger.NewLogger(),
 	}
 
 	e.opts.valueOpts = &values.Options{}
@@ -60,8 +58,6 @@ func setupEnvVars(env *cli.Environment) {
 }
 
 func (e *Executor) Execute(ctx context.Context) error {
-	e.Ctx.SetContext(ctx)
-
 	if err := e.initConfig(); err != nil {
 		return err
 	}
@@ -81,7 +77,7 @@ func (e *Executor) Execute(ctx context.Context) error {
 	}
 
 	// Load config file.
-	if err := e.loadProjectConfig(e.Ctx, map[string]interface{}{"var": v}); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+	if err := e.loadProjectConfig(ctx, map[string]interface{}{"var": v}); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
 		return err
 	}
 
@@ -104,7 +100,7 @@ func (e *Executor) Execute(ctx context.Context) error {
 func (e *Executor) setupLogging() error {
 	l := e.v.GetString("log_level")
 
-	if err := e.Ctx.Log.SetLevel(l); err != nil {
+	if err := e.log.SetLevel(l); err != nil {
 		return err
 	}
 
@@ -115,6 +111,7 @@ func (e *Executor) setupLogging() error {
 		pterm.EnableColor()
 	}
 
+	yaml.SetDefaultIncludeSource(true)
 	yaml.SetDefaultColorize(color)
 
 	return nil
@@ -136,8 +133,12 @@ func (e *Executor) initConfig() error {
 
 	// If a config file is found, read it in.
 	if err := e.v.ReadInConfig(); err == nil {
-		e.Ctx.Log.Infoln("Using config file:", e.v.ConfigFileUsed())
+		e.log.Infoln("Using config file:", e.v.ConfigFileUsed())
 	}
 
 	return nil
+}
+
+func (e *Executor) Log() logger.Logger {
+	return e.log
 }

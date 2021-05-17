@@ -6,7 +6,6 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/validator"
-	"github.com/pterm/pterm"
 )
 
 const (
@@ -21,7 +20,7 @@ func LoadFunctionAppData(path string, data []byte) (App, error) {
 	out := &FunctionApp{}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
-		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatError(err, pterm.PrintColor, true))
+		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
 	out.Path = filepath.Dir(path)

@@ -1,18 +1,18 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
 
 	"github.com/goccy/go-yaml"
-	"github.com/outblocks/outblocks-cli/pkg/cli"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/pterm/pterm"
 )
 
-func (e *Executor) loadProjectConfig(ctx *cli.Context, vals map[string]interface{}) error {
+func (e *Executor) loadProjectConfig(ctx context.Context, vals map[string]interface{}) error {
 	cfg, err := config.LoadProjectConfig(vals)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func (e *Executor) loadProjectConfig(ctx *cli.Context, vals map[string]interface
 	return nil
 }
 
-func (e *Executor) loadPlugins(ctx *cli.Context, cfg *config.ProjectConfig) error {
+func (e *Executor) loadPlugins(ctx context.Context, cfg *config.ProjectConfig) error {
 	plugs := make([]*plugins.Plugin, len(cfg.Plugins))
 	pluginsToDownload := make(map[int]*config.Plugin)
 
@@ -95,7 +95,7 @@ func (e *Executor) loadPlugins(ctx *cli.Context, cfg *config.ProjectConfig) erro
 		cfgPlug := cfg.Plugins[i]
 		prefix := fmt.Sprintf("$.plugins[%d]", i)
 
-		if err := plug.Prepare(ctx, cfg.Path, cfgPlug.Other, prefix, cfg.YAMLData()); err != nil {
+		if err := plug.Prepare(ctx, e.Log(), cfg.Path, cfgPlug.Other, prefix, cfg.YAMLData()); err != nil {
 			return fmt.Errorf("error starting plugin '%s': %w", plug.Name, err)
 		}
 	}

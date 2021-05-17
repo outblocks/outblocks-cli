@@ -7,7 +7,6 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/validator"
-	"github.com/pterm/pterm"
 )
 
 type Lockfile struct {
@@ -42,7 +41,7 @@ func LoadLockfileData(path string, data []byte) (*Lockfile, error) {
 	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator()), yaml.UseJSONUnmarshaler(), yaml.Strict()); err != nil {
-		return nil, fmt.Errorf("load lockfile %s error: \n%s", path, yaml.FormatError(err, pterm.PrintColor, true))
+		return nil, fmt.Errorf("load lockfile %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
 	return out, nil
