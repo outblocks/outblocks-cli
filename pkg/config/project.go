@@ -29,7 +29,7 @@ var (
 	}
 )
 
-type ProjectConfig struct {
+type Project struct {
 	Name         string                 `json:"name,omitempty"`
 	State        *State                 `json:"state,omitempty"`
 	Dependencies map[string]*Dependency `json:"dependencies,omitempty"`
@@ -46,14 +46,14 @@ type ProjectConfig struct {
 	vars     map[string]interface{}
 }
 
-func (p *ProjectConfig) Validate() error {
+func (p *Project) Validate() error {
 	return validation.ValidateStruct(p,
 		validation.Field(&p.State, validation.Required),
 		validation.Field(&p.Dependencies),
 	)
 }
 
-func LoadProjectConfig(vars map[string]interface{}) (*ProjectConfig, error) {
+func LoadProjectConfig(vars map[string]interface{}) (*Project, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("cannot find current directory: %w", err)
@@ -88,13 +88,13 @@ func LoadProjectConfig(vars map[string]interface{}) (*ProjectConfig, error) {
 	return p, err
 }
 
-func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}, lock *lockfile.Lockfile) (*ProjectConfig, error) {
+func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}, lock *lockfile.Lockfile) (*Project, error) {
 	data, err := NewYAMLEvaluator(vars).Expand(data)
 	if err != nil {
 		return nil, fmt.Errorf("load project config %s error: \n%w", path, err)
 	}
 
-	out := &ProjectConfig{
+	out := &Project{
 		yamlPath: path,
 		Path:     filepath.Dir(path),
 		yamlData: data,
@@ -109,7 +109,7 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 	return out, nil
 }
 
-func (p *ProjectConfig) LoadApps() error {
+func (p *Project) LoadApps() error {
 	files := fileutil.FindYAMLFiles(p.Path, AppYAMLName)
 
 	if err := p.LoadFiles(files); err != nil {
@@ -119,7 +119,7 @@ func (p *ProjectConfig) LoadApps() error {
 	return nil
 }
 
-func (p *ProjectConfig) LoadFiles(files []string) error {
+func (p *Project) LoadFiles(files []string) error {
 	for _, f := range files {
 		if err := p.LoadFile(f); err != nil {
 			return err
@@ -156,7 +156,7 @@ func KnownType(typ string) string {
 	return ""
 }
 
-func (p *ProjectConfig) LoadFile(file string) error {
+func (p *Project) LoadFile(file string) error {
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("cannot read yaml: %w", err)
@@ -206,7 +206,7 @@ func (p *ProjectConfig) LoadFile(file string) error {
 	return nil
 }
 
-func (p *ProjectConfig) FindDependency(n string) *Dependency {
+func (p *Project) FindDependency(n string) *Dependency {
 	for name, dep := range p.Dependencies {
 		if name == n {
 			return dep
@@ -216,23 +216,23 @@ func (p *ProjectConfig) FindDependency(n string) *Dependency {
 	return nil
 }
 
-func (p *ProjectConfig) SetPlugins(plugs []*plugins.Plugin) {
+func (p *Project) SetPlugins(plugs []*plugins.Plugin) {
 	p.plugins = plugs
 }
 
-func (p *ProjectConfig) LoadedPlugins() []*plugins.Plugin {
+func (p *Project) LoadedPlugins() []*plugins.Plugin {
 	return p.plugins
 }
 
-func (p *ProjectConfig) PluginLock(plug *Plugin) *lockfile.Plugin {
+func (p *Project) PluginLock(plug *Plugin) *lockfile.Plugin {
 	return p.lock.PluginByName(plug.Name)
 }
 
-func (p *ProjectConfig) YAMLData() []byte {
+func (p *Project) YAMLData() []byte {
 	return p.yamlData
 }
 
-func (p *ProjectConfig) FindDNSPlugin(url string) *plugins.Plugin {
+func (p *Project) FindDNSPlugin(url string) *plugins.Plugin {
 	url = strings.SplitN(url, "/", 2)[0]
 
 	for _, dns := range p.DNS {
@@ -244,7 +244,7 @@ func (p *ProjectConfig) FindDNSPlugin(url string) *plugins.Plugin {
 	return nil
 }
 
-func (p *ProjectConfig) FindLoadedPlugin(name string) *plugins.Plugin {
+func (p *Project) FindLoadedPlugin(name string) *plugins.Plugin {
 	for _, plug := range p.plugins {
 		if plug.Name == name {
 			return plug

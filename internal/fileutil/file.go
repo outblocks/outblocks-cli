@@ -139,3 +139,18 @@ func YAMLError(path, msg string, data []byte) error {
 
 	return fmt.Errorf("\n%s\n\n%s  %s", source, emoji.Warning, msg)
 }
+
+func CheckDir(path string) (string, bool) {
+	path, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		return "", false
+	}
+
+	fi, err := os.Stat(path)
+
+	if os.IsNotExist(err) || !fi.IsDir() {
+		return "", false
+	}
+
+	return path, true
+}

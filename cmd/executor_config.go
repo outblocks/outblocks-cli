@@ -41,7 +41,7 @@ func (e *Executor) loadProjectConfig(ctx context.Context, vals map[string]interf
 	return nil
 }
 
-func (e *Executor) loadPlugins(ctx context.Context, cfg *config.ProjectConfig) error {
+func (e *Executor) loadPlugins(ctx context.Context, cfg *config.Project) error {
 	plugs := make([]*plugins.Plugin, len(cfg.Plugins))
 	pluginsToDownload := make(map[int]*config.Plugin)
 
@@ -92,10 +92,10 @@ func (e *Executor) loadPlugins(ctx context.Context, cfg *config.ProjectConfig) e
 
 	for i, plug := range plugs {
 		plug := plug
-		cfgPlug := cfg.Plugins[i]
+		plugConfig := cfg.Plugins[i]
 		prefix := fmt.Sprintf("$.plugins[%d]", i)
 
-		if err := plug.Prepare(ctx, e.Log(), cfg.Path, cfgPlug.Other, prefix, cfg.YAMLData()); err != nil {
+		if err := plug.Prepare(ctx, e.Log(), cfg.Name, cfg.Path, plugConfig.Other, prefix, cfg.YAMLData()); err != nil {
 			return fmt.Errorf("error starting plugin '%s': %w", plug.Name, err)
 		}
 	}

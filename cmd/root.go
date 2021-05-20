@@ -277,6 +277,7 @@ func (e *Executor) newRoot() *cobra.Command {
 		e.newCompletionCmd(),
 		e.newRunCmd(),
 		e.newDeployCmd(),
+		e.newForceUnlockCmd(),
 	)
 
 	return cmd

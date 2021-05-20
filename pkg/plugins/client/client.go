@@ -9,6 +9,7 @@ import (
 	"net"
 	"os/exec"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/outblocks/outblocks-cli/pkg/logger"
@@ -22,10 +23,9 @@ type Client struct {
 	cmd  *exec.Cmd
 	addr string
 
-	name       string
-	props      map[string]interface{}
-	yamlPrefix string
-	yamlData   []byte
+	name        string
+	props       map[string]interface{}
+	yamlContext YAMLContext
 
 	once sync.Once
 }
@@ -34,20 +34,19 @@ const (
 	defaultTimeout = 10 * time.Second
 )
 
-func NewClient(ctx context.Context, log logger.Logger, name string, cmd *exec.Cmd, props map[string]interface{}, yamlPrefix string, yamlData []byte) (*Client, error) {
+func NewClient(ctx context.Context, log logger.Logger, name string, cmd *exec.Cmd, props map[string]interface{}, yamlContext YAMLContext) (*Client, error) {
 	return &Client{
 		ctx: ctx,
 		log: log,
 		cmd: cmd,
 
-		name:       name,
-		props:      props,
-		yamlPrefix: yamlPrefix,
-		yamlData:   yamlData,
+		name:        name,
+		props:       props,
+		yamlContext: yamlContext,
 	}, nil
 }
 
-func (c *Client) lazyInit() error {
+func (c *Client) lazyInit(ctx context.Context) error {
 	stdoutPipe, err := c.cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -69,7 +68,7 @@ func (c *Client) lazyInit() error {
 	go func() {
 		s := bufio.NewScanner(stderrPipe)
 		for s.Scan() {
-			c.log.Errorf("plugin '%s' error: %s", c.name, s.Text())
+			c.log.Errorf("plugin '%s' error: %s\n", c.name, s.Text())
 		}
 	}()
 
@@ -90,7 +89,7 @@ func (c *Client) lazyInit() error {
 	c.addr = handshake.Addr
 
 	// Send Start request to validate YAML.
-	err = c.Start()
+	err = c.Start(ctx, c.yamlContext)
 	if err != nil {
 		return fmt.Errorf("plugin '%s' start error:\n%s", c.name, err)
 	}
@@ -98,8 +97,10 @@ func (c *Client) lazyInit() error {
 	return nil
 }
 
-func (c *Client) connect() (net.Conn, error) {
-	return net.DialTimeout("tcp", c.addr, defaultTimeout)
+func (c *Client) connect(ctx context.Context) (net.Conn, error) {
+	d := &net.Dialer{}
+
+	return d.DialContext(ctx, "tcp", c.addr)
 }
 
 func (c *Client) sendRequest(conn net.Conn, req plugin_go.Request) error {
@@ -196,8 +197,12 @@ func (c *Client) readResponse(conn net.Conn) <-chan *ResponseWithError {
 				res = &plugin_go.PlanResponse{}
 			case plugin_go.ResponseTypeApply:
 				res = &plugin_go.ApplyResponse{}
+			case plugin_go.ResponseTypeApplyDone:
+				res = &plugin_go.ApplyDoneResponse{}
 			case plugin_go.ResponseTypeGetState:
 				res = &plugin_go.GetStateResponse{}
+			case plugin_go.ResponseTypeLockError:
+				res = &plugin_go.LockErrorResponse{}
 			case plugin_go.ResponseTypeData:
 				res = &plugin_go.DataResponse{}
 			case plugin_go.ResponseTypeEmpty:
@@ -244,8 +249,8 @@ type ResponseWithHeader struct {
 	Response plugin_go.Response
 }
 
-func (c *Client) sendReceive(req plugin_go.Request, callback func(res *ResponseWithHeader) error) error {
-	in, out, err := c.startBiDi(req)
+func (c *Client) sendReceive(ctx context.Context, req plugin_go.Request, callback func(res *ResponseWithHeader) error) error {
+	in, out, err := c.startBiDi(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -253,8 +258,8 @@ func (c *Client) sendReceive(req plugin_go.Request, callback func(res *ResponseW
 	return c.handleOneWay(callback, in, out)
 }
 
-func (c *Client) lazySendReceive(req plugin_go.Request, callback func(res *ResponseWithHeader) error) error {
-	in, out, err := c.lazyStartBiDi(req)
+func (c *Client) lazySendReceive(ctx context.Context, req plugin_go.Request, callback func(res *ResponseWithHeader) error) error {
+	in, out, err := c.lazyStartBiDi(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -278,20 +283,20 @@ func (c *Client) handleOneWay(callback func(res *ResponseWithHeader) error, in c
 	return callback(res.ResponseWithHeader)
 }
 
-func (c *Client) lazyStartBiDi(req plugin_go.Request) (in chan<- plugin_go.Request, out <-chan *ResponseWithError, err error) {
+func (c *Client) lazyStartBiDi(ctx context.Context, req plugin_go.Request) (in chan<- plugin_go.Request, out <-chan *ResponseWithError, err error) {
 	c.once.Do(func() {
-		err = c.lazyInit()
+		err = c.lazyInit(ctx)
 	})
 
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return c.startBiDi(req)
+	return c.startBiDi(ctx, req)
 }
 
-func (c *Client) startBiDi(req plugin_go.Request) (in chan<- plugin_go.Request, out <-chan *ResponseWithError, err error) {
-	conn, err := c.connect()
+func (c *Client) startBiDi(ctx context.Context, req plugin_go.Request) (in chan<- plugin_go.Request, out <-chan *ResponseWithError, err error) {
+	conn, err := c.connect(ctx)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -334,7 +339,7 @@ func (c *Client) startBiDi(req plugin_go.Request) (in chan<- plugin_go.Request, 
 
 func (c *Client) handleResponse(conn net.Conn, in <-chan plugin_go.Request, res *ResponseWithHeader, callback func(res *ResponseWithHeader) error) error {
 	switch r := res.Response.(type) {
-	case *plugin_go.PlanResponse, *plugin_go.GetStateResponse, *plugin_go.EmptyResponse, *plugin_go.DataResponse, *plugin_go.ValidationErrorResponse:
+	case *plugin_go.PlanResponse, *plugin_go.GetStateResponse, *plugin_go.EmptyResponse, *plugin_go.DataResponse, *plugin_go.ValidationErrorResponse, *plugin_go.LockErrorResponse:
 		err := callback(res)
 		if err != nil {
 			return err
@@ -358,7 +363,7 @@ func (c *Client) handleResponse(conn net.Conn, in <-chan plugin_go.Request, res 
 		fmt.Println(r)
 		// TODO: handle prompt
 	case *plugin_go.ErrorResponse:
-		// TODO: handle error
+		return fmt.Errorf(r.Error)
 	case *plugin_go.MessageResponse:
 		switch r.Level() {
 		case "debug":
@@ -376,4 +381,14 @@ func (c *Client) handleResponse(conn net.Conn, in <-chan plugin_go.Request, res 
 	}
 
 	return nil
+}
+
+func (c *Client) Stop() error {
+	if c.cmd == nil || c.cmd.Process == nil {
+		return nil
+	}
+
+	_ = c.cmd.Process.Signal(syscall.SIGTERM)
+
+	return c.cmd.Wait()
 }

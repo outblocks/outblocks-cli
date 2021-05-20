@@ -25,7 +25,7 @@ func (p *Plugin) Order() uint {
 	return p.order
 }
 
-func (p *Plugin) Normalize(i int, cfg *ProjectConfig) error {
+func (p *Plugin) Normalize(i int, cfg *Project) error {
 	var err error
 
 	if p.Version != "" {

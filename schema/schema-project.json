@@ -57,6 +57,9 @@
       "properties": {
         "type": {
           "type": "string"
+        },
+        "env": {
+          "type": "string"
         }
       },
       "required": [

@@ -11,8 +11,8 @@ import (
 )
 
 type App interface {
-	Normalize(cfg *ProjectConfig) error
-	Check(cfg *ProjectConfig) error
+	Normalize(cfg *Project) error
+	Check(cfg *Project) error
 	Type() string
 	PluginType() *types.App
 
@@ -25,7 +25,7 @@ type BasicApp struct {
 	Name   string                 `json:"name"`
 	URL    string                 `json:"url"`
 	Deploy string                 `json:"deploy"`
-	Needs  map[string]AppNeed     `json:"needs"`
+	Needs  map[string]*AppNeed    `json:"needs"`
 	Other  map[string]interface{} `yaml:"-,remain"`
 
 	Path         string `json:"-"`
@@ -37,12 +37,18 @@ type BasicApp struct {
 	typ          string
 }
 
-func (a *BasicApp) Normalize(cfg *ProjectConfig) error {
+func (a *BasicApp) Normalize(cfg *Project) error {
 	if a.Name == "" {
 		a.Name = filepath.Base(a.Path)
 	}
 
 	err := func() error {
+		for name, n := range a.Needs {
+			if n == nil {
+				a.Needs[name] = &AppNeed{}
+			}
+		}
+
 		for name, n := range a.Needs {
 			if err := n.Normalize(name, cfg, a.yamlData); err != nil {
 				return err
@@ -59,7 +65,7 @@ func (a *BasicApp) Normalize(cfg *ProjectConfig) error {
 	return nil
 }
 
-func (a *BasicApp) Check(cfg *ProjectConfig) error {
+func (a *BasicApp) Check(cfg *Project) error {
 	a.Deploy = strings.ToLower(a.Deploy)
 
 	// Check deploy plugin.
@@ -105,6 +111,16 @@ func (a *BasicApp) Check(cfg *ProjectConfig) error {
 
 		if a.dnsPlugin == nil {
 			return a.yamlError("$.url", fmt.Sprintf("%s has no matching dns plugin available.", a.typ))
+		}
+	}
+
+	for k, need := range a.Needs {
+		if need.dep.deployPlugin != a.deployPlugin {
+			return a.yamlError(fmt.Sprintf("$.needs[%s]", k), fmt.Sprintf("%s needs a dependency that uses different deployment plugin.", a.typ))
+		}
+
+		if need.dep.runPlugin != a.runPlugin {
+			return a.yamlError(fmt.Sprintf("$.needs[%s]", k), fmt.Sprintf("%s needs a dependency that uses different run plugin.", a.typ))
 		}
 	}
 

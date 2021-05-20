@@ -13,7 +13,7 @@ type AppNeed struct {
 	dep *Dependency
 }
 
-func (n *AppNeed) Normalize(name string, cfg *ProjectConfig, data []byte) error {
+func (n *AppNeed) Normalize(name string, cfg *Project, data []byte) error {
 	dep := cfg.FindDependency(name)
 	if dep == nil {
 		return fileutil.YAMLError(fmt.Sprintf("$.needs.%s", name), "object not found in project dependencies", data)
@@ -24,8 +24,13 @@ func (n *AppNeed) Normalize(name string, cfg *ProjectConfig, data []byte) error 
 	return nil
 }
 
+func (n *AppNeed) Dependency() *Dependency {
+	return n.dep
+}
+
 func (n *AppNeed) PluginType() *types.AppNeed {
 	return &types.AppNeed{
+		Dependency: n.dep.Name,
 		Properties: n.Other,
 	}
 }

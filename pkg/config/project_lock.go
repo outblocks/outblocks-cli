@@ -4,7 +4,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 )
 
-func (p *ProjectConfig) Lockfile() *lockfile.Lockfile {
+func (p *Project) Lockfile() *lockfile.Lockfile {
 	plugins := make([]*lockfile.Plugin, len(p.plugins))
 	for i, plug := range p.plugins {
 		plugins[i] = plug.Locked()

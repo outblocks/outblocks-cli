@@ -7,27 +7,35 @@ import (
 )
 
 const (
-	StateLocal = "local"
+	StateLocal      = "local"
+	StateDefaultEnv = "dev"
 )
 
 type State struct {
 	Type  string                 `json:"type"`
+	Env   string                 `json:"env"`
 	Other map[string]interface{} `yaml:"-,remain"`
 
 	plugin *plugins.Plugin
 }
 
-func (s *State) Normalize(cfg *ProjectConfig) error {
+func (s *State) Normalize(cfg *Project) error {
 	s.Type = strings.ToLower(s.Type)
 
 	if s.Type == "" {
 		return cfg.yamlError("$.state.type", "state has no type defined, did you want \"type: local\"?")
 	}
 
+	s.Env = strings.ToLower(s.Env)
+
+	if s.Env == "" {
+		s.Env = StateDefaultEnv
+	}
+
 	return nil
 }
 
-func (s *State) Check(cfg *ProjectConfig) error {
+func (s *State) Check(cfg *Project) error {
 	if s.Type == StateLocal {
 		return nil
 	}
@@ -46,4 +54,8 @@ func (s *State) Check(cfg *ProjectConfig) error {
 	}
 
 	return nil
+}
+
+func (s *State) Plugin() *plugins.Plugin {
+	return s.plugin
 }

@@ -34,7 +34,7 @@ func (d *Dependency) PluginType() *types.Dependency {
 	}
 }
 
-func (d *Dependency) Normalize(key string, cfg *ProjectConfig) error {
+func (d *Dependency) Normalize(key string, cfg *Project) error {
 	d.Type = strings.ToLower(d.Type)
 	d.Deploy = strings.ToLower(d.Deploy)
 
@@ -45,7 +45,7 @@ func (d *Dependency) Normalize(key string, cfg *ProjectConfig) error {
 	return nil
 }
 
-func (d *Dependency) Check(key string, cfg *ProjectConfig) error {
+func (d *Dependency) Check(key string, cfg *Project) error {
 	// Check deploy plugin.
 	for _, plug := range cfg.plugins {
 		if !plug.HasAction(plugins.ActionDeploy) {

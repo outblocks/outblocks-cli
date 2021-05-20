@@ -6,23 +6,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func (e *Executor) newDeployCmd() *cobra.Command {
+func (e *Executor) newForceUnlockCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "deploy",
-		Short: "Deploy stack",
-		Long:  `Deploys Outblocks stack and dependencies.`,
+		Use:   "force-unlock",
+		Short: "Force unlock",
+		Long:  `Release a stuck lock.`,
 		Annotations: map[string]string{
 			cmdGroupAnnotation: cmdGroupMain,
 		},
 		SilenceUsage: true,
+		Args:         cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if e.cfg == nil {
 				return config.ErrProjectConfigNotFound
 			}
 
-			return actions.NewDeploy(e.Log(), actions.DeployOptions{
-				Verify: false,
-			}).Run(cmd.Context(), e.cfg)
+			return actions.NewForceUnlock(e.Log()).Run(cmd.Context(), e.cfg, args[0])
 		},
 	}
 

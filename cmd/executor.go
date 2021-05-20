@@ -26,7 +26,7 @@ type Executor struct {
 	loader  *plugins.Loader
 	log     logger.Logger
 
-	cfg *config.ProjectConfig
+	cfg *config.Project
 
 	opts struct {
 		valueOpts *values.Options

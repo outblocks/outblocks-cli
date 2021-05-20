@@ -14,7 +14,7 @@ type DNS struct {
 	plugin *plugins.Plugin
 }
 
-func (s *DNS) Normalize(i int, cfg *ProjectConfig) error {
+func (s *DNS) Normalize(i int, cfg *Project) error {
 	s.Domain = strings.ToLower(s.Domain)
 
 	if s.Domain == "" {
@@ -24,7 +24,7 @@ func (s *DNS) Normalize(i int, cfg *ProjectConfig) error {
 	return nil
 }
 
-func (s *DNS) Check(i int, cfg *ProjectConfig) error {
+func (s *DNS) Check(i int, cfg *Project) error {
 	if s.Plugin != "" {
 		s.plugin = cfg.FindLoadedPlugin(s.Plugin)
 	} else {

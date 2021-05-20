@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"reflect"
 	"runtime"
-	"syscall"
 
 	"github.com/blang/semver/v4"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -34,7 +33,6 @@ type Plugin struct {
 	source   string
 	yamlData []byte
 	actions  []Action
-	cmd      *exec.Cmd
 	client   *client.Client
 }
 
@@ -112,7 +110,7 @@ func (p *Plugin) SupportsApp(app string) bool {
 	return false
 }
 
-func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, projectPath string, props map[string]interface{}, yamlPrefix string, yamlData []byte) error {
+func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, projectName, projectPath string, props map[string]interface{}, yamlPrefix string, yamlData []byte) error {
 	var (
 		cmd *exec.Cmd
 		err error
@@ -127,20 +125,22 @@ func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, projectPath str
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("OUTBLOCKS_BIN=%s", os.Args[0]),
 		fmt.Sprintf("OUTBLOCKS_PLUGIN_DIR=%s", p.Path),
+		fmt.Sprintf("OUTBLOCKS_PROJECT_NAME=%s", projectName),
 		fmt.Sprintf("OUTBLOCKS_PROJECT_PATH=%s", projectPath),
 	)
 
-	p.client, err = client.NewClient(ctx, log, p.Name, cmd, props, yamlPrefix, yamlData)
+	p.client, err = client.NewClient(ctx, log, p.Name, cmd, props, client.YAMLContext{
+		Prefix: yamlPrefix,
+		Data:   yamlData,
+	})
 
 	return err
 }
 
 func (p *Plugin) Stop() error {
-	if p.cmd == nil {
+	if p.client == nil {
 		return nil
 	}
 
-	_ = p.cmd.Process.Signal(syscall.SIGTERM)
-
-	return p.cmd.Wait()
+	return p.client.Stop()
 }

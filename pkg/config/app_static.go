@@ -14,6 +14,8 @@ const (
 	TypeStatic = "static"
 
 	StaticAppRoutingReact = "react"
+
+	DefaultStaticAppBuildDir = "build"
 )
 
 var StaticAppRoutings = []string{StaticAppRoutingReact}
@@ -52,11 +54,12 @@ func (s *StaticApp) PluginType() *types.App {
 	}
 
 	base.Properties["routing"] = s.Routing
+	base.Properties["build"] = s.Build
 
 	return base
 }
 
-func (s *StaticApp) Normalize(cfg *ProjectConfig) error {
+func (s *StaticApp) Normalize(cfg *Project) error {
 	if err := s.BasicApp.Normalize(cfg); err != nil {
 		return err
 	}
@@ -65,6 +68,14 @@ func (s *StaticApp) Normalize(cfg *ProjectConfig) error {
 
 	if s.Routing == "" {
 		s.Routing = StaticAppRoutingReact
+	}
+
+	if s.Build == nil {
+		s.Build = &StaticAppBuild{}
+	}
+
+	if s.Build.Dir == "" {
+		s.Build.Dir = DefaultStaticAppBuildDir
 	}
 
 	err := func() error {

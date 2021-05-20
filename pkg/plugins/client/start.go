@@ -1,21 +1,18 @@
 package client
 
 import (
+	"context"
 	"fmt"
-	"strings"
 
-	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 )
 
-func (c *Client) Start() error {
-	return c.sendReceive(&plugin_go.StartRequest{Properties: c.props}, func(res *ResponseWithHeader) error {
-		fmt.Println("CALLBACK START", res.Response)
-
-		switch v := res.Response.(type) {
+func (c *Client) Start(ctx context.Context, yamlContext YAMLContext) error {
+	return c.sendReceive(ctx, &plugin_go.StartRequest{Properties: c.props}, func(res *ResponseWithHeader) error {
+		switch r := res.Response.(type) {
 		case *plugin_go.EmptyResponse:
 		case *plugin_go.ValidationErrorResponse:
-			return fileutil.YAMLError(strings.Join([]string{c.yamlPrefix, v.Path}, "."), v.Error, c.yamlData)
+			return yamlContext.Error(r)
 		default:
 			return fmt.Errorf("unexpected response")
 		}

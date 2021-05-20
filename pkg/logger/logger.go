@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/pterm/pterm"
@@ -18,19 +19,17 @@ const (
 
 type Log struct {
 	logLevel               LogLevel
-	debug, info, warn, err pterm.PrefixPrinter
+	debug, info, warn, err *pterm.PrefixPrinter
 }
 
 func NewLogger() Logger {
 	l := &Log{
 		logLevel: LogLevelDebug,
-		debug:    pterm.Debug,
-		info:     pterm.Info,
-		warn:     pterm.Warning,
-		err:      pterm.Error,
+		debug:    pterm.Debug.WithDebugger(false),
+		info:     &pterm.Info,
+		warn:     &pterm.Warning,
+		err:      pterm.Error.WithShowLineNumber(false),
 	}
-
-	l.debug.Debugger = false
 
 	return l
 }
@@ -97,10 +96,16 @@ func (l *Log) Warnln(a ...interface{}) {
 
 func (l *Log) Errorf(format string, a ...interface{}) {
 	l.err.Printf(format, a...)
+
+	if l.logLevel == LogLevelDebug {
+		_, fileName, line, _ := runtime.Caller(1)
+
+		pterm.Println(pterm.FgGray.Sprint("└ " + fmt.Sprintf("(%s:%d)", fileName, line)))
+	}
 }
 
 func (l *Log) Errorln(a ...interface{}) {
-	l.err.Println(a...)
+	l.Errorf(fmt.Sprintln(a...))
 }
 
 func (l *Log) SetLevel(logLevel string) error {
@@ -119,7 +124,7 @@ func (l *Log) SetLevel(logLevel string) error {
 		return fmt.Errorf("unknown log level specified")
 	}
 
-	l.err.ShowLineNumber = level == LogLevelDebug
+	l.logLevel = level
 
 	return nil
 }

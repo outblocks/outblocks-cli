@@ -8,7 +8,7 @@ import (
 )
 
 // Initial first pass validation.
-func (p *ProjectConfig) Normalize() error {
+func (p *Project) Normalize() error {
 	if p.Name == "" {
 		p.Name = filepath.Base(p.Path)
 	}
@@ -67,7 +67,7 @@ func (p *ProjectConfig) Normalize() error {
 }
 
 // Logic validation after everything is loaded, e.g. check for supported types.
-func (p *ProjectConfig) FullCheck() error {
+func (p *Project) FullCheck() error {
 	err := func() error {
 		for key, dep := range p.Dependencies {
 			if err := dep.Check(key, p); err != nil {
@@ -105,6 +105,6 @@ func (p *ProjectConfig) FullCheck() error {
 	return err
 }
 
-func (p *ProjectConfig) yamlError(path, msg string) error {
+func (p *Project) yamlError(path, msg string) error {
 	return fileutil.YAMLError(path, msg, p.yamlData)
 }
