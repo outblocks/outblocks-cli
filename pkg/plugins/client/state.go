@@ -19,7 +19,7 @@ func (c *Client) GetState(ctx context.Context, typ, env string, props map[string
 		case *plugin_go.ValidationErrorResponse:
 			return yamlContext.Error(r)
 		default:
-			return fmt.Errorf("unexpected response")
+			return fmt.Errorf("unexpected response to get state request")
 		}
 
 		return nil
@@ -28,15 +28,17 @@ func (c *Client) GetState(ctx context.Context, typ, env string, props map[string
 	return
 }
 
-func (c *Client) SaveState(ctx context.Context, state *types.StateData, lockinfo, typ, env string, props map[string]interface{}) (ret *plugin_go.SaveStateResponse, err error) {
-	err = c.lazySendReceive(ctx, &plugin_go.SaveStateRequest{State: state, LockInfo: lockinfo, StateType: typ, Env: env, Properties: props}, func(res *ResponseWithHeader) error {
+func (c *Client) SaveState(ctx context.Context, state *types.StateData, typ, env string, props map[string]interface{}) (ret *plugin_go.SaveStateResponse, err error) {
+	fmt.Println("SAVESTATE")
+
+	err = c.lazySendReceive(ctx, &plugin_go.SaveStateRequest{State: state, StateType: typ, Env: env, Properties: props}, func(res *ResponseWithHeader) error {
 		fmt.Println("DEBUG: CALLBACK SAVESTATE", res.Response)
 
 		switch r := res.Response.(type) {
 		case *plugin_go.SaveStateResponse:
 			ret = r
 		default:
-			return fmt.Errorf("unexpected response")
+			return fmt.Errorf("unexpected response to save state request")
 		}
 
 		return nil

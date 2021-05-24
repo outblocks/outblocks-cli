@@ -7,6 +7,8 @@ import (
 )
 
 func (e *Executor) newDeployCmd() *cobra.Command {
+	opts := actions.DeployOptions{}
+
 	cmd := &cobra.Command{
 		Use:   "deploy",
 		Short: "Deploy stack",
@@ -20,11 +22,12 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
-			return actions.NewDeploy(e.Log(), actions.DeployOptions{
-				Verify: false,
-			}).Run(cmd.Context(), e.cfg)
+			return actions.NewDeploy(e.Log(), opts).Run(cmd.Context(), e.cfg)
 		},
 	}
+
+	f := cmd.Flags()
+	f.BoolVar(&opts.Verify, "verify", false, "verify existing resources")
 
 	return cmd
 }

@@ -21,7 +21,7 @@ func (e *Executor) newRunCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
-			fmt.Println("RUNE")
+			fmt.Println("RUN E")
 
 			// spew.Dump(e.opts.cfg)
 

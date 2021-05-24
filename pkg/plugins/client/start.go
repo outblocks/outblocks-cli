@@ -14,7 +14,7 @@ func (c *Client) Start(ctx context.Context, yamlContext YAMLContext) error {
 		case *plugin_go.ValidationErrorResponse:
 			return yamlContext.Error(r)
 		default:
-			return fmt.Errorf("unexpected response")
+			return fmt.Errorf("unexpected response to start request")
 		}
 
 		return nil

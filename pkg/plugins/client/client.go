@@ -203,6 +203,8 @@ func (c *Client) readResponse(conn net.Conn) <-chan *ResponseWithError {
 				res = &plugin_go.GetStateResponse{}
 			case plugin_go.ResponseTypeLockError:
 				res = &plugin_go.LockErrorResponse{}
+			case plugin_go.ResponseTypeSaveState:
+				res = &plugin_go.SaveStateResponse{}
 			case plugin_go.ResponseTypeData:
 				res = &plugin_go.DataResponse{}
 			case plugin_go.ResponseTypeEmpty:
@@ -339,7 +341,15 @@ func (c *Client) startBiDi(ctx context.Context, req plugin_go.Request) (in chan<
 
 func (c *Client) handleResponse(conn net.Conn, in <-chan plugin_go.Request, res *ResponseWithHeader, callback func(res *ResponseWithHeader) error) error {
 	switch r := res.Response.(type) {
-	case *plugin_go.PlanResponse, *plugin_go.GetStateResponse, *plugin_go.EmptyResponse, *plugin_go.DataResponse, *plugin_go.ValidationErrorResponse, *plugin_go.LockErrorResponse:
+	case *plugin_go.PlanResponse,
+		*plugin_go.GetStateResponse,
+		*plugin_go.SaveStateResponse,
+		*plugin_go.EmptyResponse,
+		*plugin_go.DataResponse,
+		*plugin_go.ValidationErrorResponse,
+		*plugin_go.ApplyDoneResponse,
+		*plugin_go.ApplyResponse,
+		*plugin_go.LockErrorResponse:
 		err := callback(res)
 		if err != nil {
 			return err
@@ -378,6 +388,7 @@ func (c *Client) handleResponse(conn net.Conn, in <-chan plugin_go.Request, res 
 		// TODO: handle message
 	case *plugin_go.UnhandledResponse:
 	default:
+		panic(fmt.Sprintf("response not handled! type: %d", r.Type()))
 	}
 
 	return nil

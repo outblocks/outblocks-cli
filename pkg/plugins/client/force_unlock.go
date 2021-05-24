@@ -7,17 +7,17 @@ import (
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 )
 
-func (c *Client) ForceUnlock(ctx context.Context, typ, env string, props map[string]interface{}, lockinfo string) error {
-	return c.lazySendReceive(ctx, &plugin_go.ForceUnlockRequest{
+func (c *Client) ReleaseLock(ctx context.Context, typ, env string, props map[string]interface{}, lockID string) error {
+	return c.lazySendReceive(ctx, &plugin_go.ReleaseLockRequest{
 		StateType:  typ,
 		Env:        env,
-		LockInfo:   lockinfo,
+		LockID:     lockID,
 		Properties: props,
 	}, func(res *ResponseWithHeader) error {
 		switch res.Response.(type) {
 		case *plugin_go.EmptyResponse:
 		default:
-			return fmt.Errorf("unexpected response")
+			return fmt.Errorf("unexpected response to release lock request")
 		}
 
 		return nil

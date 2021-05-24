@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"os"
 	"path/filepath"
 
@@ -11,7 +10,6 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/cli/values"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"
 	"github.com/outblocks/outblocks-cli/pkg/config"
-	"github.com/outblocks/outblocks-cli/pkg/getter"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/pterm/pterm"
@@ -66,29 +64,7 @@ func (e *Executor) Execute(ctx context.Context) error {
 		return err
 	}
 
-	if err := e.rootCmd.ParseFlags(os.Args); err != nil {
-		return err
-	}
-
-	// Load values.
-	v, err := e.opts.valueOpts.MergeValues(ctx, getter.All())
-	if err != nil && (len(e.opts.valueOpts.ValueFiles) != 1 || e.opts.valueOpts.ValueFiles[0] != defaultValuesYAML) {
-		return err
-	}
-
-	// Load config file.
-	if err := e.loadProjectConfig(ctx, map[string]interface{}{"var": v}); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
-		return err
-	}
-
-	if e.cfg != nil {
-		if err := e.saveLockfile(); err != nil {
-			_ = e.cleanupProject()
-			return err
-		}
-	}
-
-	err = e.rootCmd.ExecuteContext(ctx)
+	err := e.rootCmd.ExecuteContext(ctx)
 	if err != nil {
 		_ = e.cleanupProject()
 		return err

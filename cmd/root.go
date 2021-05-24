@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 
 	"github.com/outblocks/outblocks-cli/internal/version"
 	"github.com/outblocks/outblocks-cli/pkg/cli/values"
+	"github.com/outblocks/outblocks-cli/pkg/config"
+	"github.com/outblocks/outblocks-cli/pkg/getter"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -261,6 +264,27 @@ func (e *Executor) newRoot() *cobra.Command {
 		Short:         pterm.Sprintf("%s - %s", pterm.Bold.Sprintf("ok"), pterm.Italic.Sprint(version.Version())),
 		Long:          e.rootLongHelp(),
 		SilenceErrors: true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Load values.
+			v, err := e.opts.valueOpts.MergeValues(cmd.Context(), getter.All())
+			if err != nil && (len(e.opts.valueOpts.ValueFiles) != 1 || e.opts.valueOpts.ValueFiles[0] != defaultValuesYAML) {
+				return err
+			}
+
+			// Load config file.
+			if err := e.loadProjectConfig(cmd.Context(), map[string]interface{}{"var": v}); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+				return err
+			}
+
+			if e.cfg != nil {
+				if err := e.saveLockfile(); err != nil {
+					_ = e.cleanupProject()
+					return err
+				}
+			}
+
+			return nil
+		},
 	}
 
 	f := cmd.PersistentFlags()
