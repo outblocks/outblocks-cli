@@ -18,17 +18,50 @@ const (
 )
 
 type Log struct {
-	logLevel               LogLevel
-	debug, info, warn, err *pterm.PrefixPrinter
+	logLevel                        LogLevel
+	debug, info, warn, err, success *pterm.PrefixPrinter
+	spinner                         *pterm.SpinnerPrinter
+	table                           *pterm.TablePrinter
+	progress                        *pterm.ProgressbarPrinter
 }
 
 func NewLogger() Logger {
+	debug := pterm.Debug.WithDebugger(false).WithPrefix(pterm.Prefix{
+		Style: &pterm.ThemeDefault.DebugPrefixStyle,
+		Text:  "DEBG",
+	})
+	warn := pterm.Warning.WithPrefix(pterm.Prefix{
+		Style: &pterm.ThemeDefault.WarningPrefixStyle,
+		Text:  "WARN",
+	})
+	err := pterm.Error.WithShowLineNumber(false).WithPrefix(pterm.Prefix{
+		Style: &pterm.ThemeDefault.ErrorPrefixStyle,
+		Text:  "ERR ",
+	})
+	success := pterm.Success.WithPrefix(pterm.Prefix{
+		Style: &pterm.ThemeDefault.SuccessPrefixStyle,
+		Text:  " OK ",
+	})
+
+	spinner := pterm.DefaultSpinner
+	spinner.SuccessPrinter = success
+	spinner.WarningPrinter = warn
+	spinner.FailPrinter = err
+
+	table := pterm.DefaultTable
+	progress := pterm.DefaultProgressbar
+
 	l := &Log{
 		logLevel: LogLevelDebug,
-		debug:    pterm.Debug.WithDebugger(false),
+		debug:    debug,
 		info:     &pterm.Info,
-		warn:     &pterm.Warning,
-		err:      pterm.Error.WithShowLineNumber(false),
+		warn:     warn,
+		err:      err,
+		success:  success,
+
+		spinner:  &spinner,
+		table:    &table,
+		progress: &progress,
 	}
 
 	return l
@@ -63,18 +96,18 @@ func (l *Log) Debugln(a ...interface{}) {
 }
 
 func (l *Log) Infof(format string, a ...interface{}) {
-	if l.logLevel > LogLevelInfo {
-		return
-	}
-
 	l.info.Printf(format, a...)
 }
 
 func (l *Log) Infoln(a ...interface{}) {
-	if l.logLevel > LogLevelInfo {
-		return
-	}
+	l.info.Println(a...)
+}
 
+func (l *Log) Successf(format string, a ...interface{}) {
+	l.success.Printf(format, a...)
+}
+
+func (l *Log) Successln(a ...interface{}) {
 	l.info.Println(a...)
 }
 
@@ -131,4 +164,16 @@ func (l *Log) SetLevel(logLevel string) error {
 
 func (l *Log) Level() LogLevel {
 	return l.logLevel
+}
+
+func (l *Log) Spinner() pterm.SpinnerPrinter {
+	return *l.spinner
+}
+
+func (l *Log) ProgressBar() pterm.ProgressbarPrinter {
+	return *l.progress
+}
+
+func (l *Log) Table() pterm.TablePrinter {
+	return *l.table
 }

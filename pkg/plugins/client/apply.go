@@ -8,7 +8,8 @@ import (
 	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
-func (c *Client) Apply(ctx context.Context, pluginState types.PluginStateMap, appStates map[string]*types.AppState, depStates map[string]*types.DependencyState, deployPlan, dnsPlan *types.Plan) (ret *plugin_go.ApplyDoneResponse, err error) {
+func (c *Client) Apply(ctx context.Context, pluginState types.PluginStateMap, appStates map[string]*types.AppState, depStates map[string]*types.DependencyState,
+	deployPlan, dnsPlan *types.Plan, callback func(*types.ApplyAction)) (ret *plugin_go.ApplyDoneResponse, err error) {
 	in, out, err := c.lazyStartBiDi(ctx, &plugin_go.ApplyRequest{
 		PluginMap:        pluginState,
 		AppStates:        appStates,
@@ -27,16 +28,15 @@ func (c *Client) Apply(ctx context.Context, pluginState types.PluginStateMap, ap
 			return nil, res.Error
 		}
 
-		fmt.Println("DEBUG: CALLBACK APPLY", res.Response)
-
 		switch r := res.Response.(type) {
 		case *plugin_go.ApplyResponse:
-			// TODO: handle apply response
-			fmt.Println("APPLYRES", r)
+			if callback != nil {
+				for _, act := range r.Actions {
+					callback(act)
+				}
+			}
 		case *plugin_go.ApplyDoneResponse:
-			// TODO: handle apply done response
 			ret = r
-			fmt.Println("APPLYDONE", r)
 		default:
 			return nil, fmt.Errorf("unexpected response to apply request")
 		}

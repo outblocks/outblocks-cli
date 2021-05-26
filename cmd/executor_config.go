@@ -61,7 +61,7 @@ func (e *Executor) loadPlugins(ctx context.Context, cfg *config.Project) error {
 	}
 
 	if len(pluginsToDownload) != 0 {
-		prog, _ := pterm.DefaultProgressbar.WithTotal(len(pluginsToDownload)).WithTitle("Downloading plugins").Start()
+		prog, _ := e.log.ProgressBar().WithTotal(len(pluginsToDownload)).WithTitle("Downloading plugins").Start()
 
 		for i, plug := range pluginsToDownload {
 			prog.Title = fmt.Sprintf("Downloading '%s' plugin", plug.Name)

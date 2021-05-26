@@ -11,6 +11,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/cli/values"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/getter"
+	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -95,27 +96,23 @@ func helpCommands(cmd *cobra.Command) string {
 	return buf.String()
 }
 
-func rootCmdHelpFunc(cmd *cobra.Command, args []string) {
+func rootCmdHelpFunc(log logger.Logger, cmd *cobra.Command, _ []string) {
 	long := cmd.Long
 
-	if !pterm.PrintColor {
-		long = pterm.RemoveColorFromString(long)
-	}
+	log.Println(long)
+	log.Println()
 
-	fmt.Println(long)
-	fmt.Println()
-
-	pterm.FgYellow.Println("USAGE:")
+	log.Println(pterm.FgYellow.Sprint("USAGE:"))
 
 	if cmd.Runnable() {
-		fmt.Printf("  %s\n", cmd.UseLine())
+		log.Printf("  %s\n", cmd.UseLine())
 	}
 
 	if cmd.HasAvailableSubCommands() {
-		fmt.Printf("  %s [command]\n", pterm.Green(cmd.CommandPath()))
+		log.Printf("  %s [command]\n", pterm.Green(cmd.CommandPath()))
 	}
 
-	fmt.Println()
+	log.Println()
 
 	var usage string
 	if cmd.Root() == cmd {
@@ -124,70 +121,66 @@ func rootCmdHelpFunc(cmd *cobra.Command, args []string) {
 		usage = helpCommands(cmd)
 	}
 
-	fmt.Print(usage)
+	log.Printf(usage)
 
 	if len(cmd.Aliases) != 0 {
-		fmt.Println()
-		pterm.FgYellow.Println("ALIASES:")
-		fmt.Printf("  %s\n", cmd.NameAndAliases())
+		log.Println()
+		log.Println(pterm.FgYellow.Sprint("ALIASES:"))
+		log.Printf("  %s\n", cmd.NameAndAliases())
 	}
 
 	if cmd.HasExample() {
-		fmt.Println()
-		pterm.FgYellow.Println("EXAMPLES:")
-		fmt.Printf(cmd.Example)
+		log.Println()
+		log.Println(pterm.FgYellow.Sprint("EXAMPLES:"))
+		log.Printf(cmd.Example)
 	}
 
 	if cmd.HasAvailableLocalFlags() {
-		fmt.Println()
-		pterm.FgYellow.Println("FLAGS:")
-		fmt.Print(cmd.LocalFlags().FlagUsages())
+		log.Println()
+		log.Println(pterm.FgYellow.Sprint("FLAGS:"))
+		log.Printf(cmd.LocalFlags().FlagUsages())
 	}
 
 	if cmd.HasAvailableInheritedFlags() {
-		fmt.Println()
-		pterm.FgYellow.Println("GLOBAL FLAGS:")
-		fmt.Print(cmd.InheritedFlags().FlagUsages())
+		log.Println()
+		log.Println(pterm.FgYellow.Sprint("GLOBAL FLAGS:"))
+		log.Printf(cmd.InheritedFlags().FlagUsages())
 	}
 
 	if cmd.HasHelpSubCommands() {
-		pterm.FgYellow.Println("ADDITIONAL HELP TOPICS:")
+		log.Println(pterm.FgYellow.Sprint("ADDITIONAL HELP TOPICS:"))
 
 		for _, c := range cmd.Commands() {
 			if c.IsAdditionalHelpTopicCommand() {
-				fmt.Printf("  %-16s%s\n", c.CommandPath(), c.Short)
+				log.Printf("  %-16s%s\n", c.CommandPath(), c.Short)
 			}
 		}
 	}
 
 	if cmd.HasAvailableSubCommands() {
-		fmt.Println()
-		fmt.Printf(`Use "%s [command] --help" for more information about a command.`, cmd.CommandPath())
-		fmt.Println()
+		log.Println()
+		log.Printf(`Use "%s [command] --help" for more information about a command.`, cmd.CommandPath())
+		log.Println()
 	}
 }
 
-func rootCmdUsageFunc(cmd *cobra.Command) error {
+func rootCmdUsageFunc(log logger.Logger, cmd *cobra.Command) error {
 	short := cmd.Short
 
-	if !pterm.PrintColor {
-		short = pterm.RemoveColorFromString(short)
-	}
+	log.Println(short)
+	log.Println()
 
-	fmt.Println(short)
-	fmt.Println()
-
-	pterm.FgYellow.Println("USAGE:")
+	log.Println(pterm.FgYellow.Sprint("USAGE:"))
 
 	if cmd.Runnable() {
-		fmt.Printf("  %s\n", cmd.UseLine())
+		log.Printf("  %s\n", cmd.UseLine())
 	}
 
 	if cmd.HasAvailableSubCommands() {
-		fmt.Printf("  %s [command]\n", pterm.Green(cmd.CommandPath()))
+		log.Printf("  %s [command]\n", pterm.Green(cmd.CommandPath()))
 	}
 
-	fmt.Println()
+	log.Println()
 
 	var usage string
 	if cmd.Root() == cmd {
@@ -196,36 +189,36 @@ func rootCmdUsageFunc(cmd *cobra.Command) error {
 		usage = helpCommands(cmd)
 	}
 
-	fmt.Print(usage)
+	log.Printf(usage)
 
 	if len(cmd.Aliases) != 0 {
-		fmt.Println()
-		pterm.FgYellow.Println("ALIASES:")
-		fmt.Printf("  %s\n", cmd.NameAndAliases())
+		log.Println()
+		log.Println(pterm.FgYellow.Sprint("ALIASES:"))
+		log.Printf("  %s\n", cmd.NameAndAliases())
 	}
 
 	if cmd.HasExample() {
-		fmt.Println()
-		pterm.FgYellow.Println("EXAMPLES:")
-		fmt.Printf(cmd.Example)
+		log.Println()
+		log.Println(pterm.FgYellow.Sprint("EXAMPLES:"))
+		log.Printf(cmd.Example)
 	}
 
 	if cmd.HasAvailableLocalFlags() {
-		fmt.Println()
-		pterm.FgYellow.Println("FLAGS:")
-		fmt.Print(cmd.LocalFlags().FlagUsages())
+		log.Println()
+		log.Println(pterm.FgYellow.Sprint("FLAGS:"))
+		log.Printf(cmd.LocalFlags().FlagUsages())
 	}
 
 	if cmd.HasAvailableInheritedFlags() {
-		fmt.Println()
-		pterm.FgYellow.Println("GLOBAL FLAGS:")
-		fmt.Print(cmd.InheritedFlags().FlagUsages())
+		log.Println()
+		log.Println(pterm.FgYellow.Sprint("GLOBAL FLAGS:"))
+		log.Printf(cmd.InheritedFlags().FlagUsages())
 	}
 
 	if cmd.HasAvailableSubCommands() {
-		fmt.Println()
-		fmt.Printf(`Use "%s [command] --help" for more information about a command.`, cmd.CommandPath())
-		fmt.Println()
+		log.Println()
+		log.Printf(`Use "%s [command] --help" for more information about a command.`, cmd.CommandPath())
+		log.Println()
 	}
 
 	return nil
@@ -244,7 +237,7 @@ func (e *Executor) rootLongHelp() string {
 	}
 	data = append(data, e.env.Info()...)
 
-	s, _ := pterm.DefaultTable.WithHasHeader().WithData(pterm.TableData(data)).Srender()
+	s, _ := e.log.Table().WithHasHeader().WithData(pterm.TableData(data)).Srender()
 
 	buf.WriteString(s)
 	buf.WriteString("\n")
@@ -294,8 +287,8 @@ func (e *Executor) newRoot() *cobra.Command {
 
 	f.Lookup("help").Hidden = true
 
-	cmd.SetUsageFunc(rootCmdUsageFunc)
-	cmd.SetHelpFunc(rootCmdHelpFunc)
+	cmd.SetUsageFunc(func(c *cobra.Command) error { return rootCmdUsageFunc(e.log, c) })
+	cmd.SetHelpFunc(func(c *cobra.Command, args []string) { rootCmdHelpFunc(e.log, c, args) })
 
 	cmd.AddCommand(
 		e.newCompletionCmd(),

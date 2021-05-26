@@ -52,7 +52,7 @@ func NewExecutor() *Executor {
 func setupEnvVars(env *cli.Environment) {
 	env.AddVarWithDefault("plugins_cache_dir", "plugins cache directory", clipath.DataPath("plugin-cache"))
 	env.AddVar("no_color", "disable color output")
-	env.AddVarWithDefault("log_level", "set logging level: debug | info | warn | error", "info")
+	env.AddVarWithDefault("log_level", "set logging level: debug | warn | error", "warn")
 }
 
 func (e *Executor) Execute(ctx context.Context) error {

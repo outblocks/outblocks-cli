@@ -29,10 +29,8 @@ func (c *Client) GetState(ctx context.Context, typ, env string, props map[string
 }
 
 func (c *Client) SaveState(ctx context.Context, state *types.StateData, typ, env string, props map[string]interface{}) (ret *plugin_go.SaveStateResponse, err error) {
-	fmt.Println("SAVESTATE")
-
 	err = c.lazySendReceive(ctx, &plugin_go.SaveStateRequest{State: state, StateType: typ, Env: env, Properties: props}, func(res *ResponseWithHeader) error {
-		fmt.Println("DEBUG: CALLBACK SAVESTATE", res.Response)
+		c.log.Debugln("SaveState callback")
 
 		switch r := res.Response.(type) {
 		case *plugin_go.SaveStateResponse:
