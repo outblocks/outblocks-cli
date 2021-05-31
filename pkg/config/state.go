@@ -1,14 +1,18 @@
 package config
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"strings"
 
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
+	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
 const (
 	StateLocal      = "local"
 	StateDefaultEnv = "dev"
+	StateLocalPath  = "outblocks.state"
 )
 
 type State struct {
@@ -17,6 +21,45 @@ type State struct {
 	Other map[string]interface{} `yaml:"-,remain"`
 
 	plugin *plugins.Plugin
+}
+
+func (s *State) IsLocal() bool {
+	return s.Type == StateLocal
+}
+
+func (s *State) LocalPath() string {
+	p, ok := s.Other["path"]
+	if !ok {
+		return StateLocalPath
+	}
+
+	v, ok := p.(string)
+	if !ok {
+		return StateLocalPath
+	}
+
+	return v
+}
+
+func (s *State) LoadLocal() (*types.StateData, error) {
+	data, err := ioutil.ReadFile(s.LocalPath())
+	if err != nil {
+		return nil, err
+	}
+
+	d := &types.StateData{}
+	err = json.Unmarshal(data, &d)
+
+	return d, err
+}
+
+func (s *State) SaveLocal(d *types.StateData) error {
+	data, err := json.Marshal(d)
+	if err != nil {
+		return err
+	}
+
+	return ioutil.WriteFile(s.LocalPath(), data, 0644)
 }
 
 func (s *State) Normalize(cfg *Project) error {

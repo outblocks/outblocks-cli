@@ -8,14 +8,14 @@ import (
 	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
-func (c *Client) Apply(ctx context.Context, pluginState types.PluginStateMap, appStates map[string]*types.AppState, depStates map[string]*types.DependencyState,
-	deployPlan, dnsPlan *types.Plan, callback func(*types.ApplyAction)) (ret *plugin_go.ApplyDoneResponse, err error) {
+func (c *Client) Apply(ctx context.Context, state *types.StateData, deployPlan, dnsPlan *types.Plan, callback func(*types.ApplyAction)) (ret *plugin_go.ApplyDoneResponse, err error) {
 	in, out, err := c.lazyStartBiDi(ctx, &plugin_go.ApplyRequest{
-		PluginMap:        pluginState,
-		AppStates:        appStates,
-		DependencyStates: depStates,
-		DeployPlan:       deployPlan,
-		DNSPlan:          dnsPlan,
+		DeployPlan: deployPlan,
+		DNSPlan:    dnsPlan,
+
+		PluginMap:        state.PluginsMap[c.name],
+		AppStates:        state.AppStates,
+		DependencyStates: state.DependencyStates,
 	})
 	if err != nil {
 		return nil, err

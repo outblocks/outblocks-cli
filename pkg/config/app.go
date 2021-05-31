@@ -11,6 +11,8 @@ import (
 )
 
 type App interface {
+	ID() string
+	Name() string
 	Normalize(cfg *Project) error
 	Check(cfg *Project) error
 	Type() string
@@ -22,11 +24,11 @@ type App interface {
 }
 
 type BasicApp struct {
-	Name   string                 `json:"name"`
-	URL    string                 `json:"url"`
-	Deploy string                 `json:"deploy"`
-	Needs  map[string]*AppNeed    `json:"needs"`
-	Other  map[string]interface{} `yaml:"-,remain"`
+	AppName string                 `json:"name"`
+	URL     string                 `json:"url"`
+	Deploy  string                 `json:"deploy"`
+	Needs   map[string]*AppNeed    `json:"needs"`
+	Other   map[string]interface{} `yaml:"-,remain"`
 
 	Path         string `json:"-"`
 	yamlPath     string
@@ -38,8 +40,8 @@ type BasicApp struct {
 }
 
 func (a *BasicApp) Normalize(cfg *Project) error {
-	if a.Name == "" {
-		a.Name = filepath.Base(a.Path)
+	if a.AppName == "" {
+		a.AppName = filepath.Base(a.Path)
 	}
 
 	err := func() error {
@@ -108,10 +110,6 @@ func (a *BasicApp) Check(cfg *Project) error {
 	// Check dns plugin.
 	if a.URL != "" {
 		a.dnsPlugin = cfg.FindDNSPlugin(a.URL)
-
-		if a.dnsPlugin == nil {
-			return a.yamlError("$.url", fmt.Sprintf("%s has no matching dns plugin available.", a.typ))
-		}
 	}
 
 	for k, need := range a.Needs {
@@ -143,7 +141,8 @@ func (a *BasicApp) PluginType() *types.App {
 	}
 
 	return &types.App{
-		Name:       a.Name,
+		ID:         a.ID(),
+		Name:       a.AppName,
 		Path:       a.Path,
 		Type:       a.Type(),
 		URL:        a.URL,
@@ -162,4 +161,12 @@ func (a *BasicApp) DNSPlugin() *plugins.Plugin {
 
 func (a *BasicApp) RunPlugin() *plugins.Plugin {
 	return a.runPlugin
+}
+
+func (a *BasicApp) Name() string {
+	return a.AppName
+}
+
+func (a *BasicApp) ID() string {
+	return fmt.Sprintf("app_%s_%s", a.typ, a.AppName)
 }

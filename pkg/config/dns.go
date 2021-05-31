@@ -37,9 +37,5 @@ func (s *DNS) Check(i int, cfg *Project) error {
 		}
 	}
 
-	if s.plugin == nil {
-		return cfg.yamlError("$.dns[%d].domain", "dns has no supported plugin available")
-	}
-
 	return nil
 }

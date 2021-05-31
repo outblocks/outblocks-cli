@@ -172,7 +172,6 @@ func planPrompt(log logger.Logger, deploy, dns []*change) bool {
 	}
 
 	log.Println(info)
-	log.Println()
 
 	prompt := promptui.Prompt{
 		Label:     pterm.Bold.Sprintf("Do you want to perform these actions"),
@@ -188,8 +187,26 @@ func planPrompt(log logger.Logger, deploy, dns []*change) bool {
 	return true
 }
 
+func findChangeTarget(changes []*change, id string, typ types.TargetType) *change {
+	for _, chg := range changes {
+		switch typ {
+		case types.TargetTypeApp:
+			if chg.app.ID == id {
+				return chg
+			}
+		case types.TargetTypeDependency:
+			if chg.dep.ID == id {
+				return chg
+			}
+		}
+	}
+
+	return nil
+}
+
 func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(*types.ApplyAction) {
-	total := calculateTotalSteps(deployChanges) + calculateTotalSteps(dnsChanges)
+	changes := append(deployChanges, dnsChanges...) // nolint: gocritic
+	total := calculateTotalSteps(changes)
 
 	// Create progressbar as fork from the default progressbar.
 	p, _ := log.ProgressBar().WithRemoveWhenDone(true).WithTotal(total).WithTitle("Applying...").Start()
@@ -204,11 +221,18 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 			desc = desc[:40] + ".."
 		}
 
-		p.Title = fmt.Sprintf("Applying... (%s)", desc)
+		p.Title = fmt.Sprintf("Applying... (%s - %d of %d)", desc, act.Progress, act.Total)
 		p.Add(0) // force title update
 
 		if act.Progress == act.Total {
-			log.Successf("%s: %s\n", act.Target, act.Description)
+			chg := findChangeTarget(changes, act.TargetID, act.TargetType)
+			if chg != nil {
+				info := chg.info[act.Object]
+
+				if info != nil {
+					log.Successf("%s (%s): %s\n", chg.Name(), act.Object, info.desc)
+				}
+			}
 		}
 
 		p.Increment()

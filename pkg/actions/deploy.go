@@ -36,22 +36,26 @@ func NewDeploy(log logger.Logger, opts DeployOptions) *Deploy {
 }
 
 func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
+	verify := d.opts.Verify
 	spinner, _ := d.log.Spinner().WithRemoveWhenDone(true).Start("Getting state...")
 
-	// TODO: add support for local state
 	stateRes, err := getState(ctx, cfg)
 	if err != nil {
 		_ = spinner.Stop()
 		return err
 	}
 
+	_ = spinner.Stop()
+
 	if stateRes.Source.Created {
 		d.log.Infof("New state created: '%s'\n", stateRes.Source.Name)
+
+		verify = true
 	}
 
-	spinner.UpdateText("Planning...")
+	spinner, _ = spinner.Start("Planning...")
 
-	planMap, err := plan(ctx, stateRes.State, cfg.Apps, cfg.Dependencies, d.opts.Verify, d.opts.Destroy)
+	planMap, err := plan(ctx, stateRes.State, cfg.Apps, cfg.Dependencies, verify, d.opts.Destroy)
 	if err != nil {
 		_ = spinner.Stop()
 		return err
@@ -86,6 +90,8 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 	default:
 	}
 
+	d.log.Infoln("All changes applied.")
+
 	return saveErr
 }
 
@@ -93,12 +99,27 @@ func saveState(ctx context.Context, cfg *config.Project, data *types.StateData) 
 	state := cfg.State
 	plug := state.Plugin()
 
+	if state.IsLocal() {
+		return &plugin_go.SaveStateResponse{}, state.SaveLocal(data)
+	}
+
 	return plug.Client().SaveState(ctx, data, state.Type, state.Env, state.Other)
 }
 
 func getState(ctx context.Context, cfg *config.Project) (*plugin_go.GetStateResponse, error) {
 	state := cfg.State
 	plug := state.Plugin()
+
+	if state.IsLocal() {
+		data, err := state.LoadLocal()
+		if err != nil {
+			return nil, err
+		}
+
+		return &plugin_go.GetStateResponse{
+			State: data,
+		}, nil
+	}
 
 	ret, err := plug.Client().GetState(ctx, state.Type, state.Env, state.Other, false /*TODO: change to true */, client.YAMLContext{
 		Prefix: "$.state",
@@ -114,12 +135,24 @@ func getState(ctx context.Context, cfg *config.Project) (*plugin_go.GetStateResp
 func plan(ctx context.Context, state *types.StateData, apps []config.App, deps map[string]*config.Dependency, verify, destroy bool) (map[*plugins.Plugin]*plugin_go.PlanResponse, error) {
 	planMap := make(map[*plugins.Plugin]*planParams)
 
+	if state.PluginsMap == nil {
+		state.PluginsMap = make(map[string]types.PluginStateMap)
+	}
+
+	if state.AppStates == nil {
+		state.AppStates = make(map[string]*types.AppState)
+	}
+
+	if state.DependencyStates == nil {
+		state.DependencyStates = make(map[string]*types.DependencyState)
+	}
+
 	for _, app := range apps {
 		dnsPlugin := app.DNSPlugin()
 		deployPlugin := app.DeployPlugin()
 		appType := app.PluginType()
 
-		includeDNS := dnsPlugin == nil || dnsPlugin == deployPlugin
+		includeDNS := dnsPlugin != nil && dnsPlugin == deployPlugin
 
 		if _, ok := planMap[deployPlugin]; !ok {
 			planMap[deployPlugin] = &planParams{}
@@ -129,13 +162,12 @@ func plan(ctx context.Context, state *types.StateData, apps []config.App, deps m
 			IsDeploy: true,
 			IsDNS:    includeDNS,
 			App:      appType,
-			State:    state.AppStates[appType.Name],
 		}
 
 		planMap[deployPlugin].apps = append(planMap[deployPlugin].apps, appReq)
 
 		// Add DNS plugin if not already included (handled by same plugin).
-		if includeDNS {
+		if includeDNS || dnsPlugin == nil {
 			continue
 		}
 
@@ -173,18 +205,36 @@ func plan(ctx context.Context, state *types.StateData, apps []config.App, deps m
 		params := params
 
 		g.Go(func() error {
-			ret, err := plug.Client().Plan(ctx, state.PluginsMap[plug.Name], params.apps, params.deps, verify, destroy)
+			ret, err := plug.Client().Plan(ctx, state, params.apps, params.deps, verify, destroy)
 			if err != nil {
 				return fmt.Errorf("deploy: plugin '%s' plan error: %w", plug.Name, err)
 			}
 
 			retMap[plug] = ret
+			if verify {
+				state.PluginsMap[plug.Name] = ret.PluginMap
+			}
 
 			return nil
 		})
 	}
 
-	return retMap, g.Wait()
+	err := g.Wait()
+
+	// Merge state with new changes.
+	if verify {
+		for _, ret := range retMap {
+			for k, v := range ret.AppStates {
+				state.AppStates[k] = v
+			}
+
+			for k, v := range ret.DependencyStates {
+				state.DependencyStates[k] = v
+			}
+		}
+	}
+
+	return retMap, err
 }
 
 func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*plugin_go.PlanResponse, callback func(*types.ApplyAction)) (*types.StateData, error) {
@@ -211,7 +261,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		ret := ret
 
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state.PluginsMap[plug.Name], state.AppStates, state.DependencyStates, ret.DeployPlan, nil, callback)
+			ret, err := plug.Client().Apply(ctx, state, ret.DeployPlan, nil, callback)
 			if err != nil {
 				return fmt.Errorf("deploy: plugin '%s' apply error: %w", plug.Name, err)
 			}
@@ -251,7 +301,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		ret := ret
 
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state.PluginsMap[plug.Name], state.AppStates, state.DependencyStates, nil, ret.DNSPlan, callback)
+			ret, err := plug.Client().Apply(ctx, state, nil, ret.DNSPlan, callback)
 			if err != nil {
 				return fmt.Errorf("deploy: plugin '%s' apply dns error: %w", plug.Name, err)
 			}

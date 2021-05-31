@@ -36,8 +36,9 @@ type Project struct {
 	Plugins      []*Plugin              `json:"plugins,omitempty"`
 	DNS          []*DNS                 `json:"dns,omitempty"`
 
-	Apps []App  `json:"-"`
-	Path string `json:"-"`
+	Apps   []App          `json:"-"`
+	AppMap map[string]App `json:"-"`
+	Path   string         `json:"-"`
 
 	plugins  []*plugins.Plugin
 	yamlPath string
@@ -201,9 +202,27 @@ func (p *Project) LoadFile(file string) error {
 		return err
 	}
 
-	p.Apps = append(p.Apps, app)
+	if !p.RegisterApp(app) {
+		return fmt.Errorf("application with type: %s and name: %s found more than once\nfile: %s", typ, app.Name(), file)
+	}
 
 	return nil
+}
+
+func (p *Project) RegisterApp(app App) bool {
+	if p.AppMap == nil {
+		p.AppMap = make(map[string]App)
+	}
+
+	id := app.ID()
+	if _, ok := p.AppMap[id]; ok {
+		return false
+	}
+
+	p.AppMap[id] = app
+	p.Apps = append(p.Apps, app)
+
+	return true
 }
 
 func (p *Project) FindDependency(n string) *Dependency {

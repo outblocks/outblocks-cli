@@ -18,7 +18,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/otiai10/copy v1.6.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20210527001754-85ef09f0a3ae
 	github.com/pelletier/go-toml v1.9.1 // indirect
 	github.com/pterm/pterm v0.12.18
 	github.com/spf13/afero v1.6.0 // indirect

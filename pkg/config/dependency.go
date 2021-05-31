@@ -27,6 +27,7 @@ func (d *Dependency) Validate() error {
 
 func (d *Dependency) PluginType() *types.Dependency {
 	return &types.Dependency{
+		ID:         d.ID(),
 		Name:       d.Name,
 		Type:       d.Type,
 		Deploy:     d.Deploy,
@@ -92,4 +93,8 @@ func (d *Dependency) DeployPlugin() *plugins.Plugin {
 
 func (d *Dependency) RunPlugin() *plugins.Plugin {
 	return d.runPlugin
+}
+
+func (d *Dependency) ID() string {
+	return d.Name
 }

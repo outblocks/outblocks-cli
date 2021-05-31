@@ -382,10 +382,9 @@ func (c *Client) handleResponse(conn net.Conn, in <-chan plugin_go.Request, res 
 			c.log.Infoln(r.Message)
 		case "warn":
 			c.log.Warnln(r.Message)
-		case "error":
+		default:
 			c.log.Errorln(r.Message)
 		}
-		// TODO: handle message
 	case *plugin_go.UnhandledResponse:
 	default:
 		panic(fmt.Sprintf("response not handled! type: %d", r.Type()))
