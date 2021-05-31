@@ -58,7 +58,6 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - golint
     - goprintffuncname
     - gosimple
     - govet
@@ -84,9 +83,11 @@ linters:
     # - funlen
     # - gochecknoglobals
     # - gochecknoinits
-    # - godox
     # - gocognit
+    # - godox
+    # - golint
     # - gomnd
     # - gosec
     # - lll
     # - maligned
+    # - revive
