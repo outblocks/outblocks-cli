@@ -8,7 +8,7 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 )
 
-func mustHomedir() string {
+func mustHomeDir() string {
 	home, err := homedir.Dir()
 	if err != nil {
 		panic("can't detect home directory")
@@ -18,13 +18,13 @@ func mustHomedir() string {
 }
 
 func dataHome() string {
-	return filepath.Join(mustHomedir(), "Library")
+	return filepath.Join(mustHomeDir(), "Library")
 }
 
 func configHome() string {
-	return filepath.Join(mustHomedir(), "Library", "Preferences")
+	return filepath.Join(mustHomeDir(), "Library", "Preferences")
 }
 
 func cacheHome() string {
-	return filepath.Join(mustHomedir(), "Library", "Caches")
+	return filepath.Join(mustHomeDir(), "Library", "Caches")
 }
