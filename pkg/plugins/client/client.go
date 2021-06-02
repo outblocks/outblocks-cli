@@ -155,8 +155,6 @@ func (c *Client) readResponse(conn net.Conn) <-chan *ResponseWithError {
 		r := bufio.NewReader(conn)
 
 		for {
-			_ = conn.SetReadDeadline(time.Now().Add(defaultTimeout))
-
 			// Read header.
 			data, err := r.ReadBytes('\n')
 			if err == io.EOF {

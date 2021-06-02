@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
@@ -70,6 +71,8 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 		return nil
 	}
 
+	start := time.Now()
+
 	callback := applyProgress(d.log, deployChanges, dnsChanges)
 	state, err := apply(ctx, stateRes.State, planMap, callback)
 
@@ -90,7 +93,7 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 	default:
 	}
 
-	d.log.Infoln("All changes applied.")
+	d.log.Infof("All changes applied in %s.\n", time.Since(start).Truncate(timeTruncate))
 
 	return saveErr
 }

@@ -108,7 +108,7 @@ func (l *Log) Successf(format string, a ...interface{}) {
 }
 
 func (l *Log) Successln(a ...interface{}) {
-	l.info.Println(a...)
+	l.success.Println(a...)
 }
 
 func (l *Log) Warnf(format string, a ...interface{}) {

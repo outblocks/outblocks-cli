@@ -2,6 +2,8 @@ package actions
 
 import (
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/manifoldco/promptui"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
@@ -204,6 +206,11 @@ func findChangeTarget(changes []*change, id string, typ types.TargetType) *chang
 	return nil
 }
 
+type targetUnique struct {
+	id, obj string
+	typ     types.TargetType
+}
+
 func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(*types.ApplyAction) {
 	changes := append(deployChanges, dnsChanges...) // nolint: gocritic
 	total := calculateTotalSteps(changes)
@@ -211,30 +218,74 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 	// Create progressbar as fork from the default progressbar.
 	p, _ := log.ProgressBar().WithRemoveWhenDone(true).WithTotal(total).WithTitle("Applying...").Start()
 
+	var m sync.Mutex
+
+	go func() {
+		t := time.NewTicker(1 * time.Second)
+		defer t.Stop()
+
+		for {
+			<-t.C
+			m.Lock()
+
+			if !p.IsActive {
+				m.Unlock()
+
+				return
+			}
+
+			p.Add(0)
+
+			m.Unlock()
+		}
+	}()
+
+	startMap := make(map[targetUnique]time.Time)
+
 	return func(act *types.ApplyAction) {
+		key := targetUnique{id: act.TargetID, typ: act.TargetType, obj: act.Object}
+
 		if act.Progress == 0 {
+			startMap[key] = time.Now()
 			return
 		}
 
 		desc := act.Description
-		if len(desc) > 40 {
-			desc = desc[:40] + ".."
+		if len(desc) > 50 {
+			desc = desc[:50] + ".."
 		}
 
-		p.Title = fmt.Sprintf("Applying... (%s - %d of %d)", desc, act.Progress, act.Total)
+		m.Lock()
+
+		p.Title = fmt.Sprintf("Applying... %s - (%d of %d)", desc, act.Progress, act.Total)
 		p.Add(0) // force title update
 
 		if act.Progress == act.Total {
-			chg := findChangeTarget(changes, act.TargetID, act.TargetType)
-			if chg != nil {
-				info := chg.info[act.Object]
-
-				if info != nil {
-					log.Successf("%s (%s): %s\n", chg.Name(), act.Object, info.desc)
-				}
-			}
+			showSuccessInfo(log, changes, act, startMap[key])
 		}
 
 		p.Increment()
+		m.Unlock()
 	}
+}
+
+func showSuccessInfo(log logger.Logger, changes []*change, act *types.ApplyAction, start time.Time) {
+	chg := findChangeTarget(changes, act.TargetID, act.TargetType)
+	if chg == nil {
+		return
+	}
+
+	info := chg.info[act.Object]
+
+	if info == nil {
+		return
+	}
+
+	success := fmt.Sprintf("%s (%s): %s", chg.Name(), act.Object, info.desc)
+
+	if !start.IsZero() {
+		success += fmt.Sprintf(" took %s.", time.Since(start).Truncate(timeTruncate))
+	}
+
+	log.Successln(success)
 }
