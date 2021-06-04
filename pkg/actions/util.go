@@ -14,9 +14,10 @@ import (
 )
 
 type change struct {
-	app  *types.App
-	dep  *types.Dependency
-	info map[string]*changeInfo
+	app    *types.App
+	dep    *types.Dependency
+	plugin *plugins.Plugin
+	info   map[string]*changeInfo
 }
 
 func (i *change) Name() string {
@@ -24,7 +25,11 @@ func (i *change) Name() string {
 		return i.app.TargetName()
 	}
 
-	return i.dep.TargetName()
+	if i.dep != nil {
+		return i.dep.TargetName()
+	}
+
+	return fmt.Sprintf("Plugin '%s'", i.plugin.Name)
 }
 
 type changeInfo struct {
@@ -63,8 +68,15 @@ func computeChangeInfo(acts map[string]*types.PlanAction) (ret map[string]*chang
 }
 
 func computeChange(planMap map[*plugins.Plugin]*plugin_go.PlanResponse) (deploy, dns []*change) {
-	for _, p := range planMap {
+	for plugin, p := range planMap {
 		if p.DeployPlan != nil {
+			for _, act := range p.DeployPlan.Plugin {
+				deploy = append(deploy, &change{
+					plugin: plugin,
+					info:   computeChangeInfo(act.Actions),
+				})
+			}
+
 			for _, app := range p.DeployPlan.Apps {
 				deploy = append(deploy, &change{
 					app:  app.App,
@@ -81,6 +93,13 @@ func computeChange(planMap map[*plugins.Plugin]*plugin_go.PlanResponse) (deploy,
 		}
 
 		if p.DNSPlan != nil {
+			for _, act := range p.DNSPlan.Plugin {
+				dns = append(dns, &change{
+					plugin: plugin,
+					info:   computeChangeInfo(act.Actions),
+				})
+			}
+
 			for _, app := range p.DNSPlan.Apps {
 				dns = append(dns, &change{
 					app:  app.App,
@@ -147,7 +166,7 @@ func planPrompt(log logger.Logger, deploy, dns []*change) bool {
 		info += fmt.Sprintf("  %s\n", pterm.Bold.Sprintf("\n  %s changes:", chg.Name()))
 
 		for _, i := range chg.info {
-			info += fmt.Sprintf("    %s %s\n", i.Type(), pterm.Normal(i.desc))
+			info += fmt.Sprintf("    %s %s - %d step(s)\n", i.Type(), pterm.Normal(i.desc), i.steps)
 		}
 	}
 
@@ -182,7 +201,7 @@ func planPrompt(log logger.Logger, deploy, dns []*change) bool {
 
 	_, err := prompt.Run()
 	if err != nil {
-		log.Println("Apply canceled")
+		log.Println("Apply canceled.")
 		return false
 	}
 
@@ -193,11 +212,15 @@ func findChangeTarget(changes []*change, id string, typ types.TargetType) *chang
 	for _, chg := range changes {
 		switch typ {
 		case types.TargetTypeApp:
-			if chg.app.ID == id {
+			if chg.app != nil && chg.app.ID == id {
 				return chg
 			}
 		case types.TargetTypeDependency:
-			if chg.dep.ID == id {
+			if chg.dep != nil && chg.dep.ID == id {
+				return chg
+			}
+		case types.TargetTypePlugin:
+			if chg.plugin != nil && chg.plugin.Name == id {
 				return chg
 			}
 		}

@@ -226,7 +226,9 @@ func plan(ctx context.Context, state *types.StateData, apps []config.App, deps m
 
 	// Merge state with new changes.
 	if verify {
-		for _, ret := range retMap {
+		for p, ret := range retMap {
+			state.PluginsMap[p.Name] = ret.PluginMap
+
 			for k, v := range ret.AppStates {
 				state.AppStates[k] = v
 			}

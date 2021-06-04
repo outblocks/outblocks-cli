@@ -18,9 +18,9 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/otiai10/copy v1.6.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20210527001754-85ef09f0a3ae
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20210604162744-b283a68f2c09
 	github.com/pelletier/go-toml v1.9.1 // indirect
-	github.com/pterm/pterm v0.12.18
+	github.com/pterm/pterm v0.12.22
 	github.com/spf13/afero v1.6.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/cobra v1.1.3
@@ -28,7 +28,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
-	golang.org/x/sys v0.0.0-20210525143221-35b2ab0089ea // indirect
+	golang.org/x/sys v0.0.0-20210603125802-9665404d3644 // indirect
 	golang.org/x/text v0.3.6 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 )
