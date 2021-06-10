@@ -66,17 +66,25 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 
 	_ = spinner.Stop()
 
-	proceed := planPrompt(d.log, deployChanges, dnsChanges)
-	if !proceed {
+	empty, canceled := planPrompt(d.log, deployChanges, dnsChanges)
+	if canceled {
 		return nil
+	}
+
+	if empty {
+		if verify {
+			_, err = saveState(ctx, cfg, stateRes.State)
+		}
+
+		return err
 	}
 
 	start := time.Now()
 
 	callback := applyProgress(d.log, deployChanges, dnsChanges)
-	state, err := apply(ctx, stateRes.State, planMap, callback)
+	err = apply(ctx, stateRes.State, planMap, callback)
 
-	_, saveErr := saveState(ctx, cfg, state)
+	_, saveErr := saveState(ctx, cfg, stateRes.State)
 
 	var releaseErr error
 
@@ -98,7 +106,7 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 	return saveErr
 }
 
-func saveState(ctx context.Context, cfg *config.Project, data *types.StateData) (*plugin_go.SaveStateResponse, error) {
+func saveState(ctx context.Context, cfg *config.Project, data *types.StateData) (*plugin_go.SaveStateResponse, error) { // nolint: unparam
 	state := cfg.State
 	plug := state.Plugin()
 
@@ -242,7 +250,7 @@ func plan(ctx context.Context, state *types.StateData, apps []config.App, deps m
 	return retMap, err
 }
 
-func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*plugin_go.PlanResponse, callback func(*types.ApplyAction)) (*types.StateData, error) {
+func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*plugin_go.PlanResponse, callback func(*types.ApplyAction)) error {
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 	retMap := make(map[*plugins.Plugin]*plugin_go.ApplyDoneResponse, len(planMap))
 
@@ -292,7 +300,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 	}
 
 	if err != nil {
-		return state, err
+		return err
 	}
 
 	// Apply DNS plan.
@@ -330,5 +338,5 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		}
 	}
 
-	return state, err
+	return err
 }

@@ -31,14 +31,14 @@ func (p *Plugin) Normalize(i int, cfg *Project) error {
 	if p.Version != "" {
 		p.verRange, err = semver.ParseRange(p.Version)
 		if err != nil {
-			return cfg.yamlError(fmt.Sprintf("$.plugins[%d].version", i), "p.version is in invalid format")
+			return cfg.yamlError(fmt.Sprintf("$.plugins[%d].version", i), "Plugin.version is in invalid format")
 		}
 	}
 
 	if p.Source != "" {
 		u, err := url.Parse(p.Source)
 		if err != nil {
-			return cfg.yamlError(fmt.Sprintf("$.plugins[%d].source", i), "p.source is not a valid URL")
+			return cfg.yamlError(fmt.Sprintf("$.plugins[%d].source", i), "Plugin.source is not a valid URL")
 		}
 
 		p.Source = u.String()
