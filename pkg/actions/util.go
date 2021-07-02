@@ -2,6 +2,8 @@ package actions
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -13,12 +15,17 @@ import (
 	"github.com/pterm/pterm"
 )
 
+type changeID struct {
+	planType   types.PlanType
+	objectType string
+}
+
 type change struct {
 	app    *types.App
 	dep    *types.Dependency
 	plugin *plugins.Plugin
 	obj    string
-	info   map[string][]*changeInfo
+	info   map[changeID][]string
 }
 
 func (i *change) Name() string {
@@ -33,48 +40,31 @@ func (i *change) Name() string {
 	return fmt.Sprintf("Plugin '%s' %s", i.plugin.Name, i.obj)
 }
 
-type changeInfo struct {
-	idx   int
-	typ   types.PlanType
-	steps int
-	desc  string
-}
-
-func (i *changeInfo) Type() string {
-	switch i.typ {
+func (i *changeID) Type() string {
+	switch i.planType {
 	case types.PlanCreate:
-		return pterm.Green("+")
+		return pterm.Green("+ add")
 	case types.PlanRecreate:
-		return pterm.Red("~")
+		return pterm.Red("~ recreate")
 	case types.PlanUpdate:
-		return pterm.Yellow("~")
+		return pterm.Yellow("~ update")
 	case types.PlanDelete:
-		return pterm.Red("-")
+		return pterm.Red("- delete")
 	}
 
 	panic("unknown type")
 }
 
-func (i *changeInfo) Info() string {
-	info := fmt.Sprintf("%s - %d step(s)", i.desc, i.steps)
-
-	if i.idx >= 0 {
-		return fmt.Sprintf("[%d] %s", i.idx, info)
-	}
-
-	return info
-}
-
-func computeChangeInfo(actions []*types.PlanAction) (ret map[string][]*changeInfo) {
-	ret = make(map[string][]*changeInfo)
+func computeChangeInfo(actions []*types.PlanAction) (ret map[changeID][]string) {
+	ret = make(map[changeID][]string)
 
 	for _, act := range actions {
-		ret[act.Key] = append(ret[act.Key], &changeInfo{
-			idx:   act.Index,
-			typ:   act.Type,
-			desc:  act.Description,
-			steps: act.TotalSteps(),
-		})
+		key := changeID{
+			planType:   act.Type,
+			objectType: act.ObjectType,
+		}
+
+		ret[key] = append(ret[key], act.ObjectName)
 	}
 
 	return ret
@@ -136,16 +126,14 @@ func computeChange(planMap map[*plugins.Plugin]*plugin_go.PlanResponse) (deploy,
 
 func calculateTotal(chg []*change) (add, change, destroy int) {
 	for _, c := range chg {
-		for _, infos := range c.info {
-			for _, i := range infos {
-				switch i.typ {
-				case types.PlanCreate:
-					add++
-				case types.PlanRecreate, types.PlanUpdate:
-					change++
-				case types.PlanDelete:
-					destroy++
-				}
+		for chID, objs := range c.info {
+			switch chID.planType {
+			case types.PlanCreate:
+				add += len(objs)
+			case types.PlanRecreate, types.PlanUpdate:
+				change += len(objs)
+			case types.PlanDelete:
+				destroy += len(objs)
 			}
 		}
 	}
@@ -157,17 +145,31 @@ func calculateTotalSteps(chg []*change) int {
 	steps := 0
 
 	for _, c := range chg {
-		for _, infos := range c.info {
-			for _, i := range infos {
-				steps += i.steps
-			}
+		for _, v := range c.info {
+			steps += len(v)
 		}
 	}
 
 	return steps
 }
 
+func formatChangeInfo(chID changeID, objs []string) string {
+	if len(objs) == 1 {
+		return fmt.Sprintf("    %s %s '%s'\n", chID.Type(), chID.objectType, pterm.Normal(objs[0]))
+	}
+
+	if len(objs) <= 5 {
+		return fmt.Sprintf("    %s %d of %s ['%s']\n", chID.Type(), len(objs), chID.objectType, pterm.Normal(strings.Join(objs, "', '")))
+	}
+
+	return fmt.Sprintf("    %s %d of %s\n", chID.Type(), len(objs), chID.objectType)
+}
+
 func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool) {
+	sort.Slice(deploy, func(i, j int) bool {
+		return deploy[i].Name() < deploy[j].Name()
+	})
+
 	info := "Outblocks will perform the following actions to your architecture:\n\n"
 	empty = true
 
@@ -184,10 +186,8 @@ func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool)
 		empty = false
 		info += fmt.Sprintf("  %s\n", pterm.Bold.Sprintf("\n  %s changes:", chg.Name()))
 
-		for _, is := range chg.info {
-			for _, i := range is {
-				info += fmt.Sprintf("    %s %s\n", i.Type(), pterm.Normal(i.Info()))
-			}
+		for k, i := range chg.info {
+			info += formatChangeInfo(k, i)
 		}
 	}
 
@@ -202,10 +202,8 @@ func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool)
 		empty = false
 		info += fmt.Sprintf("  %s\n", pterm.Bold.Sprintf("\n  %s changes:", chg.Name()))
 
-		for _, is := range chg.info {
-			for _, i := range is {
-				info += fmt.Sprintf("    %s %s\n", i.Type(), pterm.Normal(i.Info()))
-			}
+		for k, i := range chg.info {
+			info += formatChangeInfo(k, i)
 		}
 	}
 
@@ -231,45 +229,8 @@ func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool)
 	return false, false
 }
 
-func findChangeTarget(changes []*change, id string, typ types.TargetType) *change {
-	for _, chg := range changes {
-		switch typ {
-		case types.TargetTypeApp:
-			if chg.app != nil && chg.app.ID == id {
-				return chg
-			}
-		case types.TargetTypeDependency:
-			if chg.dep != nil && chg.dep.ID == id {
-				return chg
-			}
-		case types.TargetTypePlugin:
-			if chg.plugin != nil && chg.plugin.Name == id {
-				return chg
-			}
-		}
-	}
-
-	return nil
-}
-
-func findChangeInfo(change *change, obj string, idx int) *changeInfo {
-	if change == nil {
-		return nil
-	}
-
-	for _, info := range change.info[obj] {
-		if info.idx == idx {
-			return info
-		}
-	}
-
-	return nil
-}
-
 type targetUnique struct {
-	id, obj string
-	idx     int
-	typ     types.TargetType
+	ns, obj, typ string
 }
 
 func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(*types.ApplyAction) {
@@ -296,7 +257,6 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 			}
 
 			p.Add(0)
-
 			m.Unlock()
 		}
 	}()
@@ -304,52 +264,46 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 	startMap := make(map[targetUnique]time.Time)
 
 	return func(act *types.ApplyAction) {
-		key := targetUnique{id: act.TargetID, idx: act.Index, typ: act.TargetType, obj: act.Object}
+		key := targetUnique{ns: act.Namespace, typ: act.ObjectType, obj: act.ObjectID}
 
 		if act.Progress == 0 {
 			startMap[key] = time.Now()
 			return
 		}
 
-		desc := act.Description
-		if len(desc) > 50 {
-			desc = desc[:50] + ".."
-		}
-
 		m.Lock()
 
-		if act.Index >= 0 {
-			desc = fmt.Sprintf("[%d] %s", act.Index, desc)
+		var t, success string
+
+		switch act.Type {
+		case types.PlanCreate:
+			t = "creating"
+		case types.PlanDelete:
+			t = "deleting"
+		case types.PlanUpdate:
+			t = "updating"
+		case types.PlanRecreate:
+			t = "recreating"
 		}
 
-		p.Title = fmt.Sprintf("Applying... %s", desc)
-		p.Add(0) // force title update
+		success = fmt.Sprintf("%s %s '%s'", t, act.ObjectType, act.ObjectName)
 
 		if act.Progress == act.Total {
-			showSuccessInfo(log, changes, act, startMap[key])
+			start := startMap[key]
+
+			if !start.IsZero() {
+				success += fmt.Sprintf(": %s - took %s.", pterm.Bold.Sprint("DONE"), time.Since(start).Truncate(timeTruncate))
+			}
+		} else {
+			success += fmt.Sprintf(": step %d of %d", act.Progress, act.Total)
 		}
 
-		p.Increment()
+		log.Successln(success)
+
+		if act.Progress == act.Total {
+			p.Increment()
+		}
+
 		m.Unlock()
 	}
-}
-
-func showSuccessInfo(log logger.Logger, changes []*change, act *types.ApplyAction, start time.Time) {
-	chg := findChangeTarget(changes, act.TargetID, act.TargetType)
-	if chg == nil {
-		return
-	}
-
-	info := findChangeInfo(chg, act.Object, act.Index)
-	if info == nil {
-		return
-	}
-
-	success := fmt.Sprintf("%s: %s", chg.Name(), info.desc)
-
-	if !start.IsZero() {
-		success += fmt.Sprintf(" took %s.", time.Since(start).Truncate(timeTruncate))
-	}
-
-	log.Successln(success)
 }

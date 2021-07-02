@@ -53,11 +53,21 @@ func (p *Project) Normalize() error {
 		return fmt.Errorf("project config validation failed.\nfile: %s\n%s", p.yamlPath, err)
 	}
 
+	// URL uniqueness check.
+	urlMap := make(map[string]App)
+
 	err = func() error {
 		for _, app := range p.Apps {
 			if err := app.Normalize(p); err != nil {
 				return err
 			}
+
+			url := app.URL()
+			if cur, ok := urlMap[url]; ok {
+				return fmt.Errorf("same URL '%s' used in more than 1 app: '%s' and '%s'", url, app.Name(), cur.Name())
+			}
+
+			urlMap[url] = app
 		}
 
 		return nil

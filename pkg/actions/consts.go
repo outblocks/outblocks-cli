@@ -4,5 +4,5 @@ import "time"
 
 const (
 	defaultConcurrency = 5
-	timeTruncate       = 10 * time.Millisecond
+	timeTruncate       = 1 * time.Millisecond
 )

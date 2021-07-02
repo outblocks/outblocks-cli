@@ -13,9 +13,11 @@ import (
 type App interface {
 	ID() string
 	Name() string
+	URL() string
 	Normalize(cfg *Project) error
 	Check(cfg *Project) error
 	Type() string
+	Path() string
 	PluginType() *types.App
 
 	DeployPlugin() *plugins.Plugin
@@ -25,12 +27,12 @@ type App interface {
 
 type BasicApp struct {
 	AppName string                 `json:"name"`
-	URL     string                 `json:"url"`
+	AppURL  string                 `json:"url"`
 	Deploy  string                 `json:"deploy"`
 	Needs   map[string]*AppNeed    `json:"needs"`
 	Other   map[string]interface{} `yaml:"-,remain"`
 
-	Path         string `json:"-"`
+	path         string
 	yamlPath     string
 	yamlData     []byte
 	deployPlugin *plugins.Plugin
@@ -41,7 +43,15 @@ type BasicApp struct {
 
 func (a *BasicApp) Normalize(cfg *Project) error {
 	if a.AppName == "" {
-		a.AppName = filepath.Base(a.Path)
+		a.AppName = filepath.Base(a.path)
+	}
+
+	if a.AppURL != "" {
+		a.AppURL = strings.ToLower(a.AppURL)
+
+		if strings.Count(a.AppURL, "/") == 0 {
+			a.AppURL += "/"
+		}
 	}
 
 	err := func() error {
@@ -108,8 +118,8 @@ func (a *BasicApp) Check(cfg *Project) error {
 	}
 
 	// Check dns plugin.
-	if a.URL != "" {
-		a.dnsPlugin = cfg.FindDNSPlugin(a.URL)
+	if a.AppURL != "" {
+		a.dnsPlugin = cfg.FindDNSPlugin(a.AppURL)
 	}
 
 	for k, need := range a.Needs {
@@ -133,6 +143,10 @@ func (a *BasicApp) Type() string {
 	return a.typ
 }
 
+func (a *BasicApp) Path() string {
+	return a.path
+}
+
 func (a *BasicApp) PluginType() *types.App {
 	needs := make(map[string]*types.AppNeed, len(a.Needs))
 
@@ -143,9 +157,8 @@ func (a *BasicApp) PluginType() *types.App {
 	return &types.App{
 		ID:         a.ID(),
 		Name:       a.AppName,
-		Path:       a.Path,
 		Type:       a.Type(),
-		URL:        a.URL,
+		URL:        a.AppURL,
 		Needs:      needs,
 		Properties: a.Other,
 	}
@@ -165,6 +178,10 @@ func (a *BasicApp) RunPlugin() *plugins.Plugin {
 
 func (a *BasicApp) Name() string {
 	return a.AppName
+}
+
+func (a *BasicApp) URL() string {
+	return a.AppURL
 }
 
 func (a *BasicApp) ID() string {

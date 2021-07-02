@@ -203,7 +203,7 @@ func (p *Project) LoadFile(file string) error {
 	}
 
 	if !p.RegisterApp(app) {
-		return fmt.Errorf("application with type: %s and name: %s found more than once\nfile: %s", typ, app.Name(), file)
+		return fmt.Errorf("application with name: '%s' of type: '%s' found more than once\nfile: %s", typ, app.Name(), file)
 	}
 
 	return nil

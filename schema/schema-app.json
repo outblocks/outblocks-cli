@@ -60,9 +60,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "command"
-      ]
+      "required": []
     }
   }
 }

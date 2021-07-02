@@ -15,8 +15,9 @@ import (
 )
 
 type planParams struct {
-	apps []*types.AppPlan
-	deps []*types.DependencyPlan
+	apps      []*types.AppPlan
+	deps      []*types.DependencyPlan
+	firstPass bool
 }
 
 type Deploy struct {
@@ -56,13 +57,15 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 
 	spinner, _ = spinner.Start("Planning...")
 
-	planMap, err := plan(ctx, stateRes.State, cfg.Apps, cfg.Dependencies, verify, d.opts.Destroy)
+	planMap := calculatePlanMap(cfg.Apps, cfg.Dependencies)
+
+	planRetMap, err := plan(ctx, stateRes.State, planMap, verify, d.opts.Destroy)
 	if err != nil {
 		_ = spinner.Stop()
 		return err
 	}
 
-	deployChanges, dnsChanges := computeChange(planMap)
+	deployChanges, dnsChanges := computeChange(planRetMap)
 
 	_ = spinner.Stop()
 
@@ -71,18 +74,18 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 		return nil
 	}
 
-	if empty {
-		if verify {
-			_, err = saveState(ctx, cfg, stateRes.State)
-		}
+	if verify {
+		_, err = saveState(ctx, cfg, stateRes.State)
+	}
 
+	if empty {
 		return err
 	}
 
 	start := time.Now()
 
 	callback := applyProgress(d.log, deployChanges, dnsChanges)
-	err = apply(ctx, stateRes.State, planMap, callback)
+	err = apply(ctx, stateRes.State, planMap, d.opts.Destroy, callback)
 
 	_, saveErr := saveState(ctx, cfg, stateRes.State)
 
@@ -143,20 +146,8 @@ func getState(ctx context.Context, cfg *config.Project) (*plugin_go.GetStateResp
 	return ret, nil
 }
 
-func plan(ctx context.Context, state *types.StateData, apps []config.App, deps map[string]*config.Dependency, verify, destroy bool) (map[*plugins.Plugin]*plugin_go.PlanResponse, error) {
+func calculatePlanMap(apps []config.App, deps map[string]*config.Dependency) map[*plugins.Plugin]*planParams {
 	planMap := make(map[*plugins.Plugin]*planParams)
-
-	if state.PluginsMap == nil {
-		state.PluginsMap = make(map[string]types.PluginStateMap)
-	}
-
-	if state.AppStates == nil {
-		state.AppStates = make(map[string]*types.AppState)
-	}
-
-	if state.DependencyStates == nil {
-		state.DependencyStates = make(map[string]*types.DependencyState)
-	}
 
 	for _, app := range apps {
 		dnsPlugin := app.DNSPlugin()
@@ -173,9 +164,11 @@ func plan(ctx context.Context, state *types.StateData, apps []config.App, deps m
 			IsDeploy: true,
 			IsDNS:    includeDNS,
 			App:      appType,
+			Path:     app.Path(),
 		}
 
 		planMap[deployPlugin].apps = append(planMap[deployPlugin].apps, appReq)
+		planMap[deployPlugin].firstPass = !includeDNS // if dns is handled by different plugin, plan this as a first pass
 
 		// Add DNS plugin if not already included (handled by same plugin).
 		if includeDNS || dnsPlugin == nil {
@@ -190,6 +183,7 @@ func plan(ctx context.Context, state *types.StateData, apps []config.App, deps m
 			IsDeploy: false,
 			IsDNS:    true,
 			App:      appType,
+			Path:     app.Path(),
 		}
 
 		planMap[dnsPlugin].apps = append(planMap[dnsPlugin].apps, appReq)
@@ -204,6 +198,22 @@ func plan(ctx context.Context, state *types.StateData, apps []config.App, deps m
 		}
 
 		planMap[p].deps = append(planMap[p].deps, &types.DependencyPlan{Dependency: t})
+	}
+
+	return planMap
+}
+
+func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, verify, destroy bool) (map[*plugins.Plugin]*plugin_go.PlanResponse, error) {
+	if state.PluginsMap == nil {
+		state.PluginsMap = make(map[string]types.PluginStateMap)
+	}
+
+	if state.AppStates == nil {
+		state.AppStates = make(map[string]*types.AppState)
+	}
+
+	if state.DependencyStates == nil {
+		state.DependencyStates = make(map[string]*types.DependencyState)
 	}
 
 	retMap := make(map[*plugins.Plugin]*plugin_go.PlanResponse, len(planMap))
@@ -222,9 +232,6 @@ func plan(ctx context.Context, state *types.StateData, apps []config.App, deps m
 			}
 
 			retMap[plug] = ret
-			if verify {
-				state.PluginsMap[plug.Name] = ret.PluginMap
-			}
 
 			return nil
 		})
@@ -250,7 +257,7 @@ func plan(ctx context.Context, state *types.StateData, apps []config.App, deps m
 	return retMap, err
 }
 
-func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*plugin_go.PlanResponse, callback func(*types.ApplyAction)) error {
+func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, destroy bool, callback func(*types.ApplyAction)) error {
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 	retMap := make(map[*plugins.Plugin]*plugin_go.ApplyDoneResponse, len(planMap))
 
@@ -266,17 +273,20 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		state.DependencyStates = make(map[string]*types.DependencyState)
 	}
 
-	for plug, ret := range planMap {
-		if ret.DeployPlan == nil {
+	// Apply first pass plan (deployments without DNS).
+	for plug, params := range planMap {
+		if !params.firstPass {
 			continue
 		}
 
-		ret := ret
-
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, ret.DeployPlan, nil, callback)
+			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, destroy, callback)
 			if err != nil {
 				return fmt.Errorf("deploy: plugin '%s' apply error: %w", plug.Name, err)
+			}
+
+			if ret == nil {
+				return fmt.Errorf("deploy: plugin '%s' empty apply response", plug.Name)
 			}
 
 			retMap[plug] = ret
@@ -303,18 +313,16 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		return err
 	}
 
-	// Apply DNS plan.
+	// Apply second pass plan (DNS and deployments with DNS).
 	retMap = make(map[*plugins.Plugin]*plugin_go.ApplyDoneResponse, len(planMap))
 
-	for plug, ret := range planMap {
-		if ret.DNSPlan == nil {
+	for plug, params := range planMap {
+		if params.firstPass {
 			continue
 		}
 
-		ret := ret
-
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, nil, ret.DNSPlan, callback)
+			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, destroy, callback)
 			if err != nil {
 				return fmt.Errorf("deploy: plugin '%s' apply dns error: %w", plug.Name, err)
 			}

@@ -270,8 +270,14 @@ github.com/otiai10/curr v1.0.0/go.mod h1:LskTG5wDwr8Rs+nNQ+1LlxRjAtTZZjtJW4rMXl6
 github.com/otiai10/mint v1.3.0/go.mod h1:F5AjcsTsWUqX+Na9fpHb52P8pcRX2CI6A3ctIT91xUo=
 github.com/otiai10/mint v1.3.2 h1:VYWnrP5fXmz1MXvjuUvcBrXSjGE6xjON+axB/UrpO3E=
 github.com/otiai10/mint v1.3.2/go.mod h1:/yxELlJQ0ufhjUwhshSj+wFjZ78CnZ48/1wtmBH1OTc=
-github.com/outblocks/outblocks-plugin-go v0.0.0-20210610140254-790de338de25 h1:qIyPR1bkmPH13MIAP5RKkH7tBgjO21m1W8S/M3jPa1k=
-github.com/outblocks/outblocks-plugin-go v0.0.0-20210610140254-790de338de25/go.mod h1:vAn4Vv7fXTyrjNEvAVcKtKJ2Bwaqk3Oy63lqnBRIct4=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20210623204626-7c3e2182d0d8 h1:2DBN2ogbTil/3gk6AE3Kt8cwnq0XOEnCnUcxG8/ItW4=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20210623204626-7c3e2182d0d8/go.mod h1:vAn4Vv7fXTyrjNEvAVcKtKJ2Bwaqk3Oy63lqnBRIct4=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20210625150224-146698ea116e h1:+rOUvan6Z0iFPhbi4LFVsi8wFxFcJ93A5zs97sSEu6k=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20210625150224-146698ea116e/go.mod h1:vAn4Vv7fXTyrjNEvAVcKtKJ2Bwaqk3Oy63lqnBRIct4=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20210625234204-d7f37de03196 h1:Op7wxGt7YzJ68J2uDR6eDaBn5KNMRmudeyqNKDQBT+g=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20210625234204-d7f37de03196/go.mod h1:vAn4Vv7fXTyrjNEvAVcKtKJ2Bwaqk3Oy63lqnBRIct4=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20210630200127-298dfde78363 h1:VOo9ZghpuwxBBQDhdpU/8k8Xj9P67EllHYedvcRHg0s=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20210630200127-298dfde78363/go.mod h1:vAn4Vv7fXTyrjNEvAVcKtKJ2Bwaqk3Oy63lqnBRIct4=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pelletier/go-toml v1.9.1 h1:a6qW1EVNZWH9WGI6CsYdD8WAylkoXBS5yv0XHlh17Tc=
