@@ -278,6 +278,8 @@ github.com/outblocks/outblocks-plugin-go v0.0.0-20210625234204-d7f37de03196 h1:O
 github.com/outblocks/outblocks-plugin-go v0.0.0-20210625234204-d7f37de03196/go.mod h1:vAn4Vv7fXTyrjNEvAVcKtKJ2Bwaqk3Oy63lqnBRIct4=
 github.com/outblocks/outblocks-plugin-go v0.0.0-20210630200127-298dfde78363 h1:VOo9ZghpuwxBBQDhdpU/8k8Xj9P67EllHYedvcRHg0s=
 github.com/outblocks/outblocks-plugin-go v0.0.0-20210630200127-298dfde78363/go.mod h1:vAn4Vv7fXTyrjNEvAVcKtKJ2Bwaqk3Oy63lqnBRIct4=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20210705152117-95220fb1419c h1:cyHK1LsYbaCS0lNG2J+fjZu2Ja8hu6Qod20Q9nrj4UQ=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20210705152117-95220fb1419c/go.mod h1:vAn4Vv7fXTyrjNEvAVcKtKJ2Bwaqk3Oy63lqnBRIct4=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
 github.com/pelletier/go-toml v1.9.1 h1:a6qW1EVNZWH9WGI6CsYdD8WAylkoXBS5yv0XHlh17Tc=
