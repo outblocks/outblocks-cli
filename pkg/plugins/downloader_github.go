@@ -59,10 +59,12 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 
 	var matchingAsset *github.ReleaseAsset
 
+	arch := CurrentArch()
+
 	for _, ass := range rel.Assets {
 		n := ass.GetName()
 
-		if strings.Contains(n, Arch) &&
+		if strings.Contains(n, arch) &&
 			(strings.HasSuffix(n, ".zip") || strings.HasSuffix(n, ".tar.gz") ||
 				strings.HasSuffix(n, ".tar.bz") || strings.HasSuffix(n, ".tar") || strings.HasSuffix(n, ".rar")) {
 			matchingAsset = ass

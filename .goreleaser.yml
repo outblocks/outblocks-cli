@@ -14,20 +14,11 @@ builds:
       - darwin
       - linux
       - windows
-      - freebsd
     goarch:
       - amd64
       - arm64
       - arm
       - 386
-    goarm:
-      - 6
-      - 7
-    ignore:
-      - goos: darwin
-        goarch: 386
-      - goos: freebsd
-        goarch: arm64
     env:
       - CGO_ENABLED=0
     flags:
@@ -79,7 +70,7 @@ brews:
       output = Utils.popen_read("#{bin}/ok completion zsh")
       (zsh_completion/"_ok").write output
       output = Utils.popen_read("#{bin}/ok completion fish")
-      (fish_completion/"eksctl.fish").write output
+      (fish_completion/"ok.fish").write output
       prefix.install_metafiles
     test: |
       system "#{bin}/ok --version"

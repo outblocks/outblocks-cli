@@ -21,8 +21,16 @@ import (
 const (
 	DefaultPluginSourceFmt = "https://github.com/outblocks/cli-plugin-%s"
 	DefaultAuthor          = "outblocks"
-	Arch                   = runtime.GOOS + "_" + runtime.GOARCH
+	A                      = runtime.GOOS + "_" + runtime.GOARCH
 )
+
+func CurrentArch() string {
+	if runtime.GOARCH == "arm" {
+		return runtime.GOOS + "_armv6"
+	}
+
+	return runtime.GOOS + "_" + runtime.GOARCH
+}
 
 type Loader struct {
 	baseDir, pluginsCacheDir string
@@ -92,6 +100,8 @@ func (l *Loader) findMatchingPluginLocation(pi *pluginInfo, path string) (string
 		pluginPath string
 	)
 
+	arch := CurrentArch()
+
 	for _, entry := range entries {
 		isSymlink := entry.Mode().Type()&fs.ModeSymlink != 0
 
@@ -100,7 +110,7 @@ func (l *Loader) findMatchingPluginLocation(pi *pluginInfo, path string) (string
 		}
 
 		parts := strings.SplitN(entry.Name(), "-", 2)
-		if len(parts) != 2 || parts[0] != Arch {
+		if len(parts) != 2 || parts[0] != arch {
 			continue
 		}
 
@@ -160,7 +170,7 @@ func (l *Loader) downloadPlugin(ctx context.Context, pi *pluginInfo) (string, *s
 		return "", nil, fmt.Errorf("failed to download plugin %s: %w", pi.name, err)
 	}
 
-	destPath := filepath.Join(l.pluginsCacheDir, pi.author, pi.name, fmt.Sprintf("%s-%s", Arch, download.Version))
+	destPath := filepath.Join(l.pluginsCacheDir, pi.author, pi.name, fmt.Sprintf("%s-%s", CurrentArch(), download.Version))
 
 	if err := os.MkdirAll(destPath, 0755); err != nil {
 		return "", nil, fmt.Errorf("failed to create path %s: %w", destPath, err)
