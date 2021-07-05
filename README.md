@@ -12,5 +12,5 @@
 Mac (Homebrew)
 
 ```sh
-brew install outblocks/tap/cli
+brew install outblocks/tap/ok
 ```

@@ -57,7 +57,7 @@ brews:
   - tap:
       owner: outblocks
       name: homebrew-tap
-    name: cli
+    name: ok
     folder: Formula
     homepage: https://outblocks.io
     description: Auto devops.
