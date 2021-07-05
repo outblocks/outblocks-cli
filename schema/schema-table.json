@@ -1,6 +1,6 @@
 {
   "title": "JSON schema for OutBlocks database table files",
-  "$schema": "http://json-schema.org/draft-07/schema",
+  "$schema": "http://json-schema.org/draft-04/schema",
   "$ref": "#/definitions/OutblocksTable",
   "definitions": {
     "OutblocksTable": {
@@ -11,8 +11,7 @@
         "fields": {
           "$ref": "#/definitions/Fields"
         }
-      },
-      "required": []
+      }
     },
     "Fields": {
       "title": "Fields",
