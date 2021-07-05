@@ -27,11 +27,11 @@ type Plugin struct {
 	StateTypes     []string       `json:"state_types"`
 	SupportedTypes []*PluginType  `json:"supported_types"`
 
-	Path     string `json:"-"`
+	Path     string          `json:"-"`
+	Version  *semver.Version `json:"-"`
 	yamlPath string
-	version  *semver.Version
-	source   string
 	yamlData []byte
+	source   string
 	actions  []Action
 	client   *client.Client
 }
@@ -56,7 +56,7 @@ func (p *Plugin) Validate() error {
 func (p *Plugin) Locked() *lockfile.Plugin {
 	return &lockfile.Plugin{
 		Name:    p.Name,
-		Version: p.version,
+		Version: p.Version,
 		Source:  p.source,
 	}
 }

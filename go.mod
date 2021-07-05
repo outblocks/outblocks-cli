@@ -35,4 +35,4 @@ require (
 
 replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.20210513211449-7c6c82dc3f03
 
-// replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go
+replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go

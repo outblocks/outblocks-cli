@@ -36,7 +36,7 @@ func Date() string {
 
 // UserAgent returns a user agent for user with an HTTP client.
 func UserAgent() string {
-	return "OutBlocks/" + strings.TrimPrefix(Version(), "v")
+	return "Outblocks/" + strings.TrimPrefix(Version(), "v")
 }
 
 // Get returns build info.

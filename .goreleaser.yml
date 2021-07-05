@@ -1,4 +1,4 @@
-project_name: ok
+project_name: outblocks
 
 release:
   github:
@@ -35,7 +35,7 @@ builds:
     ldflags: -s -w -X internal.version.version={{.Version}} -X internal.version.gitCommit={{.ShortCommit}} -X internal.version.date={{.Date}}
 
 archives:
-  - name_template: '{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+  - name_template: '{{ .ProjectName }}-{{ .Version }}-{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
     wrap_in_directory: true
     format: tar.gz
     format_overrides:
@@ -66,6 +66,7 @@ brews:
   - tap:
       owner: outblocks
       name: homebrew-tap
+    name: cli
     folder: Formula
     homepage: https://outblocks.io
     description: Auto devops.

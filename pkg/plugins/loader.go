@@ -52,8 +52,8 @@ func (l *Loader) LoadPlugin(name, src string, verRange semver.Range, lock *lockf
 
 	if path == "" {
 		var err error
-		path, err = l.installCachedPlugin(pi)
 
+		path, ver, err = l.installCachedPlugin(pi)
 		if err != nil {
 			return nil, err
 		}
@@ -170,21 +170,28 @@ func (l *Loader) downloadPlugin(ctx context.Context, pi *pluginInfo) (string, *s
 		return "", nil, fmt.Errorf("failed to copy downloaded plugin %s: %w", destPath, err)
 	}
 
+	if download.PathTemp {
+		err = os.RemoveAll(download.Path)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to remove downloaded plugin temp dir %s: %w", download.Path, err)
+		}
+	}
+
 	return destPath, download.Version, nil
 }
 
-func (l *Loader) installCachedPlugin(pi *pluginInfo) (string, error) {
-	from, _ := l.findCachedPluginLocation(pi)
+func (l *Loader) installCachedPlugin(pi *pluginInfo) (string, *semver.Version, error) {
+	from, ver := l.findCachedPluginLocation(pi)
 
 	if from == "" {
-		return "", ErrPluginNotFound
+		return "", nil, ErrPluginNotFound
 	}
 
 	if err := l.installPlugin(pi, from); err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	return from, nil
+	return from, ver, nil
 }
 
 func (l *Loader) installPlugin(pi *pluginInfo, from string) error {
@@ -214,10 +221,10 @@ func (l *Loader) loadPlugin(pi *pluginInfo, path string, ver *semver.Version) (*
 	}
 
 	plugin := Plugin{
-		yamlData: data,
 		Path:     path,
+		Version:  ver,
+		yamlData: data,
 		yamlPath: p,
-		version:  ver,
 		source:   pi.source,
 	}
 

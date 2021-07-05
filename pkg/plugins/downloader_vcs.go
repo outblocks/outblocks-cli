@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/Masterminds/vcs"
 	"github.com/blang/semver/v4"
@@ -18,9 +19,10 @@ func NewVCSDownloader() *VCSDownloader {
 }
 
 type DownloadedPlugin struct {
-	Path    string
-	Version *semver.Version
-	Tag     string
+	Path     string
+	PathTemp bool
+	Version  *semver.Version
+	Tag      string
 }
 
 func (d *VCSDownloader) Download(ctx context.Context, pi *pluginInfo) (*DownloadedPlugin, error) {
@@ -38,7 +40,7 @@ func (d *VCSDownloader) Download(ctx context.Context, pi *pluginInfo) (*Download
 		if err := repo.Update(); err != nil {
 			return nil, fmt.Errorf("cannot update source repo: %w", err)
 		}
-	} else if err := repo.Update(); err != nil {
+	} else if err := repo.Get(); err != nil {
 		return nil, fmt.Errorf("cannot find source repo: %w", err)
 	}
 
@@ -53,7 +55,7 @@ func (d *VCSDownloader) Download(ctx context.Context, pi *pluginInfo) (*Download
 	)
 
 	for _, tag := range tags {
-		version, err := semver.Parse(tag)
+		version, err := semver.Parse(strings.TrimLeft(tag, "v"))
 		if err != nil {
 			continue
 		}

@@ -14,6 +14,7 @@ import (
 
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
+	plugin_log "github.com/outblocks/outblocks-plugin-go/log"
 )
 
 type Client struct {
@@ -68,7 +69,23 @@ func (c *Client) lazyInit(ctx context.Context) error {
 	go func() {
 		s := bufio.NewScanner(stderrPipe)
 		for s.Scan() {
-			c.log.Errorf("plugin '%s' error: %s\n", c.name, s.Text())
+			b := s.Bytes()
+			level := b[0]
+
+			switch plugin_log.Level(level) {
+			case plugin_log.LevelError:
+				c.log.Errorf("plugin '%s': %s\n", c.name, string(b[1:]))
+			case plugin_log.LevelWarn:
+				c.log.Warnf("plugin '%s': %s\n", c.name, string(b[1:]))
+			case plugin_log.LevelInfo:
+				c.log.Infof("plugin '%s': %s\n", c.name, string(b[1:]))
+			case plugin_log.LevelDebug:
+				c.log.Debugf("plugin '%s': %s\n", c.name, string(b[1:]))
+			case plugin_log.LevelSuccess:
+				c.log.Successf("plugin '%s': %s\n", c.name, string(b[1:]))
+			default:
+				c.log.Errorf("plugin '%s': %s\n", c.name, s.Text())
+			}
 		}
 	}()
 
@@ -374,14 +391,18 @@ func (c *Client) handleResponse(conn net.Conn, in <-chan plugin_go.Request, res 
 		return fmt.Errorf(r.Error)
 	case *plugin_go.MessageResponse:
 		switch r.Level() {
-		case "debug":
+		case plugin_go.MessageLogLevelDebug:
 			c.log.Debugln(r.Message)
-		case "info":
+		case plugin_go.MessageLogLevelInfo:
 			c.log.Infoln(r.Message)
-		case "warn":
+		case plugin_go.MessageLogLevelWarn:
 			c.log.Warnln(r.Message)
-		default:
+		case plugin_go.MessageLogLevelSuccess:
+			c.log.Successln(r.Message)
+		case plugin_go.MessageLogLevelError:
 			c.log.Errorln(r.Message)
+		default:
+			panic(fmt.Sprintf("unknown message level: %s", r.Level()))
 		}
 	case *plugin_go.UnhandledResponse:
 	default:

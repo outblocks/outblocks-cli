@@ -103,9 +103,15 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 		return nil, fmt.Errorf("unarchiving error: %w", err)
 	}
 
+	err = os.RemoveAll(dest)
+	if err != nil {
+		return nil, fmt.Errorf("error removing archive file: %w", err)
+	}
+
 	return &DownloadedPlugin{
-		Path:    outDest,
-		Version: info.Version,
-		Tag:     info.Tag,
+		Path:     outDest,
+		PathTemp: true,
+		Version:  info.Version,
+		Tag:      info.Tag,
 	}, nil
 }

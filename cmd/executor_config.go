@@ -64,7 +64,11 @@ func (e *Executor) loadPlugins(ctx context.Context, cfg *config.Project) error {
 		prog, _ := e.log.ProgressBar().WithTotal(len(pluginsToDownload)).WithTitle("Downloading plugins").Start()
 
 		for i, plug := range pluginsToDownload {
-			prog.Title = fmt.Sprintf("Downloading '%s' plugin", plug.Name)
+			prog.Title = fmt.Sprintf("Downloading plugin '%s'", plug.Name)
+			if plug.Version != "" {
+				prog.Title += fmt.Sprintf(" with version: %s", plug.Version)
+			}
+
 			prog.Add(0) // force title update
 
 			plugin, err := e.loader.DownloadPlugin(ctx, plug.Name, plug.VerRange(), plug.Source, cfg.PluginLock(plug))
@@ -77,7 +81,7 @@ func (e *Executor) loadPlugins(ctx context.Context, cfg *config.Project) error {
 			}
 
 			prog.Increment()
-			pterm.Success.Printf("Downloaded '%s'\n", plug.Name)
+			pterm.Success.Printf("Downloaded plugin '%s' at version: %s\n", plug.Name, plugin.Version)
 		}
 
 		_, _ = prog.Stop()
