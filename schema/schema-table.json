@@ -1,5 +1,5 @@
 {
-  "title": "JSON schema for OutBlocks database table files",
+  "title": "JSON schema for Outblocks database table files",
   "$schema": "http://json-schema.org/draft-04/schema",
   "$ref": "#/definitions/OutblocksTable",
   "definitions": {

@@ -1,5 +1,5 @@
 {
-  "title": "JSON schema for OutBlocks project configuration files",
+  "title": "JSON schema for Outblocks project configuration files",
   "$schema": "http://json-schema.org/draft-04/schema",
   "$ref": "#/definitions/OutblocksProject",
   "definitions": {
