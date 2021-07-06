@@ -23,7 +23,7 @@ builds:
       - CGO_ENABLED=0
     flags:
       - -trimpath
-    ldflags: -s -w -X internal.version.version={{.Version}} -X internal.version.gitCommit={{.ShortCommit}} -X internal.version.date={{.Date}}
+    ldflags: -s -w -X github.com/outblocks/outblocks-cli/internal/version.version={{.Version}} -X github.com/outblocks/outblocks-cli/internal/version.gitCommit={{.ShortCommit}} -X github.com/outblocks/outblocks-cli/internal/version.date={{.Date}}
 
 archives:
   - name_template: '{{ .ProjectName }}-{{ .Version }}-{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
