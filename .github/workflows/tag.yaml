@@ -4,7 +4,7 @@ on:
     tags:
       - v*
 jobs:
-  release:
+  releaser:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
@@ -24,3 +24,11 @@ jobs:
           args: release --rm-dist
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
+
+      - name: Update version in package.json
+        run: |
+          sudo apt-get install jq
+          jq '.version = $newVal' --arg newVal ${GITHUB_REF/refs\/tags\/v/} package.json > tmp.$$.json && mv tmp.$$.json package.json
+      - uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.NPM_TOKEN }}

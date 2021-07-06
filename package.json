@@ -1,0 +1,42 @@
+{
+  "name": "outblocks-cli",
+  "version": "",
+  "description": "Auto DevOps",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples"
+  },
+  "scripts": {
+    "postinstall": "go-npm install",
+    "preuninstall": "go-npm uninstall"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/outblocks/outblocks-cli.git"
+  },
+  "keywords": [
+    "outblocks",
+    "outblocks-cli",
+    "outblocks/cli",
+    "outblockscli",
+    "devops",
+    "deploy",
+    "autodeploy",
+    "autodevops"
+  ],
+  "author": "Outblocks",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/outblocks/outblocks-cli/issues"
+  },
+  "homepage": "https://github.com/outblocks/outblocks-cli#readme",
+  "goBinary": {
+    "name": "ok",
+    "path": "./bin",
+    "url": "https://github.com/outblocks/outblocks-cli/releases/download/v{{version}}/outblocks-{{version}}-{{platform}}_{{arch}}.tar.gz"
+  },
+  "dependencies": {
+    "@outblocks/go-npm-installer": "^0.2.2"
+  }
+}

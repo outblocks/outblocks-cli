@@ -36,10 +36,10 @@ archives:
       - README.md
 
 checksum:
-  name_template: '{{ .ProjectName }}-{{ .Version }}-checksums.txt'
+  name_template: "checksums.txt"
 
 snapshot:
-  name_template: SNAPSHOT-{{ .Commit }}
+  name_template: "{{ .Tag }}-snapshot"
 
 changelog:
   sort: asc
@@ -60,6 +60,7 @@ brews:
     folder: Formula
     homepage: https://outblocks.io
     description: Auto devops.
+    license: MIT
     dependencies:
       - name: git
     install: |
@@ -74,3 +75,11 @@ brews:
     test: |
       system "#{bin}/ok --version"
 
+scoop:
+  bucket:
+    owner: outblocks
+    name: outblocks-scoop
+  commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
+  homepage: https://outblocks.io
+  description: Auto devops.
+  license: MIT
