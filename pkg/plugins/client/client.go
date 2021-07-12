@@ -18,7 +18,6 @@ import (
 )
 
 type Client struct {
-	ctx context.Context
 	log logger.Logger
 
 	cmd  *exec.Cmd
@@ -32,12 +31,11 @@ type Client struct {
 }
 
 const (
-	defaultTimeout = 10 * time.Second
+	DefaultTimeout = 10 * time.Second
 )
 
-func NewClient(ctx context.Context, log logger.Logger, name string, cmd *exec.Cmd, props map[string]interface{}, yamlContext YAMLContext) (*Client, error) {
+func NewClient(log logger.Logger, name string, cmd *exec.Cmd, props map[string]interface{}, yamlContext YAMLContext) (*Client, error) {
 	return &Client{
-		ctx: ctx,
 		log: log,
 		cmd: cmd,
 
@@ -92,15 +90,15 @@ func (c *Client) lazyInit(ctx context.Context) error {
 	var handshake *plugin_go.Handshake
 
 	if err := json.Unmarshal(line, &handshake); err != nil {
-		return fmt.Errorf("plugin '%s' error: handshake error: %w", c.name, err)
+		return NewPluginError(c, "handshake error", err)
 	}
 
 	if handshake == nil {
-		return fmt.Errorf("plugin '%s' error: handshake not returned by plugin", c.name)
+		return NewPluginError(c, "handshake not returned by plugin", err)
 	}
 
 	if err := ValidateHandshake(handshake); err != nil {
-		return fmt.Errorf("plugin '%s' error: invalid handshake: %w", c.name, err)
+		return NewPluginError(c, "invalid handshake", err)
 	}
 
 	c.addr = handshake.Addr
@@ -108,7 +106,7 @@ func (c *Client) lazyInit(ctx context.Context) error {
 	// Send Start request to validate YAML.
 	err = c.Start(ctx, c.yamlContext)
 	if err != nil {
-		return fmt.Errorf("plugin '%s' start error:\n%s", c.name, err)
+		return NewPluginError(c, "start error", err)
 	}
 
 	return nil
@@ -121,7 +119,7 @@ func (c *Client) connect(ctx context.Context) (net.Conn, error) {
 }
 
 func (c *Client) sendRequest(conn net.Conn, req plugin_go.Request) error {
-	_ = conn.SetWriteDeadline(time.Now().Add(defaultTimeout))
+	_ = conn.SetWriteDeadline(time.Now().Add(DefaultTimeout))
 
 	// Send header.
 	data, err := json.Marshal(&plugin_go.RequestHeader{

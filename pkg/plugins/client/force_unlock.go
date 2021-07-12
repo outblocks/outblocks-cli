@@ -8,7 +8,7 @@ import (
 )
 
 func (c *Client) ReleaseLock(ctx context.Context, typ, env string, props map[string]interface{}, lockID string) error {
-	return c.lazySendReceive(ctx, &plugin_go.ReleaseLockRequest{
+	err := c.lazySendReceive(ctx, &plugin_go.ReleaseLockRequest{
 		StateType:  typ,
 		Env:        env,
 		LockID:     lockID,
@@ -22,4 +22,10 @@ func (c *Client) ReleaseLock(ctx context.Context, typ, env string, props map[str
 
 		return nil
 	})
+
+	if err != nil && !IsPluginError(err) {
+		err = NewPluginError(c, "release lock error", err)
+	}
+
+	return err
 }

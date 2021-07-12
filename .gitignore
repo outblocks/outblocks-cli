@@ -1,5 +1,5 @@
 bin/
 vendor/
 outblocks-cli
-example/
+example*/
 .outblocks

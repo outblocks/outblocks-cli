@@ -48,7 +48,7 @@ func (d *Dependency) Normalize(key string, cfg *Project) error {
 
 func (d *Dependency) Check(key string, cfg *Project) error {
 	// Check deploy plugin.
-	for _, plug := range cfg.plugins {
+	for _, plug := range cfg.loadedPlugins {
 		if !plug.HasAction(plugins.ActionDeploy) {
 			continue
 		}
@@ -68,7 +68,7 @@ func (d *Dependency) Check(key string, cfg *Project) error {
 	}
 
 	// Check run plugin.
-	for _, plug := range cfg.plugins {
+	for _, plug := range cfg.loadedPlugins {
 		if !plug.HasAction(plugins.ActionRun) {
 			continue
 		}

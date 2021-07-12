@@ -269,6 +269,9 @@ func (e *Executor) newRoot() *cobra.Command {
 				return err
 			}
 
+			return nil
+		},
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
 			if e.cfg != nil {
 				if err := e.saveLockfile(); err != nil {
 					_ = e.cleanupProject()
@@ -294,6 +297,7 @@ func (e *Executor) newRoot() *cobra.Command {
 		e.newCompletionCmd(),
 		e.newRunCmd(),
 		e.newDeployCmd(),
+		e.newPluginsCmd(),
 		e.newForceUnlockCmd(),
 	)
 

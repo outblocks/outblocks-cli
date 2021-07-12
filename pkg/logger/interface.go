@@ -22,6 +22,7 @@ type Logger interface {
 	SetLevel(logLevel string) error
 
 	Spinner() pterm.SpinnerPrinter
-	ProgressBar() pterm.ProgressbarPrinter
 	Table() pterm.TablePrinter
+	Section() *pterm.SectionPrinter
+	ProgressBar() ProgressbarPrinter
 }

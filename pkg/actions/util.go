@@ -208,7 +208,7 @@ func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool)
 	}
 
 	if empty {
-		log.Infoln("No changes detected.")
+		log.Println("No changes detected.")
 
 		return true, false
 	}
@@ -229,8 +229,38 @@ func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool)
 	return false, false
 }
 
-type targetUnique struct {
+type applyTargetKey struct {
 	ns, obj, typ string
+}
+
+type applyTarget struct {
+	act           *types.ApplyAction
+	start, notify time.Time
+}
+
+func newApplyTarget(act *types.ApplyAction) *applyTarget {
+	t := time.Now()
+
+	return &applyTarget{
+		act:    act,
+		start:  t,
+		notify: t,
+	}
+}
+
+func applyActionType(act *types.ApplyAction) string {
+	switch act.Type {
+	case types.PlanCreate:
+		return "creating"
+	case types.PlanDelete:
+		return "deleting"
+	case types.PlanUpdate:
+		return "updating"
+	case types.PlanRecreate:
+		return "recreating"
+	}
+
+	return "unknown"
 }
 
 func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(*types.ApplyAction) {
@@ -238,7 +268,9 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 	total := calculateTotalSteps(changes)
 
 	// Create progressbar as fork from the default progressbar.
-	p, _ := log.ProgressBar().WithRemoveWhenDone(true).WithTotal(total).WithTitle("Applying...").Start()
+	p, _ := log.ProgressBar().WithTotal(total).WithTitle("Applying...").Start()
+
+	startMap := make(map[applyTargetKey]*applyTarget)
 
 	var m sync.Mutex
 
@@ -250,49 +282,44 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 			<-t.C
 			m.Lock()
 
-			if !p.IsActive {
-				m.Unlock()
+			now := time.Now()
 
-				return
+			for _, v := range startMap {
+				if time.Since(v.notify) > 10*time.Second {
+					log.Infof("Still %s %s '%s'... elapsed %s.\n", applyActionType(v.act), v.act.ObjectType, v.act.ObjectName, time.Since(v.start).Truncate(timeTruncate))
+
+					v.notify = now
+				}
 			}
 
-			p.Add(0)
 			m.Unlock()
 		}
 	}()
 
-	startMap := make(map[targetUnique]time.Time)
+	timeInfo := pterm.NewStyle(pterm.FgWhite, pterm.Reset)
 
 	return func(act *types.ApplyAction) {
-		key := targetUnique{ns: act.Namespace, typ: act.ObjectType, obj: act.ObjectID}
+		key := applyTargetKey{ns: act.Namespace, typ: act.ObjectType, obj: act.ObjectID}
 
 		if act.Progress == 0 {
-			startMap[key] = time.Now()
+			m.Lock()
+			startMap[key] = newApplyTarget(act)
+			m.Unlock()
+
 			return
 		}
 
-		m.Lock()
-
-		var t, success string
-
-		switch act.Type {
-		case types.PlanCreate:
-			t = "creating"
-		case types.PlanDelete:
-			t = "deleting"
-		case types.PlanUpdate:
-			t = "updating"
-		case types.PlanRecreate:
-			t = "recreating"
-		}
-
-		success = fmt.Sprintf("%s %s '%s'", t, act.ObjectType, act.ObjectName)
+		success := fmt.Sprintf("%s %s '%s'", strings.Title(applyActionType(act)), act.ObjectType, act.ObjectName)
 
 		if act.Progress == act.Total {
+			m.Lock()
 			start := startMap[key]
+			delete(startMap, key)
+			m.Unlock()
 
-			if !start.IsZero() {
-				success += fmt.Sprintf(": %s - took %s.", pterm.Bold.Sprint("DONE"), time.Since(start).Truncate(timeTruncate))
+			if start != nil {
+				success += fmt.Sprintf(": %s %s", pterm.Bold.Sprint("DONE"),
+					timeInfo.Sprintf("- took %s.", time.Since(start.start).Truncate(timeTruncate)))
 			}
 		} else {
 			success += fmt.Sprintf(": step %d of %d", act.Progress, act.Total)
@@ -303,7 +330,5 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 		if act.Progress == act.Total {
 			p.Increment()
 		}
-
-		m.Unlock()
 	}
 }

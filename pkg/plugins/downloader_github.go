@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/blang/semver/v4"
 	"github.com/google/go-github/v35/github"
 	"github.com/mholt/archiver/v3"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"
@@ -47,12 +48,12 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 	repoOwner := matches[GitHubRegex.SubexpIndex("owner")]
 	repoName := matches[GitHubRegex.SubexpIndex("name")]
 
-	info, err := d.vcs.Download(ctx, pi)
+	info, tag, err := d.vcs.download(ctx, pi)
 	if err != nil {
 		return nil, err
 	}
 
-	rel, _, err := d.client.Repositories.GetReleaseByTag(ctx, repoOwner, repoName, info.Tag)
+	rel, _, err := d.client.Repositories.GetReleaseByTag(ctx, repoOwner, repoName, tag)
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +115,9 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 		Path:     outDest,
 		PathTemp: true,
 		Version:  info.Version,
-		Tag:      info.Tag,
 	}, nil
+}
+
+func (d *GitHubDownloader) MatchingVersion(ctx context.Context, pi *pluginInfo) (matching, latest *semver.Version, err error) {
+	return d.vcs.MatchingVersion(ctx, pi)
 }

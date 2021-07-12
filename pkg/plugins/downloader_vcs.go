@@ -22,10 +22,14 @@ type DownloadedPlugin struct {
 	Path     string
 	PathTemp bool
 	Version  *semver.Version
-	Tag      string
 }
 
-func (d *VCSDownloader) Download(ctx context.Context, pi *pluginInfo) (*DownloadedPlugin, error) {
+type vcsVersionInfo struct {
+	ver *semver.Version
+	tag string
+}
+
+func (d *VCSDownloader) fetch(_ context.Context, pi *pluginInfo) (vcs.Repo, error) {
 	cachePath := clipath.CachePath("plugins", pi.author, pi.name)
 	if err := os.MkdirAll(cachePath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create path %s: %w", cachePath, err)
@@ -44,15 +48,44 @@ func (d *VCSDownloader) Download(ctx context.Context, pi *pluginInfo) (*Download
 		return nil, fmt.Errorf("cannot find source repo: %w", err)
 	}
 
-	tags, err := repo.Tags()
+	return repo, nil
+}
+
+func (d *VCSDownloader) download(ctx context.Context, pi *pluginInfo) (*DownloadedPlugin, string, error) {
+	repo, ver, _, err := d.matchingVersion(ctx, pi)
 	if err != nil {
-		return nil, fmt.Errorf("cannot find repo or git error: %w", err)
+		return nil, "", err
 	}
 
-	var (
-		highestVer *semver.Version
-		highestTag string
-	)
+	if err := repo.UpdateVersion(ver.tag); err != nil {
+		return nil, "", fmt.Errorf("cannot update version of repo: %w", err)
+	}
+
+	return &DownloadedPlugin{
+		Path:    clipath.CachePath("plugins", pi.author, pi.name),
+		Version: ver.ver,
+	}, ver.tag, nil
+}
+
+func (d *VCSDownloader) Download(ctx context.Context, pi *pluginInfo) (*DownloadedPlugin, error) {
+	dp, _, err := d.download(ctx, pi)
+
+	return dp, err
+}
+
+func (d *VCSDownloader) matchingVersion(ctx context.Context, pi *pluginInfo) (repo vcs.Repo, matching, latest *vcsVersionInfo, err error) {
+	repo, err = d.fetch(ctx, pi)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	tags, err := repo.Tags()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("cannot find repo or git error: %w", err)
+	}
+
+	matching = &vcsVersionInfo{}
+	latest = &vcsVersionInfo{}
 
 	for _, tag := range tags {
 		version, err := semver.Parse(strings.TrimLeft(tag, "v"))
@@ -60,30 +93,36 @@ func (d *VCSDownloader) Download(ctx context.Context, pi *pluginInfo) (*Download
 			continue
 		}
 
-		match := pi.matches(&version, highestVer)
+		if latest.ver == nil || latest.ver.LT(version) {
+			latest.ver = &version
+			latest.tag = tag
+		}
+
+		match := pi.matches(&version, matching.ver)
 		if match == noMatch {
 			continue
 		}
 
-		highestVer = &version
-		highestTag = tag
+		matching.ver = &version
+		matching.tag = tag
 
 		if match == matchExact {
 			break
 		}
 	}
 
-	if highestVer == nil {
-		return nil, ErrPluginNoMatchingVersionFound
+	if matching.ver == nil {
+		return nil, nil, nil, ErrPluginNoMatchingVersionFound
 	}
 
-	if err := repo.UpdateVersion(highestTag); err != nil {
-		return nil, fmt.Errorf("cannot update version of repo: %w", err)
+	return repo, matching, latest, nil
+}
+
+func (d *VCSDownloader) MatchingVersion(ctx context.Context, pi *pluginInfo) (matching, latest *semver.Version, err error) {
+	_, m, l, err := d.matchingVersion(ctx, pi)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return &DownloadedPlugin{
-		Path:    cachePath,
-		Version: highestVer,
-		Tag:     highestTag,
-	}, nil
+	return m.ver, l.ver, nil
 }

@@ -53,7 +53,7 @@ func NewLoader(baseDir, pluginsCacheDir string) *Loader {
 	return l
 }
 
-func (l *Loader) LoadPlugin(name, src string, verRange semver.Range, lock *lockfile.Plugin) (*Plugin, error) {
+func (l *Loader) LoadPlugin(ctx context.Context, name, src string, verRange semver.Range, lock *lockfile.Plugin) (*Plugin, error) {
 	pi := newPluginInfo(name, src, verRange, lock)
 
 	path, ver := l.findInstalledPluginLocation(pi)
@@ -210,7 +210,10 @@ func (l *Loader) installPlugin(pi *pluginInfo, from string) error {
 		return fmt.Errorf("failed to create path %s: %w", localPath, err)
 	}
 
-	if err := os.Symlink(from, filepath.Join(localPath, filepath.Base(from))); err != nil {
+	dest := filepath.Join(localPath, filepath.Base(from))
+	_ = os.RemoveAll(dest)
+
+	if err := os.Symlink(from, dest); err != nil {
 		if err := copy.Copy(from, filepath.Join(localPath, filepath.Base(from))); err != nil {
 			return fmt.Errorf("failed to copy cached plugin %s: %w", from, err)
 		}
@@ -238,9 +241,15 @@ func (l *Loader) loadPlugin(pi *pluginInfo, path string, ver *semver.Version) (*
 		source:   pi.source,
 	}
 
-	if err := yaml.UnmarshalWithOptions(data, &plugin, yaml.Validator(validator.DefaultValidator()), yaml.UseJSONUnmarshaler(), yaml.Strict()); err != nil {
+	if err := yaml.UnmarshalWithOptions(data, &plugin, yaml.Validator(validator.DefaultValidator()), yaml.UseJSONUnmarshaler(), yaml.DisallowDuplicateKey()); err != nil {
 		return nil, fmt.Errorf("plugin config load failed.\nfile: %s\n%s", p, err)
 	}
 
 	return &plugin, nil
+}
+
+func (l *Loader) MatchingVersion(ctx context.Context, name, src string, verRange semver.Range) (matching, latest *semver.Version, err error) {
+	pi := newPluginInfo(name, src, verRange, nil)
+
+	return l.selectDownloader(pi.source).MatchingVersion(ctx, pi)
 }

@@ -25,6 +25,10 @@ func (c *Client) GetState(ctx context.Context, typ, env string, props map[string
 		return nil
 	})
 
+	if err != nil && !IsPluginError(err) {
+		err = NewPluginError(c, "get state error", err)
+	}
+
 	return
 }
 

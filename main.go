@@ -21,6 +21,8 @@ func main() {
 
 	go func() {
 		<-ch
+
+		exec.Log().Warnln("Canceling execution... Please wait for all pending tasks to finish...")
 		cancel()
 	}()
 
@@ -33,7 +35,6 @@ func main() {
 	err := exec.Execute(ctx)
 
 	cancel()
-	close(ch)
 
 	if err != nil {
 		exec.Log().Errorln(err)

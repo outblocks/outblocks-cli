@@ -5,8 +5,8 @@ import (
 )
 
 func (p *Project) Lockfile() *lockfile.Lockfile {
-	plugins := make([]*lockfile.Plugin, len(p.plugins))
-	for i, plug := range p.plugins {
+	plugins := make([]*lockfile.Plugin, len(p.loadedPlugins))
+	for i, plug := range p.loadedPlugins {
 		plugins[i] = plug.Locked()
 	}
 

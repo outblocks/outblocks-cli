@@ -12,5 +12,5 @@ mode = "auto"
 
 [semver.detection]
 patch = ["fix/", "[fix]", "fix:"]
-minor = ["feature/", "[feature]", "feat:"]
+minor = ["feature/", "[feature]", "feat:", "feat/"]
 major = ["release/", "[release]", "release:"]

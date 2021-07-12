@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 	"github.com/outblocks/outblocks-plugin-go/types"
@@ -18,6 +17,11 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*type
 		DependencyStates: state.DependencyStates,
 		Destroy:          destroy,
 	})
+
+	if err != nil && !IsPluginError(err) {
+		err = NewPluginError(c, "apply error", err)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +30,7 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*type
 
 	for res := range out {
 		if res.Error != nil {
-			return nil, res.Error
+			return ret, NewPluginError(c, "apply error", res.Error)
 		}
 
 		switch r := res.Response.(type) {
@@ -39,8 +43,12 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*type
 		case *plugin_go.ApplyDoneResponse:
 			ret = r
 		default:
-			return nil, fmt.Errorf("unexpected response to apply request")
+			return ret, NewPluginError(c, "unexpected response to apply", res.Error)
 		}
+	}
+
+	if ret == nil {
+		return nil, NewPluginError(c, "empty apply response", nil)
 	}
 
 	return ret, nil

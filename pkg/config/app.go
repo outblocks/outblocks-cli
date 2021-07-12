@@ -81,7 +81,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 	a.Deploy = strings.ToLower(a.Deploy)
 
 	// Check deploy plugin.
-	for _, plug := range cfg.plugins {
+	for _, plug := range cfg.loadedPlugins {
 		if !plug.HasAction(plugins.ActionDeploy) {
 			continue
 		}
@@ -101,7 +101,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 	}
 
 	// Check run plugin.
-	for _, plug := range cfg.plugins {
+	for _, plug := range cfg.loadedPlugins {
 		if !plug.HasAction(plugins.ActionRun) {
 			continue
 		}

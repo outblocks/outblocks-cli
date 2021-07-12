@@ -84,7 +84,7 @@ func (s *State) Check(cfg *Project) error {
 	}
 
 	// Check plugin.
-	for _, plug := range cfg.plugins {
+	for _, plug := range cfg.loadedPlugins {
 		for _, typ := range plug.StateTypes {
 			if typ == s.Type {
 				s.plugin = plug

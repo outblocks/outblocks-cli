@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"github.com/blang/semver/v4"
+	"github.com/outblocks/outblocks-cli/pkg/plugins"
 )
 
 type Plugin struct {
@@ -14,7 +15,16 @@ type Plugin struct {
 	Other   map[string]interface{} `yaml:"-,remain"`
 
 	verRange semver.Range
+	loaded   *plugins.Plugin
 	order    uint
+}
+
+func (p *Plugin) SetLoaded(plug *plugins.Plugin) {
+	p.loaded = plug
+}
+
+func (p *Plugin) Loaded() *plugins.Plugin {
+	return p.loaded
 }
 
 func (p *Plugin) VerRange() semver.Range {

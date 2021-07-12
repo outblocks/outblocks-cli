@@ -22,7 +22,8 @@ type Log struct {
 	debug, info, warn, err, success *pterm.PrefixPrinter
 	spinner                         *pterm.SpinnerPrinter
 	table                           *pterm.TablePrinter
-	progress                        *pterm.ProgressbarPrinter
+	section                         *pterm.SectionPrinter
+	progress                        *ProgressbarPrinter
 }
 
 func NewLogger() Logger {
@@ -49,7 +50,8 @@ func NewLogger() Logger {
 	spinner.FailPrinter = err
 
 	table := pterm.DefaultTable
-	progress := pterm.DefaultProgressbar
+	section := pterm.DefaultSection
+	progress := ProgressbarPrinter{ProgressbarPrinter: pterm.DefaultProgressbar.WithRemoveWhenDone(true)}
 
 	l := &Log{
 		logLevel: LogLevelDebug,
@@ -61,6 +63,7 @@ func NewLogger() Logger {
 
 		spinner:  &spinner,
 		table:    &table,
+		section:  &section,
 		progress: &progress,
 	}
 
@@ -170,10 +173,14 @@ func (l *Log) Spinner() pterm.SpinnerPrinter {
 	return *l.spinner
 }
 
-func (l *Log) ProgressBar() pterm.ProgressbarPrinter {
+func (l *Log) ProgressBar() ProgressbarPrinter {
 	return *l.progress
 }
 
 func (l *Log) Table() pterm.TablePrinter {
 	return *l.table
+}
+
+func (l *Log) Section() *pterm.SectionPrinter {
+	return l.section
 }

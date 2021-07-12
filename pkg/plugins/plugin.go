@@ -16,16 +16,16 @@ import (
 )
 
 type Plugin struct {
-	Name           string         `json:"name"`
-	Author         string         `json:"author"`
-	Usage          string         `json:"usage"`
-	Description    string         `json:"description"`
-	Run            string         `json:"run"`
-	Actions        []string       `json:"actions"`
-	Hooks          []*PluginHooks `json:"hooks"`
-	Supports       []string       `json:"supports"`
-	StateTypes     []string       `json:"state_types"`
-	SupportedTypes []*PluginType  `json:"supported_types"`
+	Name           string            `json:"name"`
+	Author         string            `json:"author"`
+	Usage          string            `json:"usage"`
+	Description    string            `json:"description"`
+	Cmd            map[string]string `json:"cmd"`
+	Actions        []string          `json:"actions"`
+	Hooks          []*PluginHooks    `json:"hooks"`
+	Supports       []string          `json:"supports"`
+	StateTypes     []string          `json:"state_types"`
+	SupportedTypes []*PluginType     `json:"supported_types"`
 
 	Path     string          `json:"-"`
 	Version  *semver.Version `json:"-"`
@@ -47,6 +47,7 @@ const (
 func (p *Plugin) Validate() error {
 	return validation.ValidateStruct(p,
 		validation.Field(&p.Name, validation.Required),
+		validation.Field(&p.Cmd, validation.Required, validation.Map(validation.Key("default", validation.Required)).AllowExtraKeys()),
 		validation.Field(&p.Actions, validation.Required),
 		validation.Field(&p.Hooks),
 		validation.Field(&p.SupportedTypes),
@@ -116,10 +117,15 @@ func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, projectName, pr
 		err error
 	)
 
+	runCommand, ok := p.Cmd[runtime.GOOS]
+	if !ok {
+		runCommand = p.Cmd["default"]
+	}
+
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/C", p.Run)
+		cmd = exec.Command("cmd", "/C", runCommand)
 	} else {
-		cmd = exec.Command("sh", "-c", p.Run)
+		cmd = exec.Command("sh", "-c", runCommand)
 	}
 
 	cmd.Env = append(os.Environ(),
@@ -129,7 +135,7 @@ func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, projectName, pr
 		fmt.Sprintf("OUTBLOCKS_PROJECT_PATH=%s", projectPath),
 	)
 
-	p.client, err = client.NewClient(ctx, log, p.Name, cmd, props, client.YAMLContext{
+	p.client, err = client.NewClient(log, p.Name, cmd, props, client.YAMLContext{
 		Prefix: yamlPrefix,
 		Data:   yamlData,
 	})

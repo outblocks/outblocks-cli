@@ -40,11 +40,11 @@ type Project struct {
 	AppMap map[string]App `json:"-"`
 	Path   string         `json:"-"`
 
-	plugins  []*plugins.Plugin
-	yamlPath string
-	yamlData []byte
-	lock     *lockfile.Lockfile
-	vars     map[string]interface{}
+	loadedPlugins []*plugins.Plugin
+	yamlPath      string
+	yamlData      []byte
+	lock          *lockfile.Lockfile
+	vars          map[string]interface{}
 }
 
 func (p *Project) Validate() error {
@@ -235,12 +235,12 @@ func (p *Project) FindDependency(n string) *Dependency {
 	return nil
 }
 
-func (p *Project) SetPlugins(plugs []*plugins.Plugin) {
-	p.plugins = plugs
+func (p *Project) SetLoadedPlugins(plugs []*plugins.Plugin) {
+	p.loadedPlugins = plugs
 }
 
 func (p *Project) LoadedPlugins() []*plugins.Plugin {
-	return p.plugins
+	return p.loadedPlugins
 }
 
 func (p *Project) PluginLock(plug *Plugin) *lockfile.Plugin {
@@ -264,7 +264,7 @@ func (p *Project) FindDNSPlugin(url string) *plugins.Plugin {
 }
 
 func (p *Project) FindLoadedPlugin(name string) *plugins.Plugin {
-	for _, plug := range p.plugins {
+	for _, plug := range p.loadedPlugins {
 		if plug.Name == name {
 			return plug
 		}
