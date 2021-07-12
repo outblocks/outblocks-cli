@@ -17,8 +17,10 @@ jobs:
       - name: Unshallow
         run: git fetch --prune --unshallow
 
-      - name: Install git-chglog
-        run: go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
+      - name: Install go-task
+        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        with: # Grab the latest version
+          repo: git-chglog/git-chglog
 
       - name: Create release
         uses: goreleaser/goreleaser-action@v2
