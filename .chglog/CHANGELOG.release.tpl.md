@@ -1,4 +1,4 @@
-# {{ .Info.Title }}
+## {{ .Info.Title }}
 {{ range .Versions }}
 {{ range .CommitGroups -}}
 ### {{ .Title }}
