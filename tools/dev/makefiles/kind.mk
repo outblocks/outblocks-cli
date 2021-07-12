@@ -7,10 +7,10 @@ SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 include $(SELF_DIR)shared.mk
 include $(SELF_DIR)kubectl.mk
 
-KIND_VERSION ?= 0.10.0
+KIND_VERSION ?= 0.11.1
 KIND := $(DEV_BIN_PATH)/kind_$(KIND_VERSION)
 KIND_CLUSTER_NAME ?= local
-KIND_K8S_VERSION ?= 1.17.17
+KIND_K8S_VERSION ?= 1.18.17
 KIND_HOST_PORT ?= 80
 
 BOOTSTRAP_CONTEXT := kind-$(KIND_CLUSTER_NAME)
@@ -18,7 +18,7 @@ BOOTSTRAP_CONTEXT := kind-$(KIND_CLUSTER_NAME)
 $(KIND):
 	$(info $(_bullet) Installing <kind>)
 	@mkdir -p $(DEV_BIN_PATH)
-	curl -sSfL https://kind.sigs.k8s.io/dl/v$(KIND_VERSION)/kind-$(OS)-amd64 -o $(KIND)
+	curl -sSfL https://kind.sigs.k8s.io/dl/v$(KIND_VERSION)/kind-$(OS)-$(ARCH) -o $(KIND)
 	chmod u+x $(KIND)
 
 clean: clean-kind
