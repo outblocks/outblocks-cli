@@ -17,7 +17,7 @@ jobs:
       - name: Unshallow
         run: git fetch --prune --unshallow
 
-      - name: Install go-task
+      - name: Install git-chglog
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with: # Grab the latest version
           repo: git-chglog/git-chglog
@@ -26,7 +26,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: release --rm-dist --release-notes "$(git-chglog ${GITHUB_REF/refs\/tags\//})"
+          args: release --rm-dist --release-notes <(git-chglog ${GITHUB_REF/refs\/tags\//})
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
