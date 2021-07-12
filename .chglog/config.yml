@@ -1,0 +1,29 @@
+style: github
+template: CHANGELOG.tpl.md
+info:
+  title: Outblocks CLI Changelog
+  repository_url: https://github.com/outblocks/outblocks-cli
+options:
+  commits:
+    filters:
+      Type:
+        - alpha
+        - feat
+        - fix
+        - perf
+        - refactor
+  commit_groups:
+    title_maps:
+      alpha: FEATURES
+      feat: FEATURES
+      fix: BUG FIXES
+      perf: PERFORMANCE IMPROVEMENTS
+      refactor: REFACTORING
+  header:
+    pattern: "^(\\w*)\\:\\s(.*)$"
+    pattern_maps:
+      - Type
+      - Subject
+  notes:
+    keywords:
+      - BREAKING CHANGE

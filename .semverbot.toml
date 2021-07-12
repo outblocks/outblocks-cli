@@ -11,6 +11,6 @@ prefix = "v"
 mode = "auto"
 
 [semver.detection]
-patch = ["fix/", "[fix]", "fix:"]
+patch = ["fix/", "[fix]", "fix:", "alpha/", "alpha:", "alpha/", "alpha:"]
 minor = ["feature/", "[feature]", "feat:", "feat/"]
 major = ["release/", "[release]", "release:"]

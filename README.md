@@ -9,20 +9,20 @@
 
 ## 1. Installation
 
-Mac/Linux (Homebrew)
+Mac/Linux ([Homebrew](https://brew.sh))
 
 ```sh
 brew install outblocks/tap/ok
 ```
 
-Windows (Scoop)
+Windows ([Scoop](https://scoop.sh))
 
 ```sh
 scoop bucket add outblocks-cli https://github.com/outblocks/outblocks-scoop.git
 scoop install outblocks-cli
 ```
 
-Or you can use NPM to install it globally
+Or you can use [NPM](https://www.npmjs.com/) to install it globally
 
 ```sh
 npm install -g outblocks-cli
