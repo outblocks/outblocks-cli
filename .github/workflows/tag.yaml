@@ -22,11 +22,15 @@ jobs:
         with: # Grab the latest version
           repo: git-chglog/git-chglog
 
+      - name: Create changelog for release
+        run: |
+          git-chglog ${GITHUB_REF/refs\/tags\//} -o /tmp/changelog
+
       - name: Create release
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: release --rm-dist --release-notes <(git-chglog ${GITHUB_REF/refs\/tags\//})
+          args: release --rm-dist --release-notes=/tmp/changelog
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
