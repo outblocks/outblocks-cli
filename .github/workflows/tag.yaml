@@ -4,7 +4,7 @@ on:
     tags:
       - v*
 jobs:
-  releaser:
+  release:
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
@@ -17,11 +17,14 @@ jobs:
       - name: Unshallow
         run: git fetch --prune --unshallow
 
+      - name: Install git-chglog
+        run: go get -u github.com/git-chglog/git-chglog/cmd/git-chglog
+
       - name: Create release
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: release --rm-dist
+          args: release --rm-dist --release-notes $(git-chglog ${GITHUB_REF/refs\/tags\//})
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
