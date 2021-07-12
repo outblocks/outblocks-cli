@@ -24,7 +24,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: release --rm-dist --release-notes $(git-chglog ${GITHUB_REF/refs\/tags\//})
+          args: release --rm-dist --release-notes "$(git-chglog ${GITHUB_REF/refs\/tags\//})"
         env:
           GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
