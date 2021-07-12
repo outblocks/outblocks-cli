@@ -18,7 +18,7 @@ jobs:
         run: git fetch --prune --unshallow
 
       - name: Install go-task
-        uses: jaxxstorm/action-install-gh-release@release/v1-alpha
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
         with: # Grab the latest version
           repo: git-chglog/git-chglog
 
