@@ -24,9 +24,14 @@
           "description": "Build override.",
           "$ref": "#/definitions/Build"
         },
+        "src": {
+          "description": "Source definition.",
+          "type": "string"
+        },
         "routing": {
           "description": "Routing type (defaults to 'react').",
-          "type": "string"
+          "type": "string",
+          "enum": ["react", "disabled"]
         }
       }
     },
