@@ -310,13 +310,8 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 		state.PluginsMap = make(map[string]types.PluginStateMap)
 	}
 
-	if state.AppStates == nil {
-		state.AppStates = make(map[string]*types.AppState)
-	}
-
-	if state.DependencyStates == nil {
-		state.DependencyStates = make(map[string]*types.DependencyState)
-	}
+	state.AppStates = make(map[string]*types.AppState)
+	state.DependencyStates = make(map[string]*types.DependencyState)
 
 	retMap := make(map[*plugins.Plugin]*plugin_go.PlanResponse, len(planMap))
 
@@ -365,13 +360,8 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		state.PluginsMap = make(map[string]types.PluginStateMap)
 	}
 
-	if state.AppStates == nil {
-		state.AppStates = make(map[string]*types.AppState)
-	}
-
-	if state.DependencyStates == nil {
-		state.DependencyStates = make(map[string]*types.DependencyState)
-	}
+	state.AppStates = make(map[string]*types.AppState)
+	state.DependencyStates = make(map[string]*types.DependencyState)
 
 	// Apply first pass plan (deployments without DNS).
 	for plug, params := range planMap {
