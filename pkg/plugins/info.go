@@ -48,7 +48,7 @@ func (pi *pluginInfo) matches(version, highestVer *semver.Version) matchType {
 		return noMatch
 	}
 
-	if pi.verRange != nil && pi.verRange(*version) && (highestVer == nil || highestVer.LT(*version)) {
+	if (pi.verRange == nil || pi.verRange(*version)) && (highestVer == nil || highestVer.LT(*version)) {
 		return matchRange
 	}
 

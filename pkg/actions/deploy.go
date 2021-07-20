@@ -109,7 +109,7 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 	default:
 	}
 
-	d.log.Infof("All changes applied in %s.\n", time.Since(start).Truncate(timeTruncate))
+	d.log.Printf("All changes applied in %s.\n", time.Since(start).Truncate(timeTruncate))
 
 	err = d.showStateStatus(cfg, stateRes.State)
 	if err != nil {

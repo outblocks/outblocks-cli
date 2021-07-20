@@ -24,7 +24,7 @@ jobs:
 
       - name: Create changelog for release
         run: |
-          git-chglog -o /tmp/changelog ${GITHUB_REF/refs\/tags\//}
+          git-chglog --template .chglog/CHANGELOG.release.tpl.md -o /tmp/changelog ${GITHUB_REF/refs\/tags\//}
 
       - name: Create release
         uses: goreleaser/goreleaser-action@v2

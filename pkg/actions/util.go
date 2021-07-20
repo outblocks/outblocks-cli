@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/manifoldco/promptui"
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
@@ -48,6 +48,8 @@ func (i *changeID) Type() string {
 		return pterm.Red("~ recreate")
 	case types.PlanUpdate:
 		return pterm.Yellow("~ update")
+	case types.PlanProcess:
+		return pterm.Blue("~ process")
 	case types.PlanDelete:
 		return pterm.Red("- delete")
 	}
@@ -124,7 +126,7 @@ func computeChange(planMap map[*plugins.Plugin]*plugin_go.PlanResponse) (deploy,
 	return deploy, dns
 }
 
-func calculateTotal(chg []*change) (add, change, destroy int) {
+func calculateTotal(chg []*change) (add, change, process, destroy int) {
 	for _, c := range chg {
 		for chID, objs := range c.info {
 			switch chID.planType {
@@ -134,11 +136,13 @@ func calculateTotal(chg []*change) (add, change, destroy int) {
 				change += len(objs)
 			case types.PlanDelete:
 				destroy += len(objs)
+			case types.PlanProcess:
+				process += len(objs)
 			}
 		}
 	}
 
-	return add, change, destroy
+	return add, change, process, destroy
 }
 
 func calculateTotalSteps(chg []*change) int {
@@ -174,12 +178,12 @@ func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool)
 	empty = true
 
 	// Deployment
-	add, change, destroy := calculateTotal(deploy)
+	add, change, process, destroy := calculateTotal(deploy)
 	header := pterm.NewStyle(pterm.FgWhite, pterm.Bold)
 	headerInfo := pterm.NewStyle(pterm.FgWhite, pterm.Reset)
 
 	if len(deploy) != 0 {
-		info += fmt.Sprintf("%s %s\n", header.Sprintf("Deployment:"), headerInfo.Sprintf("(%d to add, %d to change, %d to destroy)", add, change, destroy))
+		info += fmt.Sprintf("%s %s\n", header.Sprintf("Deployment:"), headerInfo.Sprintf("(%d to add, %d to change, %d to destroy, %d to process)", add, change, destroy, process))
 	}
 
 	for _, chg := range deploy {
@@ -192,10 +196,10 @@ func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool)
 	}
 
 	// DNS
-	add, change, destroy = calculateTotal(dns)
+	add, change, process, destroy = calculateTotal(dns)
 
 	if len(dns) != 0 {
-		info += fmt.Sprintf("%s %s\n", header.Sprintf("DNS:"), headerInfo.Sprintf("(%d to add, %d to change, %d to destroy)", add, change, destroy))
+		info += fmt.Sprintf("%s %s\n", header.Sprintf("DNS:"), headerInfo.Sprintf("(%d to add, %d to change, %d to destroy, %d to process)", add, change, destroy, process))
 	}
 
 	for _, chg := range dns {
@@ -215,13 +219,14 @@ func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool)
 
 	log.Println(info)
 
-	prompt := promptui.Prompt{
-		Label:     pterm.Bold.Sprintf("Do you want to perform these actions"),
-		IsConfirm: true,
+	proceed := false
+	prompt := &survey.Confirm{
+		Message: "Do you want to perform these actions?",
 	}
 
-	_, err := prompt.Run()
-	if err != nil {
+	_ = survey.AskOne(prompt, &proceed)
+
+	if !proceed {
 		log.Println("Apply canceled.")
 		return false, true
 	}
@@ -258,6 +263,8 @@ func applyActionType(act *types.ApplyAction) string {
 		return "updating"
 	case types.PlanRecreate:
 		return "recreating"
+	case types.PlanProcess:
+		return "processing"
 	}
 
 	return "unknown"
