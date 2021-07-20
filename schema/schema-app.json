@@ -32,6 +32,10 @@
           "description": "Routing type (defaults to 'react').",
           "type": "string",
           "enum": ["react", "disabled"]
+        },
+        "cdn": {
+          "description": "CDN settings.",
+          "$ref": "#/definitions/CDN"
         }
       }
     },
@@ -62,6 +66,16 @@
         },
         "dir": {
           "type": "string"
+        }
+      }
+    },
+    "CDN": {
+      "title": "CDN",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
         }
       }
     }
