@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.5](https://github.com/outblocks/outblocks-cli/compare/v0.1.4...v0.1.5)
+
+> 2021-07-26
+
+### FEATURES
+
+[`fd4fe2c`](https://github.com/outblocks/outblocks-cli/commit/fd4fe2cd696a53614fda84879d794754477d1644) app init, caret version matching fix: potential state corruption
+
+
 ## [v0.1.4](https://github.com/outblocks/outblocks-cli/compare/v0.1.3...v0.1.4)
 
 > 2021-07-20
