@@ -11,7 +11,7 @@ func (e *Executor) newPluginsCmd() *cobra.Command {
 		Use:     "plugins",
 		Aliases: []string{"plugin"},
 		Short:   "Plugin management",
-		Long:    `Plugin management - list, update, add or remove.`,
+		Long:    `Plugin management - list, update, add or delete.`,
 		Annotations: map[string]string{
 			cmdGroupAnnotation: cmdGroupMain,
 		},

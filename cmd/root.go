@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/version"
 	"github.com/outblocks/outblocks-cli/pkg/cli/values"
 	"github.com/outblocks/outblocks-cli/pkg/config"
@@ -18,6 +21,7 @@ import (
 )
 
 const (
+	cmdSkipLoadConfigAnnotation  = "cmd_skip_load_config"
 	cmdSkipLoadPluginsAnnotation = "cmd_skip_load_plugins"
 	cmdGroupAnnotation           = "cmd_group"
 	cmdGroupDelimiter            = "-"
@@ -263,6 +267,11 @@ func (e *Executor) newRoot() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			e.opts.env = e.v.GetString("env")
 
+			skipLoadConfig := cmd.Annotations[cmdSkipLoadConfigAnnotation] == "1"
+			if skipLoadConfig {
+				return nil
+			}
+
 			// Load values.
 			for i, v := range e.opts.valueOpts.ValueFiles {
 				e.opts.valueOpts.ValueFiles[i] = strings.ReplaceAll(v, "<env>", e.opts.env)
@@ -270,7 +279,14 @@ func (e *Executor) newRoot() *cobra.Command {
 
 			defValuesYAML := strings.ReplaceAll(defaultValuesYAML, "<env>", e.opts.env)
 
-			v, err := e.opts.valueOpts.MergeValues(cmd.Context(), getter.All())
+			pwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("cannot find current directory: %w", err)
+			}
+
+			cfgPath := fileutil.FindYAMLGoingUp(pwd, config.ProjectYAMLName)
+
+			v, err := e.opts.valueOpts.MergeValues(cmd.Context(), filepath.Dir(cfgPath), getter.All())
 			if err != nil && (len(e.opts.valueOpts.ValueFiles) != 1 || e.opts.valueOpts.ValueFiles[0] != defValuesYAML) {
 				return err
 			}
@@ -279,7 +295,7 @@ func (e *Executor) newRoot() *cobra.Command {
 			skipLoadPlugins := cmd.Annotations[cmdSkipLoadPluginsAnnotation] == "1"
 
 			// Load config file.
-			if err := e.loadProjectConfig(cmd.Context(), vals, skipLoadPlugins); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+			if err := e.loadProjectConfig(cmd.Context(), cfgPath, vals, skipLoadPlugins); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
 				return err
 			}
 
@@ -317,6 +333,7 @@ func (e *Executor) newRoot() *cobra.Command {
 		e.newPluginsCmd(),
 		e.newForceUnlockCmd(),
 		e.newInitCmd(),
+		e.newAppsCmd(),
 	)
 
 	return cmd

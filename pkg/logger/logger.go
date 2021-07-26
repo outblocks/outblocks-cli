@@ -135,16 +135,6 @@ func (l *Log) Errorf(format string, a ...interface{}) {
 
 	if l.logLevel == LogLevelDebug {
 		_, fileName, line, _ := runtime.Caller(1)
-		fmt.Println(fileName, line)
-		_, fileName, line, _ = runtime.Caller(2)
-		fmt.Println(fileName, line)
-		_, fileName, line, _ = runtime.Caller(3)
-		fmt.Println(fileName, line)
-		_, fileName, line, _ = runtime.Caller(0)
-		fmt.Println(fileName, line)
-		_, fileName, line, _ = runtime.Caller(4)
-		fmt.Println(fileName, line)
-
 		pterm.Println(pterm.FgGray.Sprint("└ " + fmt.Sprintf("(%s:%d)", fileName, line)))
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/Masterminds/sprig"
 	"github.com/goccy/go-yaml"
+	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -29,7 +30,6 @@ var (
 
 type Init struct {
 	log            logger.Logger
-	loader         *plugins.Loader
 	pluginCacheDir string
 	opts           *InitOptions
 }
@@ -48,10 +48,9 @@ type InitOptions struct {
 	}
 }
 
-func NewInit(log logger.Logger, loader *plugins.Loader, pluginCacheDir string, opts *InitOptions) *Init {
+func NewInit(log logger.Logger, pluginCacheDir string, opts *InitOptions) *Init {
 	return &Init{
 		log:            log,
-		loader:         loader,
 		pluginCacheDir: pluginCacheDir,
 		opts:           opts,
 	}
@@ -63,17 +62,16 @@ func funcMap() template.FuncMap {
 	}
 }
 
-func (d *Init) Run(ctx context.Context, cfg *config.Project) error {
+func (d *Init) Run(ctx context.Context) error {
 	curDir, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getting current working dir error: %w", err)
 	}
 
-	if cfg == nil {
-		cfg = &config.Project{}
+	cfg := &config.Project{}
+	loader := plugins.NewLoader(curDir, d.pluginCacheDir)
 
-		d.loader = plugins.NewLoader(curDir, d.pluginCacheDir)
-	} else if !d.opts.Overwrite {
+	if !d.opts.Overwrite && fileutil.FindYAML(filepath.Join(curDir, config.ProjectYAMLName)) != "" {
 		proceed := false
 		prompt := &survey.Confirm{
 			Message: "Project config already exists! Do you want to overwrite it?",
@@ -87,7 +85,7 @@ func (d *Init) Run(ctx context.Context, cfg *config.Project) error {
 		}
 	}
 
-	cfg, err = d.prompt(ctx, cfg, curDir)
+	cfg, err = d.prompt(ctx, cfg, loader, curDir)
 	if errors.Is(err, errInitCanceled) {
 		d.log.Println("Init canceled.")
 		return nil
@@ -97,7 +95,7 @@ func (d *Init) Run(ctx context.Context, cfg *config.Project) error {
 		return err
 	}
 
-	err = cfg.LoadPlugins(ctx, d.log, d.loader)
+	err = cfg.LoadPlugins(ctx, d.log, loader)
 	if err != nil {
 		return err
 	}
@@ -160,7 +158,7 @@ func (d *Init) Run(ctx context.Context, cfg *config.Project) error {
 	return err
 }
 
-func (d *Init) prompt(ctx context.Context, cfg *config.Project, curDir string) (*config.Project, error) {
+func (d *Init) prompt(ctx context.Context, cfg *config.Project, loader *plugins.Loader, curDir string) (*config.Project, error) {
 	var qs []*survey.Question
 
 	if d.opts.Name == "" {
@@ -228,12 +226,12 @@ func (d *Init) prompt(ctx context.Context, cfg *config.Project, curDir string) (
 
 	cfg.Name = answers.Name
 
-	_, latestDeployVersion, err := d.loader.MatchingVersion(ctx, answers.DeployPlugin, "", nil)
+	_, latestDeployVersion, err := loader.MatchingVersion(ctx, answers.DeployPlugin, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving latest version of plugin '%s': %w", answers.RunPlugin, err)
 	}
 
-	_, latestRunVersion, err := d.loader.MatchingVersion(ctx, answers.RunPlugin, "", nil)
+	_, latestRunVersion, err := loader.MatchingVersion(ctx, answers.RunPlugin, "", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving latest version of plugin '%s': %w", answers.RunPlugin, err)
 	}

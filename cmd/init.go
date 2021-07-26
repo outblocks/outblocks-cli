@@ -13,17 +13,17 @@ func (e *Executor) newInitCmd() *cobra.Command {
 		Short: "Initialize new config",
 		Long:  `Initialize new Outblocks project config with opinionated defaults.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation:           cmdGroupMain,
-			cmdSkipLoadPluginsAnnotation: "1",
+			cmdGroupAnnotation:          cmdGroupMain,
+			cmdSkipLoadConfigAnnotation: "1",
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return actions.NewInit(e.Log(), e.loader, e.PluginsCacheDir(), opts).Run(cmd.Context(), e.cfg)
+			return actions.NewInit(e.Log(), e.PluginsCacheDir(), opts).Run(cmd.Context())
 		},
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&opts.Overwrite, "overwrite", false, "do not ask if project file alrady exists")
+	f.BoolVar(&opts.Overwrite, "overwrite", false, "do not ask if project file already exists")
 	f.StringVar(&opts.Name, "name", "", "project name")
 	f.StringVar(&opts.DeployPlugin, "deploy-plugin", "", "deploy plugin to use (e.g. gcp)")
 	f.StringVar(&opts.RunPlugin, "run-plugin", "", "deploy plugin to use (e.g. docker)")

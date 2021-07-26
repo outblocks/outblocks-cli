@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -61,18 +60,12 @@ type ProjectOptions struct {
 	Env string
 }
 
-func LoadProjectConfig(vars map[string]interface{}, opts *ProjectOptions) (*Project, error) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("cannot find current directory: %w", err)
-	}
-
-	f := fileutil.FindYAMLGoingUp(pwd, ProjectYAMLName)
-	if f == "" {
+func LoadProjectConfig(cfgPath string, vars map[string]interface{}, opts *ProjectOptions) (*Project, error) {
+	if cfgPath == "" {
 		return nil, ErrProjectConfigNotFound
 	}
 
-	data, err := ioutil.ReadFile(f)
+	data, err := ioutil.ReadFile(cfgPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read project yaml: %w", err)
 	}
@@ -80,7 +73,7 @@ func LoadProjectConfig(vars map[string]interface{}, opts *ProjectOptions) (*Proj
 	// Process lockfile.
 	var lock *lockfile.Lockfile
 
-	lockPath := filepath.Join(filepath.Dir(f), LockfileName)
+	lockPath := filepath.Join(filepath.Dir(cfgPath), LockfileName)
 	if fileutil.FileExists(lockPath) {
 		lock, err = lockfile.LoadLockfile(lockPath)
 		if err != nil {
@@ -88,7 +81,7 @@ func LoadProjectConfig(vars map[string]interface{}, opts *ProjectOptions) (*Proj
 		}
 	}
 
-	p, err := LoadProjectConfigData(f, data, vars, opts, lock)
+	p, err := LoadProjectConfigData(cfgPath, data, vars, opts, lock)
 	if err != nil {
 		return nil, err
 	}

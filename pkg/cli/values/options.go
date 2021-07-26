@@ -3,10 +3,12 @@ package values
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/goccy/go-yaml"
@@ -19,16 +21,30 @@ type Options struct {
 	Values     []string
 }
 
+func (opts *Options) readFile(ctx context.Context, rootPath, filePath string, p getter.Providers) ([]byte, error) {
+	bytes, err := readFile(ctx, filePath, p)
+	if err != nil {
+		var perr *os.PathError
+		if errors.As(err, &perr) && !filepath.IsAbs(filePath) && rootPath != "" {
+			// Try different cfg root path.
+			filePath = filepath.Join(rootPath, filePath)
+			return ioutil.ReadFile(filePath)
+		}
+	}
+
+	return bytes, err
+}
+
 // MergeValues merges values from files specified via -f/--values and directly
 // via --set marshaling them to YAML.
-func (opts *Options) MergeValues(ctx context.Context, p getter.Providers) (map[string]interface{}, error) {
+func (opts *Options) MergeValues(ctx context.Context, root string, p getter.Providers) (map[string]interface{}, error) {
 	base := map[string]interface{}{}
 
 	// User specified a values files via -f/--values
 	for _, filePath := range opts.ValueFiles {
 		currentMap := map[string]interface{}{}
 
-		bytes, err := readFile(ctx, filePath, p)
+		bytes, err := opts.readFile(ctx, root, filePath, p)
 		if err != nil {
 			return nil, err
 		}
