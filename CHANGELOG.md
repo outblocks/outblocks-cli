@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.6](https://github.com/outblocks/outblocks-cli/compare/v0.1.5...v0.1.6)
+
+> 2021-07-26
+
+### BUG FIXES
+
+[`2ef10a5`](https://github.com/outblocks/outblocks-cli/commit/2ef10a514bf67c49833f549c8ccaa9d45896ae89) plugin loading, added relative values reader
+
+
 ## [v0.1.5](https://github.com/outblocks/outblocks-cli/compare/v0.1.4...v0.1.5)
 
 > 2021-07-26
