@@ -8,6 +8,8 @@ release:
 before:
   hooks:
     - go mod download
+    - make generate
+
 builds:
   - binary: ok
     goos:

@@ -9,8 +9,8 @@ import (
 )
 
 func (c *Client) GetState(ctx context.Context, typ, env string, props map[string]interface{}, lock bool, yamlContext YAMLContext) (ret *plugin_go.GetStateResponse, err error) {
-	err = c.lazySendReceive(ctx, &plugin_go.GetStateRequest{StateType: typ, Env: env, Properties: props, Lock: lock}, func(res *ResponseWithHeader) error {
-		switch r := res.Response.(type) {
+	err = c.lazySendReceive(ctx, &plugin_go.GetStateRequest{StateType: typ, Env: env, Properties: props, Lock: lock}, func(res plugin_go.Response) error {
+		switch r := res.(type) {
 		case *plugin_go.GetStateResponse:
 			ret = r
 
@@ -33,8 +33,8 @@ func (c *Client) GetState(ctx context.Context, typ, env string, props map[string
 }
 
 func (c *Client) SaveState(ctx context.Context, state *types.StateData, typ, env string, props map[string]interface{}) (ret *plugin_go.SaveStateResponse, err error) {
-	err = c.lazySendReceive(ctx, &plugin_go.SaveStateRequest{State: state, StateType: typ, Env: env, Properties: props}, func(res *ResponseWithHeader) error {
-		switch r := res.Response.(type) {
+	err = c.lazySendReceive(ctx, &plugin_go.SaveStateRequest{State: state, StateType: typ, Env: env, Properties: props}, func(res plugin_go.Response) error {
+		switch r := res.(type) {
 		case *plugin_go.SaveStateResponse:
 			ret = r
 		default:

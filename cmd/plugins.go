@@ -39,7 +39,8 @@ func (e *Executor) newPluginsCmd() *cobra.Command {
 		Short: "Update plugins",
 		Long:  `Update installed plugins to matching versions from config.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation: cmdGroupMain,
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdSkipLoadPluginsAnnotation: "1",
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -55,6 +56,8 @@ func (e *Executor) newPluginsCmd() *cobra.Command {
 		list,
 		update,
 	)
+
+	// TODO: add, remove plugins
 
 	return cmd
 }

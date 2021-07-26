@@ -7,7 +7,7 @@ import (
 )
 
 func (e *Executor) newDeployCmd() *cobra.Command {
-	opts := actions.DeployOptions{}
+	opts := &actions.DeployOptions{}
 
 	cmd := &cobra.Command{
 		Use:   "deploy",

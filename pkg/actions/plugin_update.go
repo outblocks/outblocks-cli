@@ -33,12 +33,12 @@ func (d *PluginUpdate) Run(ctx context.Context, cfg *config.Project) error {
 
 		cur := p.Loaded().Version
 
-		matching, _, err := d.loader.MatchingVersion(ctx, p.Name, p.Source, p.VerRange())
+		matching, _, err := d.loader.MatchingVersion(ctx, p.Name, p.Source, p.VerConstr())
 		if err != nil {
 			return err
 		}
 
-		if !matching.GT(*cur) {
+		if !matching.GreaterThan(cur) {
 			loadedPlugins[i] = p.Loaded()
 
 			prog.Increment()
@@ -47,7 +47,7 @@ func (d *PluginUpdate) Run(ctx context.Context, cfg *config.Project) error {
 		}
 
 		// Download new plugin version.
-		plug, err := d.loader.DownloadPlugin(ctx, p.Name, p.VerRange(), p.Source, nil)
+		plug, err := d.loader.DownloadPlugin(ctx, p.Name, p.VerConstr(), p.Source, nil)
 		if err != nil {
 			return err
 		}

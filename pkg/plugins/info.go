@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/blang/semver/v4"
+	"github.com/Masterminds/semver"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 )
 
 type pluginInfo struct {
 	name, author, source string
-	verRange             semver.Range
+	verConstraint        *semver.Constraints
 	lock                 *lockfile.Plugin
 }
 
@@ -48,27 +48,27 @@ func (pi *pluginInfo) matches(version, highestVer *semver.Version) matchType {
 		return noMatch
 	}
 
-	if (pi.verRange == nil || pi.verRange(*version)) && (highestVer == nil || highestVer.LT(*version)) {
+	if (pi.verConstraint == nil || pi.verConstraint.Check(version)) && (highestVer == nil || highestVer.LessThan(version)) {
 		return matchRange
 	}
 
 	return noMatch
 }
 
-func newPluginInfo(name, src string, verRange semver.Range, lock *lockfile.Plugin) *pluginInfo {
+func newPluginInfo(name, src string, verConstr *semver.Constraints, lock *lockfile.Plugin) *pluginInfo {
 	author, name := author(name)
 	src = source(name, src)
 
 	// If there is both a lock version and verRange but lock version doesn't match verRange, ignore it.
-	if lock != nil && verRange != nil && !verRange(*lock.Version) {
+	if lock != nil && verConstr != nil && !verConstr.Check(lock.Version) {
 		lock = nil
 	}
 
 	return &pluginInfo{
-		author:   author,
-		name:     name,
-		source:   src,
-		verRange: verRange,
-		lock:     lock,
+		author:        author,
+		name:          name,
+		source:        src,
+		verConstraint: verConstr,
+		lock:          lock,
 	}
 }

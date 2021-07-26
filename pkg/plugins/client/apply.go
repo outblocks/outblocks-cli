@@ -2,13 +2,14 @@ package client
 
 import (
 	"context"
+	"io"
 
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
 func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*types.AppPlan, deps []*types.DependencyPlan, destroy bool, callback func(*types.ApplyAction)) (ret *plugin_go.ApplyDoneResponse, err error) {
-	in, out, err := c.lazyStartBiDi(ctx, &plugin_go.ApplyRequest{
+	stream, err := c.lazyStartBiDi(ctx, &plugin_go.ApplyRequest{
 		Apps:         apps,
 		Dependencies: deps,
 
@@ -26,14 +27,18 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*type
 		return nil, err
 	}
 
-	close(in)
-
-	for res := range out {
-		if res.Error != nil {
-			return ret, NewPluginError(c, "apply error", res.Error)
+	for {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			break
 		}
 
-		switch r := res.Response.(type) {
+		if err != nil {
+			_ = stream.Close()
+			return ret, NewPluginError(c, "apply error", err)
+		}
+
+		switch r := res.(type) {
 		case *plugin_go.ApplyResponse:
 			if callback != nil {
 				for _, act := range r.Actions {
@@ -43,7 +48,7 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*type
 		case *plugin_go.ApplyDoneResponse:
 			ret = r
 		default:
-			return ret, NewPluginError(c, "unexpected response to apply", res.Error)
+			return ret, NewPluginError(c, "unexpected response to apply request", err)
 		}
 	}
 
@@ -51,5 +56,5 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*type
 		return nil, NewPluginError(c, "empty apply response", nil)
 	}
 
-	return ret, nil
+	return ret, stream.DrainAndClose()
 }

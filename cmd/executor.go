@@ -27,6 +27,7 @@ type Executor struct {
 	cfg *config.Project
 
 	opts struct {
+		env       string
 		valueOpts *values.Options
 	}
 }
@@ -74,13 +75,13 @@ func (e *Executor) Execute(ctx context.Context) error {
 }
 
 func (e *Executor) setupLogging() error {
-	l := e.v.GetString("log_level")
+	l := e.LogLevel()
 
 	if err := e.log.SetLevel(l); err != nil {
 		return err
 	}
 
-	color := !e.v.GetBool("no_color")
+	color := !e.NoColor()
 	if !color {
 		pterm.DisableColor()
 	} else {
@@ -117,4 +118,16 @@ func (e *Executor) initConfig() error {
 
 func (e *Executor) Log() logger.Logger {
 	return e.log
+}
+
+func (e *Executor) PluginsCacheDir() string {
+	return e.v.GetString("plugins_cache_dir")
+}
+
+func (e *Executor) LogLevel() string {
+	return e.v.GetString("log_level")
+}
+
+func (e *Executor) NoColor() bool {
+	return e.v.GetBool("no_color")
 }

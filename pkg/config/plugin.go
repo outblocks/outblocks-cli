@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/blang/semver/v4"
+	"github.com/Masterminds/semver"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 )
 
 type Plugin struct {
 	Name    string                 `json:"name"`
 	Version string                 `json:"version"`
-	Source  string                 `json:"source"`
+	Source  string                 `json:"source,omitempty"`
 	Other   map[string]interface{} `yaml:"-,remain"`
 
-	verRange semver.Range
-	loaded   *plugins.Plugin
-	order    uint
+	verConstr *semver.Constraints
+	loaded    *plugins.Plugin
+	order     uint
 }
 
 func (p *Plugin) SetLoaded(plug *plugins.Plugin) {
@@ -27,8 +27,8 @@ func (p *Plugin) Loaded() *plugins.Plugin {
 	return p.loaded
 }
 
-func (p *Plugin) VerRange() semver.Range {
-	return p.verRange
+func (p *Plugin) VerConstr() *semver.Constraints {
+	return p.verConstr
 }
 
 func (p *Plugin) Order() uint {
@@ -39,7 +39,7 @@ func (p *Plugin) Normalize(i int, cfg *Project) error {
 	var err error
 
 	if p.Version != "" {
-		p.verRange, err = semver.ParseRange(p.Version)
+		p.verConstr, err = semver.NewConstraint(p.Version)
 		if err != nil {
 			return cfg.yamlError(fmt.Sprintf("$.plugins[%d].version", i), "Plugin.version is in invalid format")
 		}

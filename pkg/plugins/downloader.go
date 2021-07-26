@@ -3,7 +3,7 @@ package plugins
 import (
 	"context"
 
-	"github.com/blang/semver/v4"
+	"github.com/Masterminds/semver"
 )
 
 type Downloader interface {

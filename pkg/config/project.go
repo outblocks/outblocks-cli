@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,7 +13,9 @@ import (
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
+	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
+	"github.com/pterm/pterm"
 )
 
 const (
@@ -54,7 +57,11 @@ func (p *Project) Validate() error {
 	)
 }
 
-func LoadProjectConfig(vars map[string]interface{}) (*Project, error) {
+type ProjectOptions struct {
+	Env string
+}
+
+func LoadProjectConfig(vars map[string]interface{}, opts *ProjectOptions) (*Project, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("cannot find current directory: %w", err)
@@ -81,7 +88,7 @@ func LoadProjectConfig(vars map[string]interface{}) (*Project, error) {
 		}
 	}
 
-	p, err := LoadProjectConfigData(f, data, vars, lock)
+	p, err := LoadProjectConfigData(f, data, vars, opts, lock)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +96,7 @@ func LoadProjectConfig(vars map[string]interface{}) (*Project, error) {
 	return p, err
 }
 
-func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}, lock *lockfile.Lockfile) (*Project, error) {
+func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}, opts *ProjectOptions, lock *lockfile.Lockfile) (*Project, error) {
 	data, err := NewYAMLEvaluator(vars).Expand(data)
 	if err != nil {
 		return nil, fmt.Errorf("load project config %s error: \n%w", path, err)
@@ -101,6 +108,9 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 		yamlData: data,
 		lock:     lock,
 		vars:     vars,
+		State: &State{
+			Env: opts.Env,
+		},
 	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
@@ -188,13 +198,13 @@ func (p *Project) LoadFile(file string) error {
 	var app App
 
 	switch typ {
-	case "function":
+	case TypeFunction:
 		app, err = LoadFunctionAppData(file, data)
 
-	case "service":
+	case TypeService:
 		app, err = LoadServiceAppData(file, data)
 
-	case "static":
+	case TypeStatic:
 		app, err = LoadStaticAppData(file, data)
 	}
 
@@ -269,6 +279,76 @@ func (p *Project) FindLoadedPlugin(name string) *plugins.Plugin {
 			return plug
 		}
 	}
+
+	return nil
+}
+
+func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *plugins.Loader) error {
+	plugs := make([]*plugins.Plugin, len(p.Plugins))
+	pluginsToDownload := make(map[int]*Plugin)
+
+	for i, plug := range p.Plugins {
+		plugin, err := loader.LoadPlugin(ctx, plug.Name, plug.Source, plug.VerConstr(), p.PluginLock(plug))
+		if err != nil {
+			if err != plugins.ErrPluginNotFound {
+				return err
+			}
+
+			pluginsToDownload[i] = plug
+
+			continue
+		}
+
+		plugs[i] = plugin
+
+		plug.SetLoaded(plugin)
+	}
+
+	if len(pluginsToDownload) != 0 {
+		prog, _ := log.ProgressBar().WithTotal(len(pluginsToDownload)).WithTitle("Downloading plugins...").Start()
+
+		for i, plug := range pluginsToDownload {
+			title := fmt.Sprintf("Downloading plugin '%s'", plug.Name)
+			if plug.Version != "" {
+				title += fmt.Sprintf(" with version: %s", plug.Version)
+			}
+
+			prog.UpdateTitle(title)
+
+			plugin, err := loader.DownloadPlugin(ctx, plug.Name, plug.VerConstr(), plug.Source, p.PluginLock(plug))
+			plugs[i] = plugin
+
+			plug.SetLoaded(plugin)
+
+			if err != nil {
+				_, _ = prog.Stop()
+
+				return fmt.Errorf("unable to load '%s' plugin: %w", plug.Name, err)
+			}
+
+			prog.Increment()
+			pterm.Success.Printf("Downloaded plugin '%s' at version: %s\n", plug.Name, plugin.Version)
+		}
+	}
+
+	// Normalize and start plugins.
+	for _, plug := range plugs {
+		if err := plug.Normalize(); err != nil {
+			return err
+		}
+	}
+
+	for i, plug := range plugs {
+		plug := plug
+		plugConfig := p.Plugins[i]
+		prefix := fmt.Sprintf("$.plugins[%d]", i)
+
+		if err := plug.Prepare(ctx, log, p.Name, p.Path, plugConfig.Other, prefix, p.YAMLData()); err != nil {
+			return fmt.Errorf("error starting plugin '%s': %w", plug.Name, err)
+		}
+	}
+
+	p.loadedPlugins = plugs
 
 	return nil
 }

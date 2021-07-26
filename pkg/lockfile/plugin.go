@@ -1,7 +1,7 @@
 package lockfile
 
 import (
-	"github.com/blang/semver/v4"
+	"github.com/Masterminds/semver"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
@@ -12,7 +12,7 @@ type Plugin struct {
 }
 
 func (p *Plugin) Matches(name string, ver *semver.Version, source string) bool {
-	return p.Name == name && p.Version.EQ(*ver) && p.Source == source
+	return p.Name == name && p.Version.Equal(ver) && p.Source == source
 }
 
 func (p *Plugin) Validate() error {

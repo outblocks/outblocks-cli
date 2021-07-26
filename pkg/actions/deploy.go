@@ -24,7 +24,7 @@ type planParams struct {
 
 type Deploy struct {
 	log  logger.Logger
-	opts DeployOptions
+	opts *DeployOptions
 }
 
 type DeployOptions struct {
@@ -32,7 +32,7 @@ type DeployOptions struct {
 	Destroy bool
 }
 
-func NewDeploy(log logger.Logger, opts DeployOptions) *Deploy {
+func NewDeploy(log logger.Logger, opts *DeployOptions) *Deploy {
 	return &Deploy{
 		log:  log,
 		opts: opts,
@@ -76,19 +76,13 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 	empty, canceled := planPrompt(d.log, deployChanges, dnsChanges)
 
 	if canceled || empty {
-		_, saveErr := saveState(cfg, stateRes.State)
 		releaseErr := releaseLock(cfg, stateRes.LockInfo)
 
 		if releaseErr != nil {
 			return releaseErr
 		}
 
-		err = d.showStateStatus(cfg, stateRes.State)
-		if err != nil {
-			return err
-		}
-
-		return saveErr
+		return d.showStateStatus(cfg, stateRes.State)
 	}
 
 	start := time.Now()
@@ -208,7 +202,7 @@ func (d *Deploy) showStateStatus(cfg *config.Project, state *types.StateData) er
 	return nil
 }
 
-func saveState(cfg *config.Project, data *types.StateData) (*plugin_go.SaveStateResponse, error) { // nolint: unparam
+func saveState(cfg *config.Project, data *types.StateData) (*plugin_go.SaveStateResponse, error) {
 	state := cfg.State
 	plug := state.Plugin()
 

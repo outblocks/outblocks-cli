@@ -3,8 +3,10 @@ package config
 import (
 	"encoding/json"
 	"io/ioutil"
+	"regexp"
 	"strings"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-plugin-go/types"
 )
@@ -12,15 +14,22 @@ import (
 const (
 	StateLocal      = "local"
 	StateDefaultEnv = "dev"
-	StateLocalPath  = "outblocks.state"
+	StateLocalPath  = ".outblocks.state"
 )
 
 type State struct {
 	Type  string                 `json:"type"`
 	Env   string                 `json:"env"`
+	Path  string                 `json:"path"`
 	Other map[string]interface{} `yaml:"-,remain"`
 
 	plugin *plugins.Plugin
+}
+
+func (s *State) Validate() error {
+	return validation.ValidateStruct(s,
+		validation.Field(&s.Env, validation.Required, validation.Match(regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,20}$`))),
+	)
 }
 
 func (s *State) IsLocal() bool {
@@ -28,17 +37,11 @@ func (s *State) IsLocal() bool {
 }
 
 func (s *State) LocalPath() string {
-	p, ok := s.Other["path"]
-	if !ok {
-		return StateLocalPath
+	if s.Path == "" {
+		return s.Env + StateLocalPath
 	}
 
-	v, ok := p.(string)
-	if !ok {
-		return StateLocalPath
-	}
-
-	return v
+	return s.Path
 }
 
 func (s *State) LoadLocal() (*types.StateData, error) {

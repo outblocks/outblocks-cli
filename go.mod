@@ -5,11 +5,10 @@ go 1.16
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.14
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/Masterminds/vcs v1.13.1
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
-	github.com/blang/semver/v4 v4.0.0
 	github.com/enescakir/emoji v1.0.0
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
@@ -25,7 +24,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/otiai10/copy v1.6.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20210720124353-279617140672
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20210722172243-99b1cdb63052
 	github.com/pelletier/go-toml v1.9.1 // indirect
 	github.com/pterm/pterm v0.12.22
 	github.com/spf13/afero v1.6.0 // indirect
@@ -40,6 +39,8 @@ require (
 	gopkg.in/ini.v1 v1.62.0 // indirect
 )
 
-replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.20210715220858-3be514bd82c8
+replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.20210720170941-871fcc754028
+
+// replace github.com/goccy/go-yaml => ../go-yaml
 
 // replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go

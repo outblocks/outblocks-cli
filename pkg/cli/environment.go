@@ -59,7 +59,7 @@ func (v *EnvVar) Info() []string {
 	def := ""
 
 	if v.def != "" {
-		def = fmt.Sprintf(" (default: %s)", v.def)
+		def = fmt.Sprintf(" (default %s)", v.def)
 	}
 
 	return []string{envName(v.key), fmt.Sprintf("%s%s.", v.description, def)}

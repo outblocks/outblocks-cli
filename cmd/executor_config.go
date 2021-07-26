@@ -9,11 +9,12 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
-	"github.com/pterm/pterm"
 )
 
-func (e *Executor) loadProjectConfig(ctx context.Context, vals map[string]interface{}) error {
-	cfg, err := config.LoadProjectConfig(vals)
+func (e *Executor) loadProjectConfig(ctx context.Context, vals map[string]interface{}, skipLoadPlugins bool) error {
+	cfg, err := config.LoadProjectConfig(vals, &config.ProjectOptions{
+		Env: e.opts.env,
+	})
 	if err != nil {
 		return err
 	}
@@ -26,10 +27,12 @@ func (e *Executor) loadProjectConfig(ctx context.Context, vals map[string]interf
 		return err
 	}
 
-	e.loader = plugins.NewLoader(cfg.Path, e.v.GetString("plugins_cache_dir"))
+	e.loader = plugins.NewLoader(cfg.Path, e.PluginsCacheDir())
 
-	if err := e.loadPlugins(ctx, cfg); err != nil {
-		return err
+	if skipLoadPlugins {
+		if err := cfg.LoadPlugins(ctx, e.log, e.loader); err != nil {
+			return err
+		}
 	}
 
 	if err := cfg.FullCheck(); err != nil {
@@ -37,76 +40,6 @@ func (e *Executor) loadProjectConfig(ctx context.Context, vals map[string]interf
 	}
 
 	e.cfg = cfg
-
-	return nil
-}
-
-func (e *Executor) loadPlugins(ctx context.Context, cfg *config.Project) error {
-	plugs := make([]*plugins.Plugin, len(cfg.Plugins))
-	pluginsToDownload := make(map[int]*config.Plugin)
-
-	for i, plug := range cfg.Plugins {
-		plugin, err := e.loader.LoadPlugin(ctx, plug.Name, plug.Source, plug.VerRange(), cfg.PluginLock(plug))
-		if err != nil {
-			if err != plugins.ErrPluginNotFound {
-				return err
-			}
-
-			pluginsToDownload[i] = plug
-
-			continue
-		}
-
-		plugs[i] = plugin
-
-		plug.SetLoaded(plugin)
-	}
-
-	if len(pluginsToDownload) != 0 {
-		prog, _ := e.log.ProgressBar().WithTotal(len(pluginsToDownload)).WithTitle("Downloading plugins...").Start()
-
-		for i, plug := range pluginsToDownload {
-			title := fmt.Sprintf("Downloading plugin '%s'", plug.Name)
-			if plug.Version != "" {
-				title += fmt.Sprintf(" with version: %s", plug.Version)
-			}
-
-			prog.UpdateTitle(title)
-
-			plugin, err := e.loader.DownloadPlugin(ctx, plug.Name, plug.VerRange(), plug.Source, cfg.PluginLock(plug))
-			plugs[i] = plugin
-
-			plug.SetLoaded(plugin)
-
-			if err != nil {
-				_, _ = prog.Stop()
-
-				return fmt.Errorf("unable to load '%s' plugin: %w", plug.Name, err)
-			}
-
-			prog.Increment()
-			pterm.Success.Printf("Downloaded plugin '%s' at version: %s\n", plug.Name, plugin.Version)
-		}
-	}
-
-	// Normalize and start plugins.
-	for _, plug := range plugs {
-		if err := plug.Normalize(); err != nil {
-			return err
-		}
-	}
-
-	for i, plug := range plugs {
-		plug := plug
-		plugConfig := cfg.Plugins[i]
-		prefix := fmt.Sprintf("$.plugins[%d]", i)
-
-		if err := plug.Prepare(ctx, e.Log(), cfg.Name, cfg.Path, plugConfig.Other, prefix, cfg.YAMLData()); err != nil {
-			return fmt.Errorf("error starting plugin '%s': %w", plug.Name, err)
-		}
-	}
-
-	cfg.SetLoadedPlugins(plugs)
 
 	return nil
 }

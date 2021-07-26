@@ -8,8 +8,8 @@ import (
 )
 
 func (c *Client) Start(ctx context.Context, yamlContext YAMLContext) error {
-	return c.sendReceive(ctx, &plugin_go.StartRequest{Properties: c.props}, func(res *ResponseWithHeader) error {
-		switch r := res.Response.(type) {
+	return c.sendReceive(ctx, &plugin_go.StartRequest{Properties: c.props}, func(res plugin_go.Response) error {
+		switch r := res.(type) {
 		case *plugin_go.EmptyResponse:
 		case *plugin_go.ValidationErrorResponse:
 			return yamlContext.Error(r)

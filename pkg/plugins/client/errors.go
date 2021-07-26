@@ -30,5 +30,9 @@ func (e *PluginError) Unwrap() error {
 }
 
 func (e *PluginError) Error() string {
-	return fmt.Sprintf("plugin '%s' %s: %s", e.c.name, e.msg, e.wrapped)
+	if e.wrapped != nil {
+		return fmt.Sprintf("plugin '%s' %s: %s", e.c.name, e.msg, e.wrapped)
+	}
+
+	return fmt.Sprintf("plugin '%s' %s", e.c.name, e.msg)
 }

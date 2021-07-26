@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/blang/semver/v4"
+	"github.com/Masterminds/semver"
 	"github.com/goccy/go-yaml"
 	"github.com/otiai10/copy"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
@@ -53,8 +53,8 @@ func NewLoader(baseDir, pluginsCacheDir string) *Loader {
 	return l
 }
 
-func (l *Loader) LoadPlugin(ctx context.Context, name, src string, verRange semver.Range, lock *lockfile.Plugin) (*Plugin, error) {
-	pi := newPluginInfo(name, src, verRange, lock)
+func (l *Loader) LoadPlugin(ctx context.Context, name, src string, verConstr *semver.Constraints, lock *lockfile.Plugin) (*Plugin, error) {
+	pi := newPluginInfo(name, src, verConstr, lock)
 
 	path, ver := l.findInstalledPluginLocation(pi)
 
@@ -74,8 +74,8 @@ func (l *Loader) LoadPlugin(ctx context.Context, name, src string, verRange semv
 	return l.loadPlugin(pi, path, ver)
 }
 
-func (l *Loader) DownloadPlugin(ctx context.Context, name string, verRange semver.Range, src string, lock *lockfile.Plugin) (*Plugin, error) {
-	pi := newPluginInfo(name, src, verRange, lock)
+func (l *Loader) DownloadPlugin(ctx context.Context, name string, verConstr *semver.Constraints, src string, lock *lockfile.Plugin) (*Plugin, error) {
+	pi := newPluginInfo(name, src, verConstr, lock)
 
 	from, ver, err := l.downloadPlugin(ctx, pi)
 	if err != nil {
@@ -114,12 +114,12 @@ func (l *Loader) findMatchingPluginLocation(pi *pluginInfo, path string) (string
 			continue
 		}
 
-		version, err := semver.Parse(parts[1])
+		version, err := semver.NewVersion(parts[1])
 		if err != nil {
 			continue
 		}
 
-		match := pi.matches(&version, highestVer)
+		match := pi.matches(version, highestVer)
 		if match == noMatch {
 			continue
 		}
@@ -134,7 +134,7 @@ func (l *Loader) findMatchingPluginLocation(pi *pluginInfo, path string) (string
 		}
 
 		pluginPath = dest
-		highestVer = &version
+		highestVer = version
 
 		if match == matchExact {
 			break
@@ -248,8 +248,8 @@ func (l *Loader) loadPlugin(pi *pluginInfo, path string, ver *semver.Version) (*
 	return &plugin, nil
 }
 
-func (l *Loader) MatchingVersion(ctx context.Context, name, src string, verRange semver.Range) (matching, latest *semver.Version, err error) {
-	pi := newPluginInfo(name, src, verRange, nil)
+func (l *Loader) MatchingVersion(ctx context.Context, name, src string, verConstr *semver.Constraints) (matching, latest *semver.Version, err error) {
+	pi := newPluginInfo(name, src, verConstr, nil)
 
 	return l.selectDownloader(pi.source).MatchingVersion(ctx, pi)
 }

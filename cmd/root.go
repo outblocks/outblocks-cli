@@ -18,10 +18,11 @@ import (
 )
 
 const (
-	cmdGroupAnnotation = "cmd_group"
-	cmdGroupDelimiter  = "-"
+	cmdSkipLoadPluginsAnnotation = "cmd_skip_load_plugins"
+	cmdGroupAnnotation           = "cmd_group"
+	cmdGroupDelimiter            = "-"
 
-	defaultValuesYAML = "values.yaml"
+	defaultValuesYAML = "<env>.values.yaml"
 )
 
 // Command groups.
@@ -112,16 +113,18 @@ func rootCmdHelpFunc(log logger.Logger, cmd *cobra.Command, _ []string) {
 		log.Printf("  %s [command]\n", pterm.Green(cmd.CommandPath()))
 	}
 
-	log.Println()
+	if len(cmd.Commands()) != 0 {
+		log.Println()
 
-	var usage string
-	if cmd.Root() == cmd {
-		usage = helpCommandsGrouped(cmd)
-	} else {
-		usage = helpCommands(cmd)
+		var usage string
+		if cmd.Root() == cmd {
+			usage = helpCommandsGrouped(cmd)
+		} else {
+			usage = helpCommands(cmd)
+		}
+
+		log.Printf(usage)
 	}
-
-	log.Printf(usage)
 
 	if len(cmd.Aliases) != 0 {
 		log.Println()
@@ -258,14 +261,25 @@ func (e *Executor) newRoot() *cobra.Command {
 		Long:          e.rootLongHelp(),
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			e.opts.env = e.v.GetString("env")
+
 			// Load values.
+			for i, v := range e.opts.valueOpts.ValueFiles {
+				e.opts.valueOpts.ValueFiles[i] = strings.ReplaceAll(v, "<env>", e.opts.env)
+			}
+
+			defValuesYAML := strings.ReplaceAll(defaultValuesYAML, "<env>", e.opts.env)
+
 			v, err := e.opts.valueOpts.MergeValues(cmd.Context(), getter.All())
-			if err != nil && (len(e.opts.valueOpts.ValueFiles) != 1 || e.opts.valueOpts.ValueFiles[0] != defaultValuesYAML) {
+			if err != nil && (len(e.opts.valueOpts.ValueFiles) != 1 || e.opts.valueOpts.ValueFiles[0] != defValuesYAML) {
 				return err
 			}
 
+			vals := map[string]interface{}{"var": v}
+			skipLoadPlugins := cmd.Annotations[cmdSkipLoadPluginsAnnotation] == "1"
+
 			// Load config file.
-			if err := e.loadProjectConfig(cmd.Context(), map[string]interface{}{"var": v}); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+			if err := e.loadProjectConfig(cmd.Context(), vals, skipLoadPlugins); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
 				return err
 			}
 
@@ -285,8 +299,11 @@ func (e *Executor) newRoot() *cobra.Command {
 
 	f := cmd.PersistentFlags()
 	f.Bool("help", false, "help")
-
 	addValueOptionsFlags(f, e.opts.valueOpts)
+
+	f.StringP("env", "e", "dev", "environment to use")
+	e.env.AddVarWithDefault("env", "environment to use", "dev")
+	e.env.BindCLIFlag("env", f.Lookup("env"))
 
 	f.Lookup("help").Hidden = true
 
@@ -299,6 +316,7 @@ func (e *Executor) newRoot() *cobra.Command {
 		e.newDeployCmd(),
 		e.newPluginsCmd(),
 		e.newForceUnlockCmd(),
+		e.newInitCmd(),
 	)
 
 	return cmd

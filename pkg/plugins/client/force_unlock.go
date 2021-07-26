@@ -13,8 +13,8 @@ func (c *Client) ReleaseLock(ctx context.Context, typ, env string, props map[str
 		Env:        env,
 		LockID:     lockID,
 		Properties: props,
-	}, func(res *ResponseWithHeader) error {
-		switch res.Response.(type) {
+	}, func(res plugin_go.Response) error {
+		switch res.(type) {
 		case *plugin_go.EmptyResponse:
 		default:
 			return fmt.Errorf("unexpected response to release lock request")

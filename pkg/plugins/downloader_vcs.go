@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
+	"github.com/Masterminds/semver"
 	"github.com/Masterminds/vcs"
-	"github.com/blang/semver/v4"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"
 )
 
@@ -88,22 +87,22 @@ func (d *VCSDownloader) matchingVersion(ctx context.Context, pi *pluginInfo) (re
 	latest = &vcsVersionInfo{}
 
 	for _, tag := range tags {
-		version, err := semver.Parse(strings.TrimLeft(tag, "v"))
+		version, err := semver.NewVersion(tag)
 		if err != nil {
 			continue
 		}
 
-		if latest.ver == nil || latest.ver.LT(version) {
-			latest.ver = &version
+		if latest.ver == nil || latest.ver.LessThan(version) {
+			latest.ver = version
 			latest.tag = tag
 		}
 
-		match := pi.matches(&version, matching.ver)
+		match := pi.matches(version, matching.ver)
 		if match == noMatch {
 			continue
 		}
 
-		matching.ver = &version
+		matching.ver = version
 		matching.tag = tag
 
 		if match == matchExact {

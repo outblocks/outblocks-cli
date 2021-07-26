@@ -169,46 +169,50 @@ func formatChangeInfo(chID changeID, objs []string) string {
 	return fmt.Sprintf("    %s %d of %s\n", chID.Type(), len(objs), chID.objectType)
 }
 
+func planChangeInfo(header string, changes []*change) (info string) {
+	if len(changes) == 0 {
+		return ""
+	}
+
+	headerStyle := pterm.NewStyle(pterm.FgWhite, pterm.Bold)
+	headerInfoStyle := pterm.NewStyle(pterm.FgWhite, pterm.Reset)
+
+	add, change, process, destroy := calculateTotal(changes)
+	info += fmt.Sprintf("%s %s\n", headerStyle.Sprintf(header), headerInfoStyle.Sprintf("(%d to add, %d to change, %d to destroy, %d to process)", add, change, destroy, process))
+
+	for _, chg := range changes {
+		info += fmt.Sprintf("  %s\n", pterm.Bold.Sprintf("\n  %s changes:", chg.Name()))
+
+		for k, i := range chg.info {
+			info += formatChangeInfo(k, i)
+		}
+	}
+
+	return info
+}
+
 func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool) {
 	sort.Slice(deploy, func(i, j int) bool {
 		return deploy[i].Name() < deploy[j].Name()
 	})
 
-	info := "Outblocks will perform the following actions to your architecture:\n\n"
+	info := []string{"Outblocks will perform the following actions to your architecture:"}
 	empty = true
 
 	// Deployment
-	add, change, process, destroy := calculateTotal(deploy)
-	header := pterm.NewStyle(pterm.FgWhite, pterm.Bold)
-	headerInfo := pterm.NewStyle(pterm.FgWhite, pterm.Reset)
-
-	if len(deploy) != 0 {
-		info += fmt.Sprintf("%s %s\n", header.Sprintf("Deployment:"), headerInfo.Sprintf("(%d to add, %d to change, %d to destroy, %d to process)", add, change, destroy, process))
-	}
-
-	for _, chg := range deploy {
+	deployInfo := planChangeInfo("Deployment:", deploy)
+	if deployInfo != "" {
 		empty = false
-		info += fmt.Sprintf("  %s\n", pterm.Bold.Sprintf("\n  %s changes:", chg.Name()))
 
-		for k, i := range chg.info {
-			info += formatChangeInfo(k, i)
-		}
+		info = append(info, deployInfo)
 	}
 
 	// DNS
-	add, change, process, destroy = calculateTotal(dns)
-
-	if len(dns) != 0 {
-		info += fmt.Sprintf("%s %s\n", header.Sprintf("DNS:"), headerInfo.Sprintf("(%d to add, %d to change, %d to destroy, %d to process)", add, change, destroy, process))
-	}
-
-	for _, chg := range dns {
+	dnsInfo := planChangeInfo("DNS:", dns)
+	if dnsInfo != "" {
 		empty = false
-		info += fmt.Sprintf("  %s\n", pterm.Bold.Sprintf("\n  %s changes:", chg.Name()))
 
-		for k, i := range chg.info {
-			info += formatChangeInfo(k, i)
-		}
+		info = append(info, dnsInfo)
 	}
 
 	if empty {
@@ -217,7 +221,7 @@ func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool)
 		return true, false
 	}
 
-	log.Println(info)
+	log.Println(strings.Join(info, "\n\n"))
 
 	proceed := false
 	prompt := &survey.Confirm{

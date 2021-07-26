@@ -32,7 +32,7 @@ func (d *PluginList) Run(ctx context.Context, cfg *config.Project) error {
 	for _, p := range cfg.Plugins {
 		prog.UpdateTitle(fmt.Sprintf("Checking for plugin updates: %s", p.Name))
 
-		matching, latest, err := d.loader.MatchingVersion(ctx, p.Name, p.Source, p.VerRange())
+		matching, latest, err := d.loader.MatchingVersion(ctx, p.Name, p.Source, p.VerConstr())
 		if err != nil {
 			return err
 		}
@@ -40,12 +40,12 @@ func (d *PluginList) Run(ctx context.Context, cfg *config.Project) error {
 		cur := p.Loaded().Version
 
 		matchingStr := matching.String()
-		if matching.EQ(*cur) {
+		if matching.Equal(cur) {
 			matchingStr = "-"
 		}
 
 		latestStr := latest.String()
-		if latest.EQ(*cur) {
+		if latest.Equal(cur) {
 			latestStr = "-"
 		}
 

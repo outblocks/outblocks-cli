@@ -19,8 +19,8 @@ func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*types
 		Verify:           verify,
 		Destroy:          destroy,
 	},
-		func(res *ResponseWithHeader) error {
-			switch r := res.Response.(type) {
+		func(res plugin_go.Response) error {
+			switch r := res.(type) {
 			case *plugin_go.PlanResponse:
 				ret = r
 

@@ -10,7 +10,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/blang/semver/v4"
+	"github.com/Masterminds/semver"
 	"github.com/google/go-github/v35/github"
 	"github.com/mholt/archiver/v3"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"

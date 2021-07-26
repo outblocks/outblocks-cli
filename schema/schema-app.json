@@ -12,6 +12,11 @@
           "description": "Name override (defaults to directory name).",
           "type": "string"
         },
+        "type": {
+          "description": "Type override (defaults to parent directory name).",
+          "type": "string",
+          "enum": ["static", "function", "service"]
+        },
         "url": {
           "description": "External URL.",
           "type": "string"
