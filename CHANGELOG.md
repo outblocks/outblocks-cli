@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.7](https://github.com/outblocks/outblocks-cli/compare/v0.1.6...v0.1.7)
+
+> 2021-07-27
+
+### FEATURES
+
+[`f966757`](https://github.com/outblocks/outblocks-cli/commit/f96675720fb2cdc9524b31216d4e7db513925e21) app adding, listing, template improvements and fixed plugin loading
+
+
 ## [v0.1.6](https://github.com/outblocks/outblocks-cli/compare/v0.1.5...v0.1.6)
 
 > 2021-07-26
