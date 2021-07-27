@@ -133,9 +133,11 @@ func (d *VCSDownloader) matchingVersion(ctx context.Context, pi *pluginInfo, che
 		if _, ok := checked[latest.tag]; !ok {
 			checked[latest.tag] = check(latest.tag)
 		}
-	}
 
-	return repo, matching, latest, nil
+		if checked[matching.tag] && checked[latest.tag] {
+			return repo, matching, latest, nil
+		}
+	}
 }
 
 func (d *VCSDownloader) MatchingVersion(ctx context.Context, pi *pluginInfo) (matching, latest *semver.Version, err error) {
