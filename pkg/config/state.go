@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"io/ioutil"
-	"regexp"
 	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -28,7 +27,7 @@ type State struct {
 
 func (s *State) Validate() error {
 	return validation.ValidateStruct(s,
-		validation.Field(&s.Env, validation.Required, validation.Match(regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,20}$`))),
+		validation.Field(&s.Env, validation.Required, validation.Match(ValidNameRegex)),
 	)
 }
 

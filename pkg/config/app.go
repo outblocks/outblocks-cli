@@ -3,11 +3,19 @@ package config
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-plugin-go/types"
+)
+
+var (
+	ValidURLRegex  = regexp.MustCompile(`^([a-zA-Z][a-zA-Z0-9-]*)((\.)([a-zA-Z][a-zA-Z0-9-]*)){1,}(/[a-zA-Z0-9-_]+)*(/)?$`)
+	ValidNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,20}$`)
+	ValidAppTypes  = []string{TypeStatic, TypeFunction, TypeService}
 )
 
 type App interface {
@@ -28,11 +36,11 @@ type App interface {
 type BasicApp struct {
 	AppName string                 `json:"name"`
 	AppURL  string                 `json:"url"`
+	AppPath string                 `json:"-"`
 	Deploy  string                 `json:"deploy"`
 	Needs   map[string]*AppNeed    `json:"needs"`
 	Other   map[string]interface{} `yaml:"-,remain"`
 
-	path         string
 	yamlPath     string
 	yamlData     []byte
 	deployPlugin *plugins.Plugin
@@ -41,9 +49,15 @@ type BasicApp struct {
 	typ          string
 }
 
+func (a *BasicApp) Validate() error {
+	return validation.ValidateStruct(a,
+		validation.Field(&a.AppURL, validation.Match(ValidURLRegex)),
+	)
+}
+
 func (a *BasicApp) Normalize(cfg *Project) error {
 	if a.AppName == "" {
-		a.AppName = filepath.Base(a.path)
+		a.AppName = filepath.Base(a.AppPath)
 	}
 
 	if a.AppURL != "" {
@@ -144,7 +158,7 @@ func (a *BasicApp) Type() string {
 }
 
 func (a *BasicApp) Path() string {
-	return a.path
+	return a.AppPath
 }
 
 func (a *BasicApp) PluginType() *types.App {

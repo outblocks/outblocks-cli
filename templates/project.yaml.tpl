@@ -1,3 +1,8 @@
+# Project config.
+
+# You can use ${var.*} expansion to source it from values.yaml per environment,
+# e.g. domain: ${var.base_url}
+
 # Name of the project.
 name: {{.Name}}
 

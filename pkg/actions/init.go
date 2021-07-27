@@ -8,14 +8,15 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"text/template"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/Masterminds/sprig"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -24,7 +25,6 @@ import (
 )
 
 var (
-	validNameRegex  = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*$`)
 	errInitCanceled = errors.New("init canceled")
 )
 
@@ -46,6 +46,12 @@ type InitOptions struct {
 		Project string
 		Region  string
 	}
+}
+
+func (o *InitOptions) Validate() error {
+	return validation.ValidateStruct(o,
+		validation.Field(&o.Name, validation.Required, validation.Match(config.ValidNameRegex)),
+	)
 }
 
 func NewInit(log logger.Logger, pluginCacheDir string, opts *InitOptions) *Init {
@@ -93,6 +99,14 @@ func (d *Init) Run(ctx context.Context) error {
 
 	if err != nil {
 		return err
+	}
+
+	// Normalize plugins.
+	for i, plug := range cfg.Plugins {
+		err = plug.Normalize(i, cfg)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = cfg.LoadPlugins(ctx, d.log, loader)
@@ -153,8 +167,6 @@ func (d *Init) Run(ctx context.Context) error {
 		return err
 	}
 
-	// TODO: Apps adding
-
 	return err
 }
 
@@ -163,15 +175,9 @@ func (d *Init) prompt(ctx context.Context, cfg *config.Project, loader *plugins.
 
 	if d.opts.Name == "" {
 		qs = append(qs, &survey.Question{
-			Name:   "name",
-			Prompt: &survey.Input{Message: "Name of project?", Default: filepath.Base(curDir)},
-			Validate: func(val interface{}) error {
-				// since we are validating an Input, the assertion will always succeed
-				if str, ok := val.(string); !ok || !validNameRegex.MatchString(str) {
-					return errors.New("must start with a letter and consist only of letters, numbers, underscore or hyphens")
-				}
-				return nil
-			},
+			Name:     "name",
+			Prompt:   &survey.Input{Message: "Name of project:", Default: filepath.Base(curDir)},
+			Validate: util.RegexValidator(config.ValidNameRegex, "must start with a letter and consist only of letters, numbers, underscore or hyphens"),
 		})
 	} else {
 		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Name of project:"), pterm.Cyan(d.opts.Name))
@@ -222,6 +228,11 @@ func (d *Init) prompt(ctx context.Context, cfg *config.Project, loader *plugins.
 		if err != nil {
 			return nil, errInitCanceled
 		}
+	}
+
+	err := answers.Validate()
+	if err != nil {
+		return nil, err
 	}
 
 	cfg.Name = answers.Name

@@ -5,7 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/outblocks/outblocks-plugin-go/types"
 )
@@ -13,12 +15,15 @@ import (
 const (
 	TypeStatic = "static"
 
-	StaticAppRoutingReact = "react"
+	StaticAppRoutingReact    = "react"
+	StaticAppRoutingDisabled = "disabled"
 
 	DefaultStaticAppBuildDir = "build"
 )
 
-var StaticAppRoutings = []string{StaticAppRoutingReact}
+var (
+	StaticAppRoutings = []string{StaticAppRoutingReact, StaticAppRoutingDisabled}
+)
 
 type StaticApp struct {
 	BasicApp `json:",inline"`
@@ -38,12 +43,18 @@ func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
 		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
-	out.path = filepath.Dir(path)
+	out.AppPath = filepath.Dir(path)
 	out.yamlPath = path
 	out.yamlData = data
 	out.typ = TypeStatic
 
 	return out, nil
+}
+
+func (s *StaticApp) Validate() error {
+	return validation.ValidateStruct(s,
+		validation.Field(&s.Routing, validation.In(util.InterfaceSlice(StaticAppRoutings)...)),
+	)
 }
 
 func (s *StaticApp) PluginType() *types.App {
@@ -76,28 +87,6 @@ func (s *StaticApp) Normalize(cfg *Project) error {
 
 	if s.Build.Dir == "" {
 		s.Build.Dir = DefaultStaticAppBuildDir
-	}
-
-	err := func() error {
-		found := false
-
-		for _, r := range StaticAppRoutings {
-			if r == s.Routing {
-				found = true
-
-				break
-			}
-		}
-
-		if !found {
-			return s.yamlError("$.routing", fmt.Sprintf("%s has unknown routing value, did you mean \"routing: react\"?", s.typ))
-		}
-
-		return nil
-	}()
-
-	if err != nil {
-		return fmt.Errorf("%s config validation failed.\nfile: %s\n%s", s.typ, s.yamlPath, err)
 	}
 
 	return nil

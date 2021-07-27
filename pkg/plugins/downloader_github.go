@@ -119,5 +119,18 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 }
 
 func (d *GitHubDownloader) MatchingVersion(ctx context.Context, pi *pluginInfo) (matching, latest *semver.Version, err error) {
-	return d.vcs.MatchingVersion(ctx, pi)
+	matches := GitHubRegex.FindStringSubmatch(pi.source)
+	repoOwner := matches[GitHubRegex.SubexpIndex("owner")]
+	repoName := matches[GitHubRegex.SubexpIndex("name")]
+
+	_, m, l, err := d.vcs.matchingVersion(ctx, pi, func(tag string) bool {
+		_, resp, _ := d.client.Repositories.GetReleaseByTag(ctx, repoOwner, repoName, tag)
+
+		return resp.StatusCode == 200
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return m.ver, l.ver, nil
 }

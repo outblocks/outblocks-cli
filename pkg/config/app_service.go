@@ -23,7 +23,7 @@ func LoadServiceAppData(path string, data []byte) (App, error) {
 		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
-	out.path = filepath.Dir(path)
+	out.AppPath = filepath.Dir(path)
 	out.yamlPath = path
 	out.yamlData = data
 	out.typ = TypeService

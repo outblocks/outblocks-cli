@@ -51,7 +51,7 @@ func (d *VCSDownloader) fetch(_ context.Context, pi *pluginInfo) (vcs.Repo, erro
 }
 
 func (d *VCSDownloader) download(ctx context.Context, pi *pluginInfo) (*DownloadedPlugin, string, error) {
-	repo, ver, _, err := d.matchingVersion(ctx, pi)
+	repo, ver, _, err := d.matchingVersion(ctx, pi, nil)
 	if err != nil {
 		return nil, "", err
 	}
@@ -72,7 +72,7 @@ func (d *VCSDownloader) Download(ctx context.Context, pi *pluginInfo) (*Download
 	return dp, err
 }
 
-func (d *VCSDownloader) matchingVersion(ctx context.Context, pi *pluginInfo) (repo vcs.Repo, matching, latest *vcsVersionInfo, err error) {
+func (d *VCSDownloader) matchingVersion(ctx context.Context, pi *pluginInfo, check func(tag string) bool) (repo vcs.Repo, matching, latest *vcsVersionInfo, err error) {
 	repo, err = d.fetch(ctx, pi)
 	if err != nil {
 		return nil, nil, nil, err
@@ -83,42 +83,63 @@ func (d *VCSDownloader) matchingVersion(ctx context.Context, pi *pluginInfo) (re
 		return nil, nil, nil, fmt.Errorf("cannot find repo or git error: %w", err)
 	}
 
-	matching = &vcsVersionInfo{}
-	latest = &vcsVersionInfo{}
+	checked := make(map[string]bool)
 
-	for _, tag := range tags {
-		version, err := semver.NewVersion(tag)
-		if err != nil {
-			continue
+	for {
+		matching = &vcsVersionInfo{}
+		latest = &vcsVersionInfo{}
+
+		for _, tag := range tags {
+			version, err := semver.NewVersion(tag)
+			if err != nil {
+				continue
+			}
+
+			if v, ok := checked[tag]; ok && !v {
+				continue
+			}
+
+			if latest.ver == nil || latest.ver.LessThan(version) {
+				latest.ver = version
+				latest.tag = tag
+			}
+
+			match := pi.matches(version, matching.ver)
+			if match == noMatch {
+				continue
+			}
+
+			matching.ver = version
+			matching.tag = tag
+
+			if match == matchExact {
+				break
+			}
 		}
 
-		if latest.ver == nil || latest.ver.LessThan(version) {
-			latest.ver = version
-			latest.tag = tag
+		if matching.ver == nil {
+			return nil, nil, nil, ErrPluginNoMatchingVersionFound
 		}
 
-		match := pi.matches(version, matching.ver)
-		if match == noMatch {
-			continue
+		if check == nil || (checked[matching.tag] && checked[latest.tag]) {
+			return repo, matching, latest, nil
 		}
 
-		matching.ver = version
-		matching.tag = tag
-
-		if match == matchExact {
-			break
+		// Check if matching and latest tags are valid.
+		if _, ok := checked[matching.tag]; !ok {
+			checked[matching.tag] = check(matching.tag)
 		}
-	}
 
-	if matching.ver == nil {
-		return nil, nil, nil, ErrPluginNoMatchingVersionFound
+		if _, ok := checked[latest.tag]; !ok {
+			checked[latest.tag] = check(latest.tag)
+		}
 	}
 
 	return repo, matching, latest, nil
 }
 
 func (d *VCSDownloader) MatchingVersion(ctx context.Context, pi *pluginInfo) (matching, latest *semver.Version, err error) {
-	_, m, l, err := d.matchingVersion(ctx, pi)
+	_, m, l, err := d.matchingVersion(ctx, pi, nil)
 	if err != nil {
 		return nil, nil, err
 	}
