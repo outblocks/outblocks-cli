@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.9](https://github.com/outblocks/outblocks-cli/compare/v0.1.8...v0.1.9)
+
+> 2021-07-27
+
+### BUG FIXES
+
+[`b54c22f`](https://github.com/outblocks/outblocks-cli/commit/b54c22fb38806650344f6e5c17b2626abe307995) plugins updating
+
+
 ## [v0.1.8](https://github.com/outblocks/outblocks-cli/compare/v0.1.7...v0.1.8)
 
 > 2021-07-27
