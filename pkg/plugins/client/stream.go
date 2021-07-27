@@ -184,11 +184,16 @@ func (s *SenderStream) handleResponse(res *ResponseWithHeader) (handled bool, er
 	case *plugin_go.PromptSelect:
 		var input string
 
-		err = survey.AskOne(&survey.Select{
+		sel := &survey.Select{
 			Message: r.Message,
 			Options: r.Options,
-			Default: r.Default,
-		}, &input)
+		}
+
+		if r.Default != "" {
+			sel.Default = r.Default
+		}
+
+		err = survey.AskOne(sel, &input)
 		if err != nil {
 			return true, err
 		}
