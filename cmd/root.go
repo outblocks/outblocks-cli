@@ -22,6 +22,7 @@ import (
 
 const (
 	cmdSkipLoadConfigAnnotation  = "cmd_skip_load_config"
+	cmdSkipCheckConfigAnnotation = "cmd_skip_check_config"
 	cmdSkipLoadPluginsAnnotation = "cmd_skip_load_plugins"
 	cmdGroupAnnotation           = "cmd_group"
 	cmdGroupDelimiter            = "-"
@@ -293,9 +294,10 @@ func (e *Executor) newRoot() *cobra.Command {
 
 			vals := map[string]interface{}{"var": v}
 			skipLoadPlugins := cmd.Annotations[cmdSkipLoadPluginsAnnotation] == "1"
+			skipCheckConfig := cmd.Annotations[cmdSkipCheckConfigAnnotation] == "1"
 
 			// Load config file.
-			if err := e.loadProjectConfig(cmd.Context(), cfgPath, vals, skipLoadPlugins); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+			if err := e.loadProjectConfig(cmd.Context(), cfgPath, vals, skipLoadPlugins, skipCheckConfig); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
 				return err
 			}
 

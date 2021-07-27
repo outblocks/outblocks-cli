@@ -11,7 +11,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 )
 
-func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals map[string]interface{}, skipLoadPlugins bool) error {
+func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals map[string]interface{}, skipLoadPlugins, skipCheck bool) error {
 	cfg, err := config.LoadProjectConfig(cfgPath, vals, &config.ProjectOptions{
 		Env: e.opts.env,
 	})
@@ -28,6 +28,7 @@ func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals m
 	}
 
 	e.loader = plugins.NewLoader(cfg.Path, e.PluginsCacheDir())
+	e.cfg = cfg
 
 	if !skipLoadPlugins {
 		if err := cfg.LoadPlugins(ctx, e.log, e.loader); err != nil {
@@ -35,11 +36,13 @@ func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals m
 		}
 	}
 
+	if skipLoadPlugins || skipCheck {
+		return nil
+	}
+
 	if err := cfg.FullCheck(); err != nil {
 		return err
 	}
-
-	e.cfg = cfg
 
 	return nil
 }
