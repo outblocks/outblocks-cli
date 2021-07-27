@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.10](https://github.com/outblocks/outblocks-cli/compare/v0.1.9...v0.1.10)
+
+> 2021-07-27
+
+### BUG FIXES
+
+[`d79abc9`](https://github.com/outblocks/outblocks-cli/commit/d79abc9867a71fbd59d0a287d45cd60072c60345) default selection and comment interpolation
+
+
 ## [v0.1.9](https://github.com/outblocks/outblocks-cli/compare/v0.1.8...v0.1.9)
 
 > 2021-07-27
