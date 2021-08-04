@@ -12,6 +12,7 @@ SEMVERBOT_VERSION ?= 0.2.0
 SEMVERBOT := $(DEV_BIN_PATH)/sbot_$(SEMVERBOT_VERSION)
 
 SEMVER_PREDICT_VERSION = $(shell $(SEMVERBOT) predict version)
+VERSION ?= $(SEMVER_PREDICT_VERSION)
 
 .PHONY: release
 
@@ -31,18 +32,17 @@ $(SEMVERBOT):
 release: $(GITCHGLOG) $(SEMVERBOT)
 
 release: ## Create new release and update changelog
-	echo $(SEMVER_PREDICT_VERSION)
-	$(GITCHGLOG) --next-tag v$(SEMVER_PREDICT_VERSION) v$(SEMVER_PREDICT_VERSION)..
+	$(GITCHGLOG) --next-tag v$(VERSION) v$(VERSION)..
 
 	echo
-	echo "Releasing v$(SEMVER_PREDICT_VERSION). Continue? [y/N] " && read ans && [ $${ans:-N} = y ]
+	echo "Releasing v$(VERSION). Continue? [y/N] " && read ans && [ $${ans:-N} = y ]
 
-	$(GITCHGLOG) --next-tag v$(SEMVER_PREDICT_VERSION) --output CHANGELOG.md $(STARTING_VERSION)..
+	$(GITCHGLOG) --next-tag v$(VERSION) --output CHANGELOG.md $(STARTING_VERSION)..
 	git add CHANGELOG.md
 	git commit -m "changelog update"
 	git push
 
-	$(SEMVERBOT) release version
-	$(SEMVERBOT) push version
+	git tag -a v$(VERSION) -m $(VERSION)
+	git push origin v$(VERSION)
 
 endif
