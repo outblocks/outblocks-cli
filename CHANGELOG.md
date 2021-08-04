@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.11](https://github.com/outblocks/outblocks-cli/compare/v0.1.10...v0.1.11)
+
+> 2021-08-04
+
+### FEATURES
+
+[`9f4403f`](https://github.com/outblocks/outblocks-cli/commit/9f4403f43b5b1b4757c7c43e2ddbd9ba7af98645) wizard improvements, handle recreate steps
+
+
 ## [v0.1.10](https://github.com/outblocks/outblocks-cli/compare/v0.1.9...v0.1.10)
 
 > 2021-07-27
