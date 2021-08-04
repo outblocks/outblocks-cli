@@ -10,16 +10,18 @@ import (
 
 type ForceUnlock struct {
 	log logger.Logger
+	cfg *config.Project
 }
 
-func NewForceUnlock(log logger.Logger) *ForceUnlock {
+func NewForceUnlock(log logger.Logger, cfg *config.Project) *ForceUnlock {
 	return &ForceUnlock{
+		cfg: cfg,
 		log: log,
 	}
 }
 
-func (f *ForceUnlock) Run(ctx context.Context, cfg *config.Project, lockID string) error {
-	return releaseLock(cfg, lockID)
+func (f *ForceUnlock) Run(ctx context.Context, lockID string) error {
+	return releaseLock(f.cfg, lockID)
 }
 
 func releaseLock(cfg *config.Project, lockID string) error {

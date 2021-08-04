@@ -25,8 +25,12 @@
           "description": "Application dependencies to inject.",
           "$ref": "#/definitions/Needs"
         },
+        "dev": {
+          "description": "Dev config used for dev builds (during run).",
+          "$ref": "#/definitions/Dev"
+        },
         "build": {
-          "description": "Build override.",
+          "description": "Build config used for production builds (during deployments).",
           "$ref": "#/definitions/Build"
         },
         "src": {
@@ -58,6 +62,16 @@
               "type": "object"
             }
           ]
+        }
+      }
+    },
+    "Dev": {
+      "title": "Dev",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "type": "string"
         }
       }
     },

@@ -24,7 +24,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/otiai10/copy v1.6.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20210722172243-99b1cdb63052
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20210804143053-52d781bc2e48
 	github.com/pelletier/go-toml v1.9.1 // indirect
 	github.com/pterm/pterm v0.12.22
 	github.com/spf13/afero v1.6.0 // indirect
@@ -33,6 +33,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.1
+	github.com/txn2/txeh v1.3.0
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
 	golang.org/x/sys v0.0.0-20210603125802-9665404d3644 // indirect
 	golang.org/x/text v0.3.6 // indirect

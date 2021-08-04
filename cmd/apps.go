@@ -32,7 +32,7 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
-			return actions.NewAppList(e.Log(), listOpts).Run(cmd.Context(), e.cfg)
+			return actions.NewAppList(e.Log(), e.cfg, listOpts).Run(cmd.Context())
 		},
 	}
 
@@ -71,7 +71,7 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
-			return actions.NewAppAdd(e.Log(), addOpts).Run(cmd.Context(), e.cfg)
+			return actions.NewAppAdd(e.Log(), e.cfg, addOpts).Run(cmd.Context())
 		},
 	}
 
@@ -82,6 +82,7 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 	f.StringVar(&addOpts.Type, "type", "", "application type (options: static, function, service)")
 	f.StringVar(&addOpts.Static.BuildCommand, "static-build-command", "", "static app build command")
 	f.StringVar(&addOpts.Static.BuildDir, "static-build-dir", "", "static app build dir")
+	f.StringVar(&addOpts.Static.DevCommand, "static-dev-command", "", "static app dev command")
 	f.StringVar(&addOpts.Static.Routing, "static-routing", "", "static app routing (options: react, disabled)")
 	f.StringVarP(&addOpts.OutputPath, "output-path", "o", "", "output path, defaults to: <app_type>/<app_name>")
 

@@ -28,12 +28,17 @@ var (
 type StaticApp struct {
 	BasicApp `json:",inline"`
 	Build    *StaticAppBuild `json:"build,omitempty"`
+	Dev      *StaticAppDev   `json:"dev,omitempty"`
 	Routing  string          `json:"routing"`
 }
 
 type StaticAppBuild struct {
 	Command string `json:"command"`
 	Dir     string `json:"dir"`
+}
+
+type StaticAppDev struct {
+	Command string `json:"command"`
 }
 
 func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
@@ -66,6 +71,7 @@ func (s *StaticApp) PluginType() *types.App {
 
 	base.Properties["routing"] = s.Routing
 	base.Properties["build"] = s.Build
+	base.Properties["dev"] = s.Dev
 
 	return base
 }

@@ -21,7 +21,7 @@ func (e *Executor) newForceUnlockCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
-			return actions.NewForceUnlock(e.Log()).Run(cmd.Context(), e.cfg, args[0])
+			return actions.NewForceUnlock(e.Log(), e.cfg).Run(cmd.Context(), args[0])
 		},
 	}
 

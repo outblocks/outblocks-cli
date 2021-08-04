@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -13,8 +14,8 @@ import (
 )
 
 var (
-	ValidURLRegex  = regexp.MustCompile(`^([a-zA-Z][a-zA-Z0-9-]*)((\.)([a-zA-Z][a-zA-Z0-9-]*)){1,}(/[a-zA-Z0-9-_]+)*(/)?$`)
-	ValidNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,20}$`)
+	ValidURLRegex  = regexp.MustCompile(`^(https?://)?([a-zA-Z][a-zA-Z0-9-]*)((\.)([a-zA-Z][a-zA-Z0-9-]*)){1,}(/[a-zA-Z0-9-_]+)*(/)?$`)
+	ValidNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,30}$`)
 	ValidAppTypes  = []string{TypeStatic, TypeFunction, TypeService}
 )
 
@@ -41,6 +42,7 @@ type BasicApp struct {
 	Needs   map[string]*AppNeed    `json:"needs"`
 	Other   map[string]interface{} `yaml:"-,remain"`
 
+	url          *url.URL
 	yamlPath     string
 	yamlData     []byte
 	deployPlugin *plugins.Plugin
@@ -63,8 +65,15 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 	if a.AppURL != "" {
 		a.AppURL = strings.ToLower(a.AppURL)
 
-		if strings.Count(a.AppURL, "/") == 0 {
-			a.AppURL += "/"
+		if !strings.HasPrefix(a.AppURL, "http") {
+			a.AppURL = "https://" + a.AppURL
+		}
+
+		var err error
+
+		a.url, err = url.Parse(a.AppURL)
+		if err != nil {
+			return a.yamlError("$.url", "App.URL is invalid")
 		}
 	}
 
@@ -168,11 +177,16 @@ func (a *BasicApp) PluginType() *types.App {
 		needs[k] = n.PluginType()
 	}
 
+	var appURL string
+	if a.url != nil {
+		appURL = a.url.String()
+	}
+
 	return &types.App{
 		ID:         a.ID(),
 		Name:       a.AppName,
 		Type:       a.Type(),
-		URL:        a.AppURL,
+		URL:        appURL,
 		Needs:      needs,
 		Properties: a.Other,
 	}
@@ -195,6 +209,10 @@ func (a *BasicApp) Name() string {
 }
 
 func (a *BasicApp) URL() string {
+	if a.url != nil {
+		return a.url.String()
+	}
+
 	return a.AppURL
 }
 

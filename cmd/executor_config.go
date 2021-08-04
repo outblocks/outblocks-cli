@@ -3,12 +3,12 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals map[string]interface{}, skipLoadPlugins, skipCheck bool) error {
@@ -69,7 +69,7 @@ func (e *Executor) saveLockfile() error {
 		return fmt.Errorf("marshaling lockfile error: %w", err)
 	}
 
-	if err := ioutil.WriteFile(filepath.Join(e.cfg.Path, config.LockfileName), data, 0755); err != nil {
+	if err := plugin_util.WriteFile(filepath.Join(e.cfg.Path, config.LockfileName), data, 0755); err != nil {
 		return fmt.Errorf("writing lockfile error: %w", err)
 	}
 

@@ -24,6 +24,7 @@ type planParams struct {
 
 type Deploy struct {
 	log  logger.Logger
+	cfg  *config.Project
 	opts *DeployOptions
 }
 
@@ -32,18 +33,19 @@ type DeployOptions struct {
 	Destroy bool
 }
 
-func NewDeploy(log logger.Logger, opts *DeployOptions) *Deploy {
+func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
 	return &Deploy{
 		log:  log,
+		cfg:  cfg,
 		opts: opts,
 	}
 }
 
-func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
+func (d *Deploy) Run(ctx context.Context) error {
 	verify := d.opts.Verify
 	spinner, _ := d.log.Spinner().WithRemoveWhenDone(true).Start("Getting state...")
 
-	stateRes, err := getState(ctx, cfg)
+	stateRes, err := getState(ctx, d.cfg)
 	if err != nil {
 		_ = spinner.Stop()
 		return err
@@ -59,12 +61,12 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 
 	spinner, _ = spinner.Start("Planning...")
 
-	planMap := calculatePlanMap(cfg.Apps, cfg.Dependencies)
+	planMap := calculatePlanMap(d.cfg.Apps, d.cfg.Dependencies)
 
 	planRetMap, err := plan(ctx, stateRes.State, planMap, verify, d.opts.Destroy)
 	if err != nil {
 		_ = spinner.Stop()
-		_ = releaseLock(cfg, stateRes.LockInfo)
+		_ = releaseLock(d.cfg, stateRes.LockInfo)
 
 		return err
 	}
@@ -76,13 +78,13 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 	empty, canceled := planPrompt(d.log, deployChanges, dnsChanges)
 
 	if canceled || empty {
-		releaseErr := releaseLock(cfg, stateRes.LockInfo)
+		releaseErr := releaseLock(d.cfg, stateRes.LockInfo)
 
 		if releaseErr != nil {
 			return releaseErr
 		}
 
-		return d.showStateStatus(cfg, stateRes.State)
+		return d.showStateStatus(stateRes.State)
 	}
 
 	start := time.Now()
@@ -90,10 +92,10 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 	callback := applyProgress(d.log, deployChanges, dnsChanges)
 	err = apply(ctx, stateRes.State, planMap, d.opts.Destroy, callback)
 
-	_, saveErr := saveState(cfg, stateRes.State)
+	_, saveErr := saveState(d.cfg, stateRes.State)
 
 	// Release lock if needed.
-	releaseErr := releaseLock(cfg, stateRes.LockInfo)
+	releaseErr := releaseLock(d.cfg, stateRes.LockInfo)
 
 	switch {
 	case err != nil:
@@ -105,7 +107,7 @@ func (d *Deploy) Run(ctx context.Context, cfg *config.Project) error {
 
 	d.log.Printf("All changes applied in %s.\n", time.Since(start).Truncate(timeTruncate))
 
-	err = d.showStateStatus(cfg, stateRes.State)
+	err = d.showStateStatus(stateRes.State)
 	if err != nil {
 		return err
 	}
@@ -118,12 +120,12 @@ type dnsSetup struct {
 	dns    *types.DNS
 }
 
-func (d *Deploy) showStateStatus(cfg *config.Project, state *types.StateData) error {
+func (d *Deploy) showStateStatus(state *types.StateData) error {
 	var dns []*dnsSetup
 
 	dnsMap := make(map[string]*types.DNS)
 
-	for _, app := range cfg.Apps {
+	for _, app := range d.cfg.Apps {
 		appState, ok := state.AppStates[app.ID()]
 		if !ok || !appState.DNS.Manual || (appState.DNS.CNAME == "" && appState.DNS.IP == "") {
 			continue
@@ -175,7 +177,7 @@ func (d *Deploy) showStateStatus(cfg *config.Project, state *types.StateData) er
 
 	var apps []config.App
 
-	for _, app := range cfg.Apps {
+	for _, app := range d.cfg.Apps {
 		_, ok := state.AppStates[app.ID()]
 		if !ok {
 			continue
@@ -195,7 +197,7 @@ func (d *Deploy) showStateStatus(cfg *config.Project, state *types.StateData) er
 		d.log.Section().Println("App External URLs")
 
 		for _, app := range apps {
-			d.log.Printf("%s %s %s\n", appURLStyle.Sprint("https://"+app.URL()), pterm.Gray("==>"), appNameStyle.Sprint(app.Name()))
+			d.log.Printf("%s %s %s\n", appURLStyle.Sprint(app.URL()), pterm.Gray("==>"), appNameStyle.Sprint(app.Name()))
 		}
 	}
 

@@ -22,7 +22,7 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
-			return actions.NewDeploy(e.Log(), opts).Run(cmd.Context(), e.cfg)
+			return actions.NewDeploy(e.Log(), e.cfg, opts).Run(cmd.Context())
 		},
 	}
 

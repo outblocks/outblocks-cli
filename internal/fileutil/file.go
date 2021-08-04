@@ -154,3 +154,14 @@ func CheckDir(path string) (string, bool) {
 
 	return path, true
 }
+
+func IsRelativeSubdir(parent, dir string) bool {
+	parent, _ = filepath.Abs(parent)
+	if !filepath.IsAbs(dir) {
+		dir = filepath.Join(parent, dir)
+	}
+
+	rel, err := filepath.Rel(parent, dir)
+
+	return err == nil && !strings.HasPrefix(rel, "..")
+}

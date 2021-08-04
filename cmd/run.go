@@ -1,13 +1,14 @@
 package cmd
 
 import (
-	"fmt"
-
+	"github.com/outblocks/outblocks-cli/pkg/actions"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/spf13/cobra"
 )
 
 func (e *Executor) newRunCmd() *cobra.Command {
+	opts := &actions.RunOptions{}
+
 	cmd := &cobra.Command{
 		Use:   "run",
 		Short: "Runs stack locally",
@@ -21,11 +22,7 @@ func (e *Executor) newRunCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
-			fmt.Println("RUN E")
-
-			// spew.Dump(e.opts.cfg)
-
-			return nil
+			return actions.NewRun(e.log, e.cfg, opts).Run(cmd.Context())
 		},
 	}
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -21,6 +20,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/templates"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/pterm/pterm"
 )
 
@@ -50,7 +50,7 @@ type InitOptions struct {
 
 func (o *InitOptions) Validate() error {
 	return validation.ValidateStruct(o,
-		validation.Field(&o.Name, validation.Required, validation.Match(config.ValidNameRegex)),
+		validation.Field(&o.Name, validation.Required, validation.By(validateInitName)),
 	)
 }
 
@@ -71,7 +71,7 @@ func funcMap() template.FuncMap {
 func (d *Init) Run(ctx context.Context) error {
 	curDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("getting current working dir error: %w", err)
+		return fmt.Errorf("can't get current working dir: %w", err)
 	}
 
 	cfg := &config.Project{}
@@ -147,7 +147,7 @@ func (d *Init) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(config.ProjectYAMLName+".yaml", projectYAML.Bytes(), 0644)
+	err = plugin_util.WriteFile(config.ProjectYAMLName+".yaml", projectYAML.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
@@ -162,12 +162,16 @@ func (d *Init) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = ioutil.WriteFile("dev.values.yaml", valuesYAML.Bytes(), 0644)
+	err = plugin_util.WriteFile("dev.values.yaml", valuesYAML.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
 
 	return err
+}
+
+func validateInitName(val interface{}) error {
+	return util.RegexValidator(config.ValidNameRegex, "must start with a letter and consist only of letters, numbers, underscore or hyphens")(val)
 }
 
 func (d *Init) prompt(ctx context.Context, cfg *config.Project, loader *plugins.Loader, curDir string) (*config.Project, error) {
@@ -177,9 +181,14 @@ func (d *Init) prompt(ctx context.Context, cfg *config.Project, loader *plugins.
 		qs = append(qs, &survey.Question{
 			Name:     "name",
 			Prompt:   &survey.Input{Message: "Name of project:", Default: filepath.Base(curDir)},
-			Validate: util.RegexValidator(config.ValidNameRegex, "must start with a letter and consist only of letters, numbers, underscore or hyphens"),
+			Validate: validateInitName,
 		})
 	} else {
+		err := validateInitName(d.opts.Name)
+		if err != nil {
+			return nil, err
+		}
+
 		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Name of project:"), pterm.Cyan(d.opts.Name))
 	}
 
@@ -221,43 +230,37 @@ func (d *Init) prompt(ctx context.Context, cfg *config.Project, loader *plugins.
 		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Main domain you plan to use for deployments"), pterm.Cyan(d.opts.DNSDomain))
 	}
 
-	answers := *d.opts
-
+	// Ask questions.
 	if len(qs) != 0 {
-		err := survey.Ask(qs, &answers)
+		err := survey.Ask(qs, d.opts)
 		if err != nil {
 			return nil, errInitCanceled
 		}
 	}
 
-	err := answers.Validate()
+	cfg.Name = d.opts.Name
+
+	_, latestDeployVersion, err := loader.MatchingVersion(ctx, d.opts.DeployPlugin, "", nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error retrieving latest version of plugin '%s': %w", d.opts.RunPlugin, err)
 	}
 
-	cfg.Name = answers.Name
-
-	_, latestDeployVersion, err := loader.MatchingVersion(ctx, answers.DeployPlugin, "", nil)
+	_, latestRunVersion, err := loader.MatchingVersion(ctx, d.opts.RunPlugin, "", nil)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving latest version of plugin '%s': %w", answers.RunPlugin, err)
-	}
-
-	_, latestRunVersion, err := loader.MatchingVersion(ctx, answers.RunPlugin, "", nil)
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving latest version of plugin '%s': %w", answers.RunPlugin, err)
+		return nil, fmt.Errorf("error retrieving latest version of plugin '%s': %w", d.opts.RunPlugin, err)
 	}
 
 	cfg.Plugins = []*config.Plugin{
-		{Name: answers.DeployPlugin, Version: fmt.Sprintf("^%s", latestDeployVersion.String())},
-		{Name: answers.RunPlugin, Version: fmt.Sprintf("^%s", latestRunVersion.String())},
+		{Name: d.opts.DeployPlugin, Version: fmt.Sprintf("^%s", latestDeployVersion.String())},
+		{Name: d.opts.RunPlugin, Version: fmt.Sprintf("^%s", latestRunVersion.String())},
 	}
 
 	cfg.State = &config.State{
-		Type: answers.DeployPlugin,
+		Type: d.opts.DeployPlugin,
 	}
 
 	cfg.DNS = append(cfg.DNS, &config.DNS{
-		Domain: answers.DNSDomain,
+		Domain: d.opts.DNSDomain,
 	})
 
 	return cfg, nil

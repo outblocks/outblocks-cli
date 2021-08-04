@@ -10,24 +10,26 @@ import (
 
 type AppList struct {
 	log  logger.Logger
+	cfg  *config.Project
 	opts *AppListOptions
 }
 
 type AppListOptions struct{}
 
-func NewAppList(log logger.Logger, opts *AppListOptions) *AppList {
+func NewAppList(log logger.Logger, cfg *config.Project, opts *AppListOptions) *AppList {
 	return &AppList{
 		log:  log,
+		cfg:  cfg,
 		opts: opts,
 	}
 }
 
-func (d *AppList) appsList(cfg *config.Project) [][]string {
+func (d *AppList) appsList() [][]string {
 	data := [][]string{
 		{"Name", "Type", "Deployment", "Path"},
 	}
 
-	for _, a := range cfg.Apps {
+	for _, a := range d.cfg.Apps {
 		data = append(data, []string{
 			pterm.Yellow(a.Name()),
 			pterm.Magenta(a.Type()),
@@ -43,8 +45,8 @@ func (d *AppList) appsList(cfg *config.Project) [][]string {
 	return nil
 }
 
-func (d *AppList) Run(ctx context.Context, cfg *config.Project) error {
-	appList := d.appsList(cfg)
+func (d *AppList) Run(ctx context.Context) error {
+	appList := d.appsList()
 
 	if len(appList) != 0 {
 		err := d.log.Table().WithHasHeader().WithData(pterm.TableData(appList)).Render()

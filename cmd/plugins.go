@@ -30,7 +30,7 @@ func (e *Executor) newPluginsCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
-			return actions.NewPluginList(e.Log(), e.loader).Run(cmd.Context(), e.cfg)
+			return actions.NewPluginList(e.Log(), e.cfg, e.loader).Run(cmd.Context())
 		},
 	}
 
@@ -48,7 +48,7 @@ func (e *Executor) newPluginsCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
-			return actions.NewPluginUpdate(e.Log(), e.loader).Run(cmd.Context(), e.cfg)
+			return actions.NewPluginUpdate(e.Log(), e.cfg, e.loader).Run(cmd.Context())
 		},
 	}
 

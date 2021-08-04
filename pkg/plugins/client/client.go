@@ -67,21 +67,27 @@ func (c *Client) lazyInit(_ context.Context) error {
 		s := bufio.NewScanner(stderrPipe)
 		for s.Scan() {
 			b := s.Bytes()
+			if len(b) == 0 {
+				continue
+			}
+
 			level := b[0]
+
+			prefix := fmt.Sprintf("%s: ", c.name)
 
 			switch plugin_log.Level(level) {
 			case plugin_log.LevelError:
-				c.log.Errorf("plugin '%s': %s\n", c.name, string(b[1:]))
+				c.log.Errorf("%s%s\n", prefix, string(b[1:]))
 			case plugin_log.LevelWarn:
-				c.log.Warnf("plugin '%s': %s\n", c.name, string(b[1:]))
+				c.log.Warnf("%s%s': %s\n", prefix, string(b[1:]))
 			case plugin_log.LevelInfo:
-				c.log.Infof("plugin '%s': %s\n", c.name, string(b[1:]))
+				c.log.Infof("%s%s\n", prefix, string(b[1:]))
 			case plugin_log.LevelDebug:
-				c.log.Debugf("plugin '%s': %s\n", c.name, string(b[1:]))
+				c.log.Debugf("%s%s\n", prefix, string(b[1:]))
 			case plugin_log.LevelSuccess:
-				c.log.Successf("plugin '%s': %s\n", c.name, string(b[1:]))
+				c.log.Successf("%s%s\n", prefix, string(b[1:]))
 			default:
-				c.log.Errorf("plugin '%s': %s\n", c.name, s.Text())
+				c.log.Errorf("%s%s\n", prefix, s.Text())
 			}
 		}
 	}()
@@ -145,6 +151,8 @@ func mapResponseType(header *plugin_go.ResponseHeader) plugin_go.Response {
 		return &plugin_go.ValidationErrorResponse{}
 	case plugin_go.ResponseTypeInit:
 		return &plugin_go.InitResponse{}
+	case plugin_go.ResponseTypeRunDone:
+		return &plugin_go.RunDoneResponse{}
 	default:
 		return nil
 	}

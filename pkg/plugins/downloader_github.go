@@ -3,7 +3,6 @@ package plugins
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,6 +14,7 @@ import (
 	"github.com/mholt/archiver/v3"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"
 	"github.com/outblocks/outblocks-cli/pkg/getter"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"golang.org/x/oauth2"
 )
 
@@ -93,7 +93,7 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 		return nil, fmt.Errorf("downloading file error: %w", err)
 	}
 
-	err = ioutil.WriteFile(dest, b.Bytes(), 0755)
+	err = plugin_util.WriteFile(dest, b.Bytes(), 0755)
 	if err != nil {
 		return nil, fmt.Errorf("writing downloaded file error: %w", err)
 	}

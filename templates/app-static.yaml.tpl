@@ -23,6 +23,13 @@ build:
   # Directory where generated files will end up.
   dir: {{.App.Build.Dir}}
 
+# Dev defines where how development is handled of application during `ok run`.
+dev:
+{{- if .App.Dev.Command }}
+  # Command to be run to for dev mode.
+  command: {{.App.Dev.Command}}
+{{ end }}
+
 # Routing to be used:
 #   'react' for react browser routing.
 #   'disabled' for no additional routing.

@@ -149,8 +149,13 @@ func calculateTotalSteps(chg []*change) int {
 	steps := 0
 
 	for _, c := range chg {
-		for _, v := range c.info {
-			steps += len(v)
+		for changeID, v := range c.info {
+			if changeID.planType == types.PlanRecreate {
+				// Recreate steps are doubled.
+				steps += 2 * len(v)
+			} else {
+				steps += len(v)
+			}
 		}
 	}
 
@@ -338,7 +343,7 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 
 		log.Successln(success)
 
-		if act.Progress == act.Total {
+		if act.Progress == act.Total || act.Type == types.PlanRecreate {
 			p.Increment()
 		}
 	}

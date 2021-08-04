@@ -261,10 +261,10 @@ func (p *Project) YAMLData() []byte {
 }
 
 func (p *Project) FindDNSPlugin(url string) *plugins.Plugin {
-	url = strings.SplitN(url, "/", 2)[0]
+	host := strings.SplitN(url, "/", 2)[0]
 
 	for _, dns := range p.DNS {
-		if strings.HasSuffix(url, dns.Domain) {
+		if strings.HasSuffix(host, dns.Domain) {
 			return dns.plugin
 		}
 	}

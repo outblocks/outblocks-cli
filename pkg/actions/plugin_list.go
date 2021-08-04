@@ -13,23 +13,25 @@ import (
 type PluginList struct {
 	log    logger.Logger
 	loader *plugins.Loader
+	cfg    *config.Project
 }
 
-func NewPluginList(log logger.Logger, loader *plugins.Loader) *PluginList {
+func NewPluginList(log logger.Logger, cfg *config.Project, loader *plugins.Loader) *PluginList {
 	return &PluginList{
 		log:    log,
+		cfg:    cfg,
 		loader: loader,
 	}
 }
 
-func (d *PluginList) Run(ctx context.Context, cfg *config.Project) error {
-	prog, _ := d.log.ProgressBar().WithTotal(len(cfg.Plugins)).WithTitle("Checking for plugin updates...").Start()
+func (d *PluginList) Run(ctx context.Context) error {
+	prog, _ := d.log.ProgressBar().WithTotal(len(d.cfg.Plugins)).WithTitle("Checking for plugin updates...").Start()
 
 	data := [][]string{
 		{"Name", "Range", "Current", "Wanted", "Latest"},
 	}
 
-	for _, p := range cfg.Plugins {
+	for _, p := range d.cfg.Plugins {
 		prog.UpdateTitle(fmt.Sprintf("Checking for plugin updates: %s", p.Name))
 
 		matching, latest, err := d.loader.MatchingVersion(ctx, p.Name, p.Source, p.VerConstr())
