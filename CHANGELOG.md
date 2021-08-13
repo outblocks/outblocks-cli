@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.12](https://github.com/outblocks/outblocks-cli/compare/v0.1.11...v0.1.12)
+
+> 2021-08-13
+
+### FEATURES
+
+[`3eb9984`](https://github.com/outblocks/outblocks-cli/commit/3eb9984a44b85d846de090a0fc5d9126b2721f70) run mode, ssl info
+
+
 ## [v0.1.11](https://github.com/outblocks/outblocks-cli/compare/v0.1.10...v0.1.11)
 
 > 2021-08-04
