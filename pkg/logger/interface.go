@@ -6,6 +6,9 @@ type Logger interface {
 	Printf(format string, a ...interface{})
 	Println(a ...interface{})
 	Printo(a ...interface{})
+	StderrPrintf(format string, a ...interface{})
+	StderrPrintln(a ...interface{})
+	StderrPrinto(a ...interface{})
 
 	Debugf(format string, a ...interface{})
 	Debugln(a ...interface{})

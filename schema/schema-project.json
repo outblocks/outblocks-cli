@@ -83,11 +83,39 @@
             "type": {
               "description": "The type of the dependency.",
               "type": "string"
+            },
+            "deploy": {
+              "description": "Deploy config.",
+              "$ref": "#/definitions/DependencyDeploy"
+            },
+            "run": {
+              "description": "Run config.",
+              "$ref": "#/definitions/DependencyRun"
             }
           },
           "required": [
             "type"
           ]
+        }
+      }
+    },
+    "DependencyRun": {
+      "title": "Run",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "plugin": {
+          "type": "string"
+        }
+      }
+    },
+    "DependencyDeploy": {
+      "title": "Deploy",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "plugin": {
+          "type": "string"
         }
       }
     },

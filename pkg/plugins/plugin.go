@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"reflect"
 	"runtime"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 type Plugin struct {
@@ -112,21 +112,12 @@ func (p *Plugin) SupportsApp(app string) bool {
 }
 
 func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, projectName, projectPath string, props map[string]interface{}, yamlPrefix string, yamlData []byte) error {
-	var (
-		cmd *exec.Cmd
-		err error
-	)
-
 	runCommand, ok := p.Cmd[runtime.GOOS]
 	if !ok {
 		runCommand = p.Cmd["default"]
 	}
 
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("cmd", "/C", runCommand)
-	} else {
-		cmd = exec.Command("sh", "-c", runCommand)
-	}
+	cmd := plugin_util.NewCmdAsUser(runCommand)
 
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("OUTBLOCKS_BIN=%s", os.Args[0]),
@@ -134,6 +125,8 @@ func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, projectName, pr
 		fmt.Sprintf("OUTBLOCKS_PROJECT_NAME=%s", projectName),
 		fmt.Sprintf("OUTBLOCKS_PROJECT_PATH=%s", projectPath),
 	)
+
+	var err error
 
 	p.client, err = client.NewClient(log, p.Name, cmd, props, client.YAMLContext{
 		Prefix: yamlPrefix,

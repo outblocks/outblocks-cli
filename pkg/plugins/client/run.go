@@ -7,15 +7,19 @@ import (
 	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
-func (c *Client) Run(ctx context.Context, apps []*types.App, deps []*types.Dependency) (ret *plugin_go.RunDoneResponse, err error) {
+func (c *Client) Run(ctx context.Context, apps []*types.AppRun, deps []*types.DependencyRun, args map[string]interface{},
+	outCh chan<- *plugin_go.RunOutputResponse, errCh chan<- error) (ret *plugin_go.RunningResponse, err error) {
 	stream, err := c.lazyStartBiDi(ctx, &plugin_go.RunRequest{
 		Apps:         apps,
 		Dependencies: deps,
+		Args:         args,
 	})
 
 	if err != nil && !IsPluginError(err) {
 		err = NewPluginError(c, "run error", err)
 	}
+
+	close(outCh)
 
 	// if err != nil {
 	// 	return nil, err

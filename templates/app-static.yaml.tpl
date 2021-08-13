@@ -7,12 +7,15 @@
 name: {{.App.Name}}
 {{- if .Type }}
 
-# App type.
+# Type of the app.
 type: {{.Type}}
 {{- end }}
 
 # URL of the app.
 url: {{.URL}}
+# Path redirect rewrites URL to specified path. URL path from 'url' field will be stripped and replaced with value below.
+# '/' should be fine for most apps.
+pathRedirect: /
 
 # Build defines where static files are stored and optionally which command should be used to generate them.
 build:
@@ -23,12 +26,14 @@ build:
   # Directory where generated files will end up.
   dir: {{.App.Build.Dir}}
 
-# Dev defines where how development is handled of application during `ok run`.
-dev:
-{{- if .App.Dev.Command }}
+# Run defines where how development is handled of application during `ok run`.
+run:
+{{- if .App.Run.Command }}
   # Command to be run to for dev mode.
-  command: {{.App.Dev.Command}}
+  command: {{.App.Run.Command}}
 {{ end }}
+  # Port override, by default just assigns next port starting from listen-port.
+  # port: 8123
 
 # Routing to be used:
 #   'react' for react browser routing.

@@ -62,12 +62,14 @@ func (p *Project) Normalize() error {
 				return err
 			}
 
-			url := app.URL()
-			if cur, ok := urlMap[url]; ok {
-				return fmt.Errorf("same URL '%s' used in more than 1 app: '%s' and '%s'", url, app.Name(), cur.Name())
-			}
+			if app.URL() != nil {
+				url := app.URL().String()
+				if cur, ok := urlMap[url]; ok {
+					return fmt.Errorf("same URL '%s' used in more than 1 app: '%s' and '%s'", url, app.Name(), cur.Name())
+				}
 
-			urlMap[url] = app
+				urlMap[url] = app
+			}
 		}
 
 		return nil

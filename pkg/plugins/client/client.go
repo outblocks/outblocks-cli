@@ -151,8 +151,10 @@ func mapResponseType(header *plugin_go.ResponseHeader) plugin_go.Response {
 		return &plugin_go.ValidationErrorResponse{}
 	case plugin_go.ResponseTypeInit:
 		return &plugin_go.InitResponse{}
-	case plugin_go.ResponseTypeRunDone:
-		return &plugin_go.RunDoneResponse{}
+	case plugin_go.ResponseTypeRunning:
+		return &plugin_go.RunningResponse{}
+	case plugin_go.ResponseTypeRunOutput:
+		return &plugin_go.RunOutputResponse{}
 	default:
 		return nil
 	}

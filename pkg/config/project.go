@@ -15,6 +15,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/pterm/pterm"
 )
 
@@ -75,7 +76,7 @@ func LoadProjectConfig(cfgPath string, vars map[string]interface{}, opts *Projec
 	var lock *lockfile.Lockfile
 
 	lockPath := filepath.Join(filepath.Dir(cfgPath), LockfileName)
-	if fileutil.FileExists(lockPath) {
+	if plugin_util.FileExists(lockPath) {
 		lock, err = lockfile.LoadLockfile(lockPath)
 		if err != nil {
 			return nil, err

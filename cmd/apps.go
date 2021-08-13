@@ -80,10 +80,10 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 	f.StringVar(&addOpts.Name, "name", "", "application name")
 	f.StringVar(&addOpts.URL, "url", "", "application URL")
 	f.StringVar(&addOpts.Type, "type", "", "application type (options: static, function, service)")
-	f.StringVar(&addOpts.Static.BuildCommand, "static-build-command", "", "static app build command")
-	f.StringVar(&addOpts.Static.BuildDir, "static-build-dir", "", "static app build dir")
-	f.StringVar(&addOpts.Static.DevCommand, "static-dev-command", "", "static app dev command")
-	f.StringVar(&addOpts.Static.Routing, "static-routing", "", "static app routing (options: react, disabled)")
+	f.StringVar(&addOpts.StaticBuildCommand, "static-build-command", "", "static app build command")
+	f.StringVar(&addOpts.StaticBuildDir, "static-build-dir", "", "static app build dir")
+	f.StringVar(&addOpts.RunCommand, "run-command", "", "app dev run command")
+	f.StringVar(&addOpts.StaticRouting, "static-routing", "", "static app routing (options: react, disabled)")
 	f.StringVarP(&addOpts.OutputPath, "output-path", "o", "", "output path, defaults to: <app_type>/<app_name>")
 
 	cmd.AddCommand(

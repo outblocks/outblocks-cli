@@ -154,6 +154,7 @@ func (d *Deploy) showStateStatus(state *types.StateData) error {
 		return dns[i].record < dns[j].record
 	})
 
+	// Show info about manual DNS setup.
 	data := [][]string{
 		{"Record", "Type", "Value"},
 	}
@@ -175,6 +176,7 @@ func (d *Deploy) showStateStatus(state *types.StateData) error {
 		_ = d.log.Table().WithHasHeader().WithData(pterm.TableData(data)).Render()
 	}
 
+	// External App URLs.
 	var apps []config.App
 
 	for _, app := range d.cfg.Apps {
@@ -199,6 +201,21 @@ func (d *Deploy) showStateStatus(state *types.StateData) error {
 		for _, app := range apps {
 			d.log.Printf("%s %s %s\n", appURLStyle.Sprint(app.URL()), pterm.Gray("==>"), appNameStyle.Sprint(app.Name()))
 		}
+	}
+
+	// Show info about SSL status.
+	if len(dnsMap) > 0 {
+		d.log.Section().Println("SSL Certificates")
+
+		data := [][]string{
+			{"Domain", "Status", "Info"},
+		}
+
+		for host, v := range dnsMap {
+			data = append(data, []string{pterm.Green(host), pterm.Yellow(v.SSLStatus), v.SSLStatusInfo})
+		}
+
+		_ = d.log.Table().WithHasHeader().WithData(pterm.TableData(data)).Render()
 	}
 
 	return nil

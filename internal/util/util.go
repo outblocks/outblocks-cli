@@ -35,3 +35,13 @@ func RegexValidator(regex *regexp.Regexp, msg string) func(interface{}) error {
 		return nil
 	}
 }
+
+func CopyMapStringString(m map[string]string) map[string]string {
+	out := make(map[string]string, len(m))
+
+	for k, v := range m {
+		out[k] = v
+	}
+
+	return out
+}

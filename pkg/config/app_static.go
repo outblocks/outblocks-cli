@@ -28,21 +28,25 @@ var (
 type StaticApp struct {
 	BasicApp `json:",inline"`
 	Build    *StaticAppBuild `json:"build,omitempty"`
-	Dev      *StaticAppDev   `json:"dev,omitempty"`
 	Routing  string          `json:"routing"`
 }
 
 type StaticAppBuild struct {
-	Command string `json:"command"`
-	Dir     string `json:"dir"`
-}
-
-type StaticAppDev struct {
-	Command string `json:"command"`
+	Command string `json:"command,omitempty"`
+	Dir     string `json:"dir,omitempty"`
 }
 
 func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
-	out := &StaticApp{}
+	out := &StaticApp{
+		BasicApp: BasicApp{
+			AppRun:    &AppRun{},
+			AppDeploy: &AppDeploy{},
+		},
+		Routing: StaticAppRoutingReact,
+		Build: &StaticAppBuild{
+			Dir: DefaultStaticAppBuildDir,
+		},
+	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
@@ -71,7 +75,7 @@ func (s *StaticApp) PluginType() *types.App {
 
 	base.Properties["routing"] = s.Routing
 	base.Properties["build"] = s.Build
-	base.Properties["dev"] = s.Dev
+	base.Properties["run"] = s.AppRun
 
 	return base
 }
@@ -83,17 +87,9 @@ func (s *StaticApp) Normalize(cfg *Project) error {
 
 	s.Routing = strings.ToLower(s.Routing)
 
-	if s.Routing == "" {
-		s.Routing = StaticAppRoutingReact
-	}
-
-	if s.Build == nil {
-		s.Build = &StaticAppBuild{}
-	}
-
-	if s.Build.Dir == "" {
-		s.Build.Dir = DefaultStaticAppBuildDir
-	}
-
 	return nil
+}
+
+func (s *StaticApp) SupportsLocal() bool {
+	return true
 }

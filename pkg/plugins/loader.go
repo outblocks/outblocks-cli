@@ -16,6 +16,7 @@ import (
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 const (
@@ -172,12 +173,16 @@ func (l *Loader) downloadPlugin(ctx context.Context, pi *pluginInfo) (string, *s
 
 	destPath := filepath.Join(l.pluginsCacheDir, pi.author, pi.name, fmt.Sprintf("%s-%s", CurrentArch(), download.Version))
 
-	if err := os.MkdirAll(destPath, 0755); err != nil {
+	if err := plugin_util.MkdirAll(destPath, 0755); err != nil {
 		return "", nil, fmt.Errorf("failed to create path %s: %w", destPath, err)
 	}
 
 	if err := copy.Copy(download.Path, destPath); err != nil {
 		return "", nil, fmt.Errorf("failed to copy downloaded plugin %s: %w", destPath, err)
+	}
+
+	if err := plugin_util.ChownRToUser(destPath); err != nil {
+		return "", nil, fmt.Errorf("failed to set permissions on downloaded plugin %s: %w", destPath, err)
 	}
 
 	if download.PathTemp {
@@ -206,17 +211,19 @@ func (l *Loader) installCachedPlugin(pi *pluginInfo) (string, *semver.Version, e
 
 func (l *Loader) installPlugin(pi *pluginInfo, from string) error {
 	localPath := filepath.Join(l.baseDir, ".outblocks", "plugins", pi.author, pi.name)
-	if err := os.MkdirAll(localPath, 0755); err != nil {
+	if err := plugin_util.MkdirAll(localPath, 0755); err != nil {
 		return fmt.Errorf("failed to create path %s: %w", localPath, err)
 	}
 
 	dest := filepath.Join(localPath, filepath.Base(from))
 	_ = os.RemoveAll(dest)
 
-	if err := os.Symlink(from, dest); err != nil {
-		if err := copy.Copy(from, filepath.Join(localPath, filepath.Base(from))); err != nil {
+	if err := plugin_util.Symlink(from, dest); err != nil {
+		if err := copy.Copy(from, dest); err != nil {
 			return fmt.Errorf("failed to copy cached plugin %s: %w", from, err)
 		}
+
+		return plugin_util.ChownRToUser(dest)
 	}
 
 	return nil

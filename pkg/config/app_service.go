@@ -17,7 +17,12 @@ type ServiceApp struct {
 }
 
 func LoadServiceAppData(path string, data []byte) (App, error) {
-	out := &ServiceApp{}
+	out := &ServiceApp{
+		BasicApp: BasicApp{
+			AppRun:    &AppRun{},
+			AppDeploy: &AppDeploy{},
+		},
+	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
@@ -29,4 +34,8 @@ func LoadServiceAppData(path string, data []byte) (App, error) {
 	out.typ = TypeService
 
 	return out, nil
+}
+
+func (s *ServiceApp) SupportsLocal() bool {
+	return false
 }

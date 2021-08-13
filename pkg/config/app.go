@@ -17,17 +17,23 @@ var (
 	ValidURLRegex  = regexp.MustCompile(`^(https?://)?([a-zA-Z][a-zA-Z0-9-]*)((\.)([a-zA-Z][a-zA-Z0-9-]*)){1,}(/[a-zA-Z0-9-_]+)*(/)?$`)
 	ValidNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,30}$`)
 	ValidAppTypes  = []string{TypeStatic, TypeFunction, TypeService}
+	RunPluginLocal = "local"
 )
 
 type App interface {
 	ID() string
 	Name() string
-	URL() string
+	URL() *url.URL
+	PathRedirect() string
 	Normalize(cfg *Project) error
 	Check(cfg *Project) error
 	Type() string
 	Path() string
 	PluginType() *types.App
+	RunInfo() *AppRun
+	DeployInfo() *AppDeploy
+	SupportsLocal() bool
+	YAMLError(path, msg string) error
 
 	DeployPlugin() *plugins.Plugin
 	RunPlugin() *plugins.Plugin
@@ -35,12 +41,14 @@ type App interface {
 }
 
 type BasicApp struct {
-	AppName string                 `json:"name"`
-	AppURL  string                 `json:"url"`
-	AppPath string                 `json:"-"`
-	Deploy  string                 `json:"deploy"`
-	Needs   map[string]*AppNeed    `json:"needs"`
-	Other   map[string]interface{} `yaml:"-,remain"`
+	AppName         string                 `json:"name"`
+	AppURL          string                 `json:"url"`
+	AppPathRedirect string                 `json:"pathRedirect"`
+	AppPath         string                 `json:"-"`
+	AppRun          *AppRun                `json:"run"`
+	AppDeploy       *AppDeploy             `json:"deploy"`
+	Needs           map[string]*AppNeed    `json:"needs"`
+	Other           map[string]interface{} `yaml:"-,remain"`
 
 	url          *url.URL
 	yamlPath     string
@@ -51,6 +59,18 @@ type BasicApp struct {
 	typ          string
 }
 
+type AppRun struct {
+	Plugin  string                 `json:"plugin,omitempty"`
+	Command string                 `json:"command,omitempty"`
+	Port    int                    `json:"port,omitempty"`
+	Other   map[string]interface{} `yaml:"-,remain"`
+}
+
+type AppDeploy struct {
+	Plugin string                 `json:"plugin,omitempty"`
+	Other  map[string]interface{} `yaml:"-,remain"`
+}
+
 func (a *BasicApp) Validate() error {
 	return validation.ValidateStruct(a,
 		validation.Field(&a.AppURL, validation.Match(ValidURLRegex)),
@@ -58,13 +78,27 @@ func (a *BasicApp) Validate() error {
 }
 
 func (a *BasicApp) Normalize(cfg *Project) error {
+	if a.AppRun == nil {
+		a.AppRun = &AppRun{}
+	}
+
+	if a.AppDeploy == nil {
+		a.AppDeploy = &AppDeploy{}
+	}
+
 	if a.AppName == "" {
 		a.AppName = filepath.Base(a.AppPath)
 	}
 
-	if a.AppURL != "" {
-		a.AppURL = strings.ToLower(a.AppURL)
+	if a.AppPathRedirect == "" {
+		a.AppPathRedirect = "/"
+	}
 
+	a.AppDeploy.Plugin = strings.ToLower(a.AppDeploy.Plugin)
+	a.AppRun.Plugin = strings.ToLower(a.AppRun.Plugin)
+	a.AppURL = strings.ToLower(a.AppURL)
+
+	if a.AppURL != "" {
 		if !strings.HasPrefix(a.AppURL, "http") {
 			a.AppURL = "https://" + a.AppURL
 		}
@@ -73,7 +107,11 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 
 		a.url, err = url.Parse(a.AppURL)
 		if err != nil {
-			return a.yamlError("$.url", "App.URL is invalid")
+			return a.YAMLError("$.url", "App.URL is invalid")
+		}
+
+		if a.url.Path == "" {
+			a.url.Path = "/"
 		}
 	}
 
@@ -101,20 +139,20 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 }
 
 func (a *BasicApp) Check(cfg *Project) error {
-	a.Deploy = strings.ToLower(a.Deploy)
-
 	// Check deploy plugin.
+	deployPlugin := a.AppDeploy.Plugin
+
 	for _, plug := range cfg.loadedPlugins {
 		if !plug.HasAction(plugins.ActionDeploy) {
 			continue
 		}
 
-		if (a.Deploy != "" && a.Deploy != plug.Name) || !plug.SupportsApp(a.typ) {
+		if (deployPlugin != "" && deployPlugin != plug.Name) || !plug.SupportsApp(a.typ) {
 			continue
 		}
 
 		a.deployPlugin = plug
-		a.Deploy = plug.Name
+		a.AppDeploy.Plugin = plug.Name
 
 		break
 	}
@@ -124,19 +162,22 @@ func (a *BasicApp) Check(cfg *Project) error {
 	}
 
 	// Check run plugin.
+	runPlugin := a.AppRun.Plugin
+
 	for _, plug := range cfg.loadedPlugins {
 		if !plug.HasAction(plugins.ActionRun) {
 			continue
 		}
 
-		if !plug.SupportsApp(a.typ) {
+		if (runPlugin != "" && runPlugin != plug.Name) || !plug.SupportsApp(a.typ) {
 			continue
 		}
 
 		a.runPlugin = plug
+		a.AppRun.Plugin = plug.Name
 	}
 
-	if a.runPlugin == nil {
+	if a.runPlugin == nil && !strings.EqualFold(RunPluginLocal, runPlugin) {
 		return fmt.Errorf("%s has no matching run plugin available.\nfile: %s", a.typ, a.yamlPath)
 	}
 
@@ -147,18 +188,14 @@ func (a *BasicApp) Check(cfg *Project) error {
 
 	for k, need := range a.Needs {
 		if need.dep.deployPlugin != a.deployPlugin {
-			return a.yamlError(fmt.Sprintf("$.needs[%s]", k), fmt.Sprintf("%s needs a dependency that uses different deployment plugin.", a.typ))
-		}
-
-		if need.dep.runPlugin != a.runPlugin {
-			return a.yamlError(fmt.Sprintf("$.needs[%s]", k), fmt.Sprintf("%s needs a dependency that uses different run plugin.", a.typ))
+			return a.YAMLError(fmt.Sprintf("$.needs[%s]", k), fmt.Sprintf("%s needs a dependency that uses different deployment plugin.", a.typ))
 		}
 	}
 
 	return nil
 }
 
-func (a *BasicApp) yamlError(path, msg string) error {
+func (a *BasicApp) YAMLError(path, msg string) error {
 	return fmt.Errorf("file: %s\n%s", a.yamlPath, fileutil.YAMLError(path, msg, a.yamlData))
 }
 
@@ -183,12 +220,13 @@ func (a *BasicApp) PluginType() *types.App {
 	}
 
 	return &types.App{
-		ID:         a.ID(),
-		Name:       a.AppName,
-		Type:       a.Type(),
-		URL:        appURL,
-		Needs:      needs,
-		Properties: a.Other,
+		ID:           a.ID(),
+		Name:         a.AppName,
+		Type:         a.Type(),
+		URL:          appURL,
+		PathRedirect: a.AppPathRedirect,
+		Needs:        needs,
+		Properties:   a.Other,
 	}
 }
 
@@ -208,14 +246,26 @@ func (a *BasicApp) Name() string {
 	return a.AppName
 }
 
-func (a *BasicApp) URL() string {
-	if a.url != nil {
-		return a.url.String()
-	}
-
-	return a.AppURL
+func (a *BasicApp) URL() *url.URL {
+	return a.url
 }
 
 func (a *BasicApp) ID() string {
 	return fmt.Sprintf("app_%s_%s", a.typ, a.AppName)
+}
+
+func (a *BasicApp) SupportsLocal() bool {
+	return false
+}
+
+func (a *BasicApp) RunInfo() *AppRun {
+	return a.AppRun
+}
+
+func (a *BasicApp) DeployInfo() *AppDeploy {
+	return a.AppDeploy
+}
+
+func (a *BasicApp) PathRedirect() string {
+	return a.AppPathRedirect
 }

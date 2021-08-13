@@ -8,12 +8,8 @@ import (
 
 	"github.com/enescakir/emoji"
 	"github.com/goccy/go-yaml"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
-
-func FileExists(path string) bool {
-	_, err := os.Stat(path)
-	return !os.IsNotExist(err)
-}
 
 func FindYAMLGoingUp(path, name string) string {
 	var f string
@@ -39,7 +35,7 @@ func FindYAML(path string) string {
 	for _, ext := range []string{".yaml", ".yml"} {
 		f := path + ext
 
-		if FileExists(f) {
+		if plugin_util.FileExists(f) {
 			return f
 		}
 	}
@@ -131,28 +127,13 @@ func YAMLError(path, msg string, data []byte) error {
 	if err != nil {
 		idx := strings.LastIndex(path, ".")
 		if idx == -1 {
-			panic(err)
+			return fmt.Errorf("\n%s", msg)
 		}
 
 		return YAMLError(path[:idx], msg, data)
 	}
 
 	return fmt.Errorf("\n%s\n\n%s  %s", source, emoji.Warning, msg)
-}
-
-func CheckDir(path string) (string, bool) {
-	path, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		return "", false
-	}
-
-	fi, err := os.Stat(path)
-
-	if os.IsNotExist(err) || !fi.IsDir() {
-		return "", false
-	}
-
-	return path, true
 }
 
 func IsRelativeSubdir(parent, dir string) bool {

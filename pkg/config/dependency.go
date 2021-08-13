@@ -12,11 +12,23 @@ import (
 type Dependency struct {
 	Name   string                 `json:"-"`
 	Type   string                 `json:"type"`
-	Deploy string                 `json:"deploy"`
+	Deploy *DependencyDeploy      `json:"deploy"`
+	Run    *DependencyRun         `json:"run"`
 	Other  map[string]interface{} `yaml:"-,remain"`
 
 	deployPlugin *plugins.Plugin
 	runPlugin    *plugins.Plugin
+}
+
+type DependencyRun struct {
+	Plugin string                 `json:"plugin,omitempty"`
+	Port   int                    `json:"port,omitempty"`
+	Other  map[string]interface{} `yaml:"-,remain"`
+}
+
+type DependencyDeploy struct {
+	Plugin string                 `json:"plugin,omitempty"`
+	Other  map[string]interface{} `yaml:"-,remain"`
 }
 
 func (d *Dependency) Validate() error {
@@ -30,14 +42,23 @@ func (d *Dependency) PluginType() *types.Dependency {
 		ID:         d.ID(),
 		Name:       d.Name,
 		Type:       d.Type,
-		Deploy:     d.Deploy,
 		Properties: d.Other,
 	}
 }
 
 func (d *Dependency) Normalize(key string, cfg *Project) error {
 	d.Type = strings.ToLower(d.Type)
-	d.Deploy = strings.ToLower(d.Deploy)
+
+	if d.Deploy == nil {
+		d.Deploy = &DependencyDeploy{}
+	}
+
+	if d.Run == nil {
+		d.Run = &DependencyRun{}
+	}
+
+	d.Deploy.Plugin = strings.ToLower(d.Deploy.Plugin)
+	d.Run.Plugin = strings.ToLower(d.Run.Plugin)
 
 	if d.Type == "" {
 		return cfg.yamlError(fmt.Sprintf("$.dependencies.%s.type", key), "dependency.type cannot be empty")
@@ -48,17 +69,19 @@ func (d *Dependency) Normalize(key string, cfg *Project) error {
 
 func (d *Dependency) Check(key string, cfg *Project) error {
 	// Check deploy plugin.
+	deployPlugin := d.Deploy.Plugin
+
 	for _, plug := range cfg.loadedPlugins {
 		if !plug.HasAction(plugins.ActionDeploy) {
 			continue
 		}
 
-		if !plug.SupportsType(d.Type, d.Deploy, d.Other) {
+		if (deployPlugin != "" && deployPlugin != plug.Name) || !plug.SupportsType(d.Type, deployPlugin, d.Other) {
 			continue
 		}
 
 		d.deployPlugin = plug
-		d.Deploy = plug.Name
+		d.Deploy.Plugin = plug.Name
 
 		break
 	}
@@ -68,16 +91,19 @@ func (d *Dependency) Check(key string, cfg *Project) error {
 	}
 
 	// Check run plugin.
+	runPlugin := d.Run.Plugin
+
 	for _, plug := range cfg.loadedPlugins {
 		if !plug.HasAction(plugins.ActionRun) {
 			continue
 		}
 
-		if !plug.SupportsType(d.Type, d.Deploy, d.Other) {
+		if (runPlugin != "" && runPlugin != plug.Name) || !plug.SupportsType(d.Type, d.Deploy.Plugin, d.Other) {
 			continue
 		}
 
 		d.runPlugin = plug
+		d.Run.Plugin = plug.Name
 	}
 
 	if d.runPlugin == nil {
@@ -97,4 +123,8 @@ func (d *Dependency) RunPlugin() *plugins.Plugin {
 
 func (d *Dependency) ID() string {
 	return d.Name
+}
+
+func (d *Dependency) SupportsLocal() bool {
+	return false
 }

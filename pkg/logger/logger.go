@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"os"
 	"runtime"
 	"strings"
 
@@ -35,7 +36,7 @@ func NewLogger() Logger {
 		Style: &pterm.ThemeDefault.WarningPrefixStyle,
 		Text:  "WARN",
 	})
-	err := pterm.Error.WithShowLineNumber(false).WithPrefix(pterm.Prefix{
+	err := pterm.Error.WithPrefix(pterm.Prefix{
 		Style: &pterm.ThemeDefault.ErrorPrefixStyle,
 		Text:  "ERR ",
 	})
@@ -82,6 +83,17 @@ func (l *Log) Printo(a ...interface{}) {
 	pterm.Printo(a...)
 }
 
+func (l *Log) StderrPrintf(format string, a ...interface{}) {
+	pterm.Fprint(os.Stderr, pterm.Sprintf(format, a...))
+}
+
+func (l *Log) StderrPrintln(a ...interface{}) {
+	pterm.Fprintln(os.Stderr, a...)
+}
+
+func (l *Log) StderrPrinto(a ...interface{}) {
+	pterm.Fprinto(os.Stderr, a...)
+}
 func (l *Log) Debugf(format string, a ...interface{}) {
 	if l.logLevel > LogLevelDebug {
 		return

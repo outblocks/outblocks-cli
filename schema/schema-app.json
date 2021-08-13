@@ -9,29 +9,37 @@
       "additionalProperties": false,
       "properties": {
         "name": {
-          "description": "Name override (defaults to directory name).",
+          "description": "Name of the app (defaults to directory name).",
           "type": "string"
         },
         "type": {
-          "description": "Type override (defaults to parent directory name).",
+          "description": "Type of the app.",
           "type": "string",
           "enum": ["static", "function", "service"]
         },
         "url": {
-          "description": "External URL.",
+          "description": "External URL of the app.",
+          "type": "string"
+        },
+        "pathRedirect": {
+          "description": "Path redirect rewrites URL to specified path. URL path from 'url' field will be stripped and replaced with value below.",
           "type": "string"
         },
         "needs": {
           "description": "Application dependencies to inject.",
           "$ref": "#/definitions/Needs"
         },
-        "dev": {
-          "description": "Dev config used for dev builds (during run).",
-          "$ref": "#/definitions/Dev"
+        "run": {
+          "description": "Run config used for dev builds during run.",
+          "$ref": "#/definitions/Run"
         },
         "build": {
-          "description": "Build config used for production builds (during deployments).",
+          "description": "Build config used for deployment builds.",
           "$ref": "#/definitions/Build"
+        },
+        "deploy": {
+          "description": "Deploy config.",
+          "$ref": "#/definitions/Deploy"
         },
         "src": {
           "description": "Source definition.",
@@ -65,12 +73,32 @@
         }
       }
     },
-    "Dev": {
-      "title": "Dev",
+    "Run": {
+      "title": "Run",
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
+        "plugin": {
+          "description": "Run plugin override, defaults to first supported plugin available.",
+          "type": "string"
+        },
         "command": {
+          "description": "Command to be run to for dev mode.",
+          "type": "string"
+        },
+        "port": {
+          "description": "Port override, by default just assigns next port starting from listen-port.",
+          "type": "integer"
+        }
+      }
+    },
+    "Deploy": {
+      "title": "Deploy",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "plugin": {
+          "description": "Deploy plugin override, defaults to first supported plugin available.",
           "type": "string"
         }
       }
@@ -81,6 +109,7 @@
       "additionalProperties": false,
       "properties": {
         "command": {
+          "description": "Command to be run to generate output files.",
           "type": "string"
         },
         "dir": {

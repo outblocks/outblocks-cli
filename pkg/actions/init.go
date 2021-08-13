@@ -234,7 +234,11 @@ func (d *Init) prompt(ctx context.Context, cfg *config.Project, loader *plugins.
 	if len(qs) != 0 {
 		err := survey.Ask(qs, d.opts)
 		if err != nil {
-			return nil, errInitCanceled
+			if err == terminal.InterruptErr {
+				return nil, errInitCanceled
+			}
+
+			return nil, err
 		}
 	}
 

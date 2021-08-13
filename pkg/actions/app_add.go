@@ -13,6 +13,7 @@ import (
 	"text/template"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/Masterminds/sprig"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
@@ -41,19 +42,6 @@ type staticAppInfo struct {
 	Type string
 }
 
-type AppStaticOptions struct {
-	BuildCommand string
-	BuildDir     string
-	DevCommand   string
-	Routing      string
-}
-
-func (o *AppStaticOptions) Validate() error {
-	return validation.ValidateStruct(o,
-		validation.Field(&o.Routing, validation.In(util.InterfaceSlice(config.StaticAppRoutings)...)),
-	)
-}
-
 type AppAddOptions struct {
 	Overwrite bool
 
@@ -61,14 +49,19 @@ type AppAddOptions struct {
 	Name       string
 	Type       string
 	URL        string
+	RunCommand string
 
-	Static AppStaticOptions
+	// Static App Options.
+	StaticBuildCommand string
+	StaticBuildDir     string
+	StaticRouting      string
 }
 
 func (o *AppAddOptions) Validate() error {
 	return validation.ValidateStruct(o,
 		validation.Field(&o.Type, validation.Required, validation.In(util.InterfaceSlice(config.ValidAppTypes)...)),
-		validation.Field(&o.Static),
+
+		validation.Field(&o.StaticRouting, validation.In(util.InterfaceSlice(config.StaticAppRoutings)...)),
 	)
 }
 
@@ -203,7 +196,11 @@ func (d *AppAdd) promptBasic() error {
 	if len(qs) != 0 {
 		err := survey.Ask(qs, d.opts)
 		if err != nil {
-			return errAppAddCanceled
+			if err == terminal.InterruptErr {
+				return errAppAddCanceled
+			}
+
+			return err
 		}
 	}
 
@@ -237,11 +234,11 @@ func (d *AppAdd) promptBasic() error {
 	}
 
 	err = survey.Ask(qs, d.opts)
-	if err != nil {
+	if err == terminal.InterruptErr {
 		return errAppAddCanceled
 	}
 
-	return nil
+	return err
 }
 
 func (d *AppAdd) prompt(curDir string) (interface{}, error) {
@@ -252,7 +249,7 @@ func (d *AppAdd) prompt(curDir string) (interface{}, error) {
 
 	stat, err := os.Stat(d.opts.OutputPath)
 	if os.IsNotExist(err) {
-		err = os.MkdirAll(d.opts.OutputPath, 0755)
+		err = plugin_util.MkdirAll(d.opts.OutputPath, 0755)
 		if err != nil {
 			return nil, err
 		}
@@ -334,50 +331,50 @@ func suggestAppStaticBuildDir(cfg *config.Project, opts *AppAddOptions) func(toC
 func (d *AppAdd) promptStatic(curDir string, opts *AppAddOptions) (*staticAppInfo, error) {
 	var qs []*survey.Question
 
-	buildDirValidator := validateAppStaticBuildDir(d.cfg, opts)
+	staticBuildDirValidator := validateAppStaticBuildDir(d.cfg, opts)
 
-	if opts.Static.BuildDir == "" {
+	if opts.StaticBuildDir == "" {
 		def, _ := filepath.Rel(curDir, filepath.Join(opts.OutputPath, config.DefaultStaticAppBuildDir))
 
 		qs = append(qs, &survey.Question{
-			Name: "builddir",
+			Name: "StaticBuildDir",
 			Prompt: &survey.Input{
 				Message: "Build directory of application:",
 				Default: "./" + def,
 				Suggest: suggestAppStaticBuildDir(d.cfg, opts),
 			},
-			Validate: buildDirValidator,
+			Validate: staticBuildDirValidator,
 		})
 	} else {
-		err := buildDirValidator(opts.Static.BuildDir)
+		err := staticBuildDirValidator(opts.StaticBuildDir)
 		if err != nil {
 			return nil, err
 		}
 
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Build directory of application:"), pterm.Cyan(opts.Static.BuildDir))
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Build directory of application:"), pterm.Cyan(opts.StaticBuildDir))
 	}
 
-	if opts.Static.BuildCommand == "" {
+	if opts.StaticBuildCommand == "" {
 		qs = append(qs, &survey.Question{
-			Name:   "buildcommand",
+			Name:   "StaticBuildCommand",
 			Prompt: &survey.Input{Message: "Build command of application (optional, e.g. yarn build):"},
 		})
 	} else {
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Build command of application:"), pterm.Cyan(opts.Static.BuildCommand))
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Build command of application:"), pterm.Cyan(opts.StaticBuildCommand))
 	}
 
-	if opts.Static.DevCommand == "" {
+	if opts.RunCommand == "" {
 		qs = append(qs, &survey.Question{
-			Name:   "devcommand",
-			Prompt: &survey.Input{Message: "Dev command of application (optional, e.g. yarn dev):"},
+			Name:   "RunCommand",
+			Prompt: &survey.Input{Message: "Run command of application to serve app during dev (optional, e.g. yarn dev):"},
 		})
 	} else {
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Dev command of application:"), pterm.Cyan(opts.Static.DevCommand))
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Run command of application:"), pterm.Cyan(opts.RunCommand))
 	}
 
-	if opts.Static.Routing == "" {
+	if opts.StaticRouting == "" {
 		qs = append(qs, &survey.Question{
-			Name: "routing",
+			Name: "StaticRouting",
 			Prompt: &survey.Select{
 				Message: "Routing of application:",
 				Options: config.StaticAppRoutings,
@@ -385,20 +382,24 @@ func (d *AppAdd) promptStatic(curDir string, opts *AppAddOptions) (*staticAppInf
 			},
 		})
 	} else {
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Routing of application:"), pterm.Cyan(opts.Static.BuildCommand))
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Routing of application:"), pterm.Cyan(opts.StaticBuildCommand))
 	}
 
 	// Get info about static app.
 	if len(qs) != 0 {
-		err := survey.Ask(qs, &opts.Static)
+		err := survey.Ask(qs, opts)
 		if err != nil {
-			return nil, errAppAddCanceled
+			if err == terminal.InterruptErr {
+				return nil, errAppAddCanceled
+			}
+
+			return nil, err
 		}
 	}
 
 	// Cleanup.
-	opts.Static.BuildDir, _ = filepath.Rel(opts.OutputPath, opts.Static.BuildDir)
-	opts.Static.BuildDir = "./" + opts.Static.BuildDir
+	opts.StaticBuildDir, _ = filepath.Rel(opts.OutputPath, opts.StaticBuildDir)
+	opts.StaticBuildDir = "./" + opts.StaticBuildDir
 
 	return &staticAppInfo{
 		App: config.StaticApp{
@@ -406,15 +407,15 @@ func (d *AppAdd) promptStatic(curDir string, opts *AppAddOptions) (*staticAppInf
 				AppName: opts.Name,
 				AppURL:  opts.URL,
 				AppPath: opts.OutputPath,
+				AppRun: &config.AppRun{
+					Command: opts.RunCommand,
+				},
 			},
 			Build: &config.StaticAppBuild{
-				Command: opts.Static.BuildCommand,
-				Dir:     opts.Static.BuildDir,
+				Command: opts.StaticBuildCommand,
+				Dir:     opts.StaticBuildDir,
 			},
-			Dev: &config.StaticAppDev{
-				Command: opts.Static.DevCommand,
-			},
-			Routing: opts.Static.Routing,
+			Routing: opts.StaticRouting,
 		},
 
 		URL:  opts.URL,

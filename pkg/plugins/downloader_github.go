@@ -79,7 +79,7 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 	}
 
 	dest := clipath.CachePath("plugin-release", pi.author, pi.name, filepath.Base(matchingAsset.GetName()))
-	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+	if err := plugin_util.MkdirAll(filepath.Dir(dest), 0755); err != nil {
 		return nil, fmt.Errorf("failed to create path %s: %w", dest, err)
 	}
 

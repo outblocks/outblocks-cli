@@ -3,11 +3,11 @@ package plugins
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/Masterminds/semver"
 	"github.com/Masterminds/vcs"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 type VCSDownloader struct {
@@ -30,7 +30,7 @@ type vcsVersionInfo struct {
 
 func (d *VCSDownloader) fetch(_ context.Context, pi *pluginInfo) (vcs.Repo, error) {
 	cachePath := clipath.CachePath("plugins", pi.author, pi.name)
-	if err := os.MkdirAll(cachePath, 0755); err != nil {
+	if err := plugin_util.MkdirAll(cachePath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create path %s: %w", cachePath, err)
 	}
 

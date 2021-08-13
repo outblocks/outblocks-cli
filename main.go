@@ -22,7 +22,7 @@ func main() {
 	go func() {
 		<-ch
 
-		exec.Log().Warnln("Canceling execution... Please wait for all pending tasks to finish...")
+		exec.Log().Warnln("Signal received. Canceling execution...")
 		cancel()
 	}()
 
