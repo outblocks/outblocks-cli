@@ -2,14 +2,19 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/pkg/cli"
 	"github.com/outblocks/outblocks-cli/pkg/cli/values"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"
 	"github.com/outblocks/outblocks-cli/pkg/config"
+	"github.com/outblocks/outblocks-cli/pkg/getter"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/pterm/pterm"
@@ -56,12 +61,99 @@ func setupEnvVars(env *cli.Environment) {
 	env.AddVarWithDefault("log_level", "set logging level: debug | warn | error", "warn")
 }
 
+func (e *Executor) commandPreRun() error {
+	var skipLoadConfig, skipLoadPlugins, skipCheckConfig bool
+
+	e.opts.env = e.v.GetString("env")
+	cmd, _, _ := e.rootCmd.Find(os.Args[1:])
+
+	if cmd != nil {
+		skipLoadConfig = cmd.Annotations[cmdSkipLoadConfigAnnotation] == "1"
+		skipLoadPlugins = cmd.Annotations[cmdSkipLoadPluginsAnnotation] == "1"
+		skipCheckConfig = cmd.Annotations[cmdSkipCheckConfigAnnotation] == "1"
+
+		if skipLoadConfig {
+			return nil
+		}
+	}
+
+	// Load values.
+	for i, v := range e.opts.valueOpts.ValueFiles {
+		e.opts.valueOpts.ValueFiles[i] = strings.ReplaceAll(v, "<env>", e.opts.env)
+	}
+
+	defValuesYAML := strings.ReplaceAll(defaultValuesYAML, "<env>", e.opts.env)
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("cannot find current directory: %w", err)
+	}
+
+	cfgPath := fileutil.FindYAMLGoingUp(pwd, config.ProjectYAMLName)
+
+	v, err := e.opts.valueOpts.MergeValues(cmd.Context(), filepath.Dir(cfgPath), getter.All())
+	if err != nil && (len(e.opts.valueOpts.ValueFiles) != 1 || e.opts.valueOpts.ValueFiles[0] != defValuesYAML) {
+		return err
+	}
+
+	vals := map[string]interface{}{"var": v}
+
+	// Load config file.
+	if err := e.loadProjectConfig(cmd.Context(), cfgPath, vals, skipLoadPlugins, skipCheckConfig); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+		return err
+	}
+
+	// Augment/load new commands.
+	if skipLoadPlugins {
+		return nil
+	}
+
+	for _, plug := range e.cfg.Plugins {
+		for cmdName, cmdt := range plug.Loaded().Commands {
+			cmdName = strings.ToLower(cmdName)
+
+			// TODO: add possibility to add new commands
+			if !strings.EqualFold(cmdName, cmd.Use) {
+				continue
+			}
+
+			flags := cmd.Flags()
+
+			for _, arg := range cmdt.Args {
+				arg.Name = strings.ToLower(arg.Name)
+
+				if flags.Lookup(arg.Name) != nil {
+					return fmt.Errorf("plugin tried to add already existing argument '%s' to command '%s'", arg, cmdName)
+				}
+
+				switch arg.Type {
+				case plugins.CommandTypeBool:
+					def, _ := arg.Default.(bool)
+					arg.Value = flags.Bool(arg.Name, def, arg.Usage)
+				case plugins.CommandTypeInt:
+					def, _ := arg.Default.(int)
+					arg.Value = flags.Int(arg.Name, def, arg.Usage)
+				case plugins.CommandTypeString:
+					def, _ := arg.Default.(string)
+					arg.Value = flags.String(arg.Name, def, arg.Usage)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 func (e *Executor) Execute(ctx context.Context) error {
 	if err := e.initConfig(); err != nil {
 		return err
 	}
 
 	if err := e.setupLogging(); err != nil {
+		return err
+	}
+
+	if err := e.commandPreRun(); err != nil {
 		return err
 	}
 

@@ -16,16 +16,17 @@ import (
 )
 
 type Plugin struct {
-	Name           string            `json:"name"`
-	Author         string            `json:"author"`
-	Usage          string            `json:"usage"`
-	Description    string            `json:"description"`
-	Cmd            map[string]string `json:"cmd"`
-	Actions        []string          `json:"actions"`
-	Hooks          []*PluginHooks    `json:"hooks"`
-	Supports       []string          `json:"supports"`
-	StateTypes     []string          `json:"state_types"`
-	SupportedTypes []*PluginType     `json:"supported_types"`
+	Name           string                    `json:"name"`
+	Author         string                    `json:"author"`
+	Usage          string                    `json:"usage"`
+	Description    string                    `json:"description"`
+	Cmd            map[string]string         `json:"cmd"`
+	Actions        []string                  `json:"actions"`
+	Hooks          []*PluginHooks            `json:"hooks"`
+	Supports       []string                  `json:"supports"`
+	StateTypes     []string                  `json:"state_types"`
+	SupportedTypes []*PluginType             `json:"supported_types"`
+	Commands       map[string]*PluginCommand `json:"commands"`
 
 	Path     string          `json:"-"`
 	Version  *semver.Version `json:"-"`
@@ -142,4 +143,19 @@ func (p *Plugin) Stop() error {
 	}
 
 	return p.client.Stop()
+}
+
+func (p *Plugin) CommandArgs(cmd string) map[string]interface{} {
+	c := p.Commands[cmd]
+	if c == nil {
+		return nil
+	}
+
+	args := make(map[string]interface{})
+
+	for _, arg := range c.Args {
+		args[arg.Name] = arg.Val()
+	}
+
+	return args
 }

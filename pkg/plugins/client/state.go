@@ -29,7 +29,7 @@ func (c *Client) GetState(ctx context.Context, typ, env string, props map[string
 		err = NewPluginError(c, "get state error", err)
 	}
 
-	return
+	return ret, err
 }
 
 func (c *Client) SaveState(ctx context.Context, state *types.StateData, typ, env string, props map[string]interface{}) (ret *plugin_go.SaveStateResponse, err error) {

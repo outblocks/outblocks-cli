@@ -34,7 +34,7 @@ func RunPlugin(ctx context.Context, runMap map[*plugins.Plugin]*plugin_go.RunReq
 	errCh := make(chan error, 1)
 
 	for plug, req := range runMap {
-		res, err := plug.Client().Run(ctx, req.Apps, req.Dependencies, nil, ret.OutputCh, errCh)
+		res, err := plug.Client().Run(ctx, req, ret.OutputCh, errCh)
 		if err != nil {
 			return nil, err
 		}
@@ -70,8 +70,6 @@ func (l *PluginRunResult) Stop() error {
 			firstErr = err
 		}
 	}
-
-	close(l.OutputCh)
 
 	return firstErr
 }

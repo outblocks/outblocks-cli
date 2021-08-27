@@ -7,13 +7,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"text/template"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/Masterminds/sprig"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
@@ -59,12 +56,6 @@ func NewInit(log logger.Logger, pluginCacheDir string, opts *InitOptions) *Init 
 		log:            log,
 		pluginCacheDir: pluginCacheDir,
 		opts:           opts,
-	}
-}
-
-func funcMap() template.FuncMap {
-	return template.FuncMap{
-		"toYaml": toYaml,
 	}
 }
 
@@ -138,7 +129,7 @@ func (d *Init) Run(ctx context.Context) error {
 	}
 
 	// Generate Project.YAML
-	tmpl := template.Must(template.New("project").Funcs(sprig.TxtFuncMap()).Funcs(funcMap()).Parse(templates.ProjectYAML))
+	tmpl := templates.ProjectYAMLTemplate()
 
 	var projectYAML bytes.Buffer
 
@@ -153,7 +144,7 @@ func (d *Init) Run(ctx context.Context) error {
 	}
 
 	// Generate Values.YAML
-	tmpl = template.Must(template.New("values").Funcs(sprig.TxtFuncMap()).Funcs(funcMap()).Parse(templates.ValuesYAML))
+	tmpl = templates.ValuesYAMLTemplate()
 
 	var valuesYAML bytes.Buffer
 
@@ -268,13 +259,4 @@ func (d *Init) prompt(ctx context.Context, cfg *config.Project, loader *plugins.
 	})
 
 	return cfg, nil
-}
-
-func toYaml(v interface{}) string {
-	data, err := yaml.Marshal(v)
-	if err != nil {
-		return ""
-	}
-
-	return string(data)
 }

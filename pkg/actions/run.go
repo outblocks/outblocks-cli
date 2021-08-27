@@ -7,7 +7,6 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -55,12 +54,9 @@ type runInfo struct {
 }
 
 const (
-	localIP        = "127.0.0.1"
+	loopbackHost   = "outblocks.host"
+	loopbackIP     = "127.0.0.1"
 	cleanupTimeout = 10 * time.Second
-)
-
-var (
-	validEnvVarRegex = regexp.MustCompile(`[^A-Z0-9_]`)
 )
 
 func NewRun(log logger.Logger, cfg *config.Project, opts *RunOptions) *Run {
@@ -81,7 +77,7 @@ func (d *Run) cleanup() error {
 }
 
 func (d *Run) AddHosts(hosts ...string) error {
-	d.hosts.AddHosts(localIP, hosts)
+	d.hosts.AddHosts(loopbackIP, hosts)
 
 	err := d.hosts.Save()
 	if err != nil {
@@ -124,10 +120,19 @@ func (d *Run) localURL(u *url.URL, port int, pathRedirect string) string {
 	return fmt.Sprintf("http://%s%s:%d%s", u.Hostname(), d.opts.HostsSuffix, d.opts.ListenPort, u.Path)
 }
 
+func (d *Run) loopbackHost() string {
+	return loopbackHost + d.opts.HostsSuffix
+}
+
 func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 	info := &runInfo{
 		pluginAppsMap: make(map[*plugins.Plugin]*plugin_go.RunRequest),
 		pluginDepsMap: make(map[*plugins.Plugin]*plugin_go.RunRequest),
+	}
+
+	loopbackHost := d.loopbackHost()
+	hosts := map[string]string{
+		loopbackHost: loopbackIP,
 	}
 
 	// Apps.
@@ -138,7 +143,9 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 			return nil, app.YAMLError("$.run.command", "App.Run.Command is required to run app")
 		}
 
-		appPort := app.RunInfo().Port
+		runInfo := app.RunInfo()
+
+		appPort := runInfo.Port
 		if appPort == 0 {
 			appPort = port
 			port++
@@ -146,11 +153,14 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 		appType := app.PluginType()
 		appRun := &types.AppRun{
-			App:  appType,
-			Path: app.Path(),
-			URL:  d.localURL(app.URL(), appPort, app.PathRedirect()),
-			IP:   localIP,
-			Port: appPort,
+			App:        appType,
+			Path:       app.Path(),
+			URL:        d.localURL(app.URL(), appPort, app.PathRedirect()),
+			IP:         loopbackIP,
+			Port:       appPort,
+			Command:    runInfo.Command,
+			Env:        runInfo.Env,
+			Properties: runInfo.Other,
 		}
 
 		info.apps = append(info.apps, appRun)
@@ -166,7 +176,10 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		runPlugin := app.RunPlugin()
 
 		if _, ok := info.pluginAppsMap[runPlugin]; !ok {
-			info.pluginAppsMap[runPlugin] = &plugin_go.RunRequest{}
+			info.pluginAppsMap[runPlugin] = &plugin_go.RunRequest{
+				Args:  runPlugin.CommandArgs("run"),
+				Hosts: hosts,
+			}
 		}
 
 		info.pluginAppsMap[runPlugin].Apps = append(info.pluginAppsMap[runPlugin].Apps, appRun)
@@ -184,8 +197,9 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 		depRun := &types.DependencyRun{
 			Dependency: depType,
-			IP:         localIP,
+			IP:         loopbackIP,
 			Port:       depPort,
+			Properties: dep.Run.Other,
 		}
 
 		info.deps = append(info.deps, depRun)
@@ -201,7 +215,10 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		runPlugin := dep.RunPlugin()
 
 		if _, ok := info.pluginDepsMap[runPlugin]; !ok {
-			info.pluginDepsMap[runPlugin] = &plugin_go.RunRequest{}
+			info.pluginDepsMap[runPlugin] = &plugin_go.RunRequest{
+				Args:  runPlugin.CommandArgs("run"),
+				Hosts: hosts,
+			}
 		}
 
 		info.pluginDepsMap[runPlugin].Dependencies = append(info.pluginDepsMap[runPlugin].Dependencies, depRun)
@@ -211,27 +228,27 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 	env := make(map[string]string)
 
 	for _, app := range info.apps {
-		prefix := fmt.Sprintf("APP_%s_%s", strings.ToUpper(app.App.Type), validEnvVarRegex.ReplaceAllString(strings.ToUpper(app.App.Name), "_"))
+		prefix := app.EnvPrefix()
 
 		host, _ := urlutil.ExtractHostname(app.URL)
 		env[fmt.Sprintf("%s_URL", prefix)] = app.URL
 		env[fmt.Sprintf("%s_HOST", prefix)] = host
-		env[fmt.Sprintf("%s_IP", prefix)] = app.IP
-		env[fmt.Sprintf("%s_PORT", prefix)] = strconv.Itoa(app.Port)
+
+		hosts[host] = app.IP
 	}
 
 	for _, dep := range info.deps {
 		// TODO: treat deps differently, only use these that were added as needs
 		// + add secrets from plugin.PrepareLocalDependency()
-		prefix := fmt.Sprintf("DEP_%s_%s", strings.ToUpper(dep.Dependency.Type), validEnvVarRegex.ReplaceAllString(strings.ToUpper(dep.Dependency.Name), "_"))
+		prefix := dep.EnvPrefix()
 
-		env[fmt.Sprintf("%s_IP", prefix)] = dep.IP
+		env[fmt.Sprintf("%s_HOST", prefix)] = loopbackHost
 		env[fmt.Sprintf("%s_PORT", prefix)] = strconv.Itoa(dep.Port)
 	}
 
 	// Fill envs per app/dep.
 	for _, app := range info.apps {
-		app.Env = util.CopyMapStringString(env)
+		app.Env = util.MergeStringMaps(app.Env, env)
 
 		host, _ := urlutil.ExtractHostname(app.URL)
 		app.Env["URL"] = app.URL
@@ -241,7 +258,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 	}
 
 	for _, dep := range info.deps {
-		dep.Env = util.CopyMapStringString(env)
+		dep.Env = util.MergeStringMaps(dep.Env, env)
 
 		dep.Env["IP"] = dep.IP
 		dep.Env["PORT"] = strconv.Itoa(dep.Port)
@@ -375,13 +392,15 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 	defer runnerCancel()
 
 	if d.opts.HostsRouting {
-		var hosts []string
+		hosts := map[string]struct{}{
+			d.loopbackHost(): {},
+		}
 
 		routing = make(map[*url.URL]*url.URL)
 
 		for _, s := range runInfo.apps {
 			u, _ := url.Parse(s.URL)
-			hosts = append(hosts, u.Hostname())
+			hosts[u.Hostname()] = struct{}{}
 
 			uLocal := *u
 			uLocal.Host = fmt.Sprintf("%s:%d", s.IP, s.Port)
@@ -390,7 +409,13 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 			routing[u] = &uLocal
 		}
 
-		err := d.AddHosts(hosts...)
+		hostsList := make([]string, 0, len(hosts))
+
+		for h := range hosts {
+			hostsList = append(hostsList, h)
+		}
+
+		err := d.AddHosts(hostsList...)
 		if err != nil {
 			return &wg, fmt.Errorf("are you running with sudo? or try running with hosts-routing disabled")
 		}

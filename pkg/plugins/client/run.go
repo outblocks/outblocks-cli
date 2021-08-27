@@ -2,57 +2,81 @@ package client
 
 import (
 	"context"
+	"fmt"
+	"io"
 
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
-	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
-func (c *Client) Run(ctx context.Context, apps []*types.AppRun, deps []*types.DependencyRun, args map[string]interface{},
+func (c *Client) Run(ctx context.Context, req *plugin_go.RunRequest,
 	outCh chan<- *plugin_go.RunOutputResponse, errCh chan<- error) (ret *plugin_go.RunningResponse, err error) {
-	stream, err := c.lazyStartBiDi(ctx, &plugin_go.RunRequest{
-		Apps:         apps,
-		Dependencies: deps,
-		Args:         args,
-	})
+	stream, err := c.lazyStartBiDi(ctx, req)
 
-	if err != nil && !IsPluginError(err) {
-		err = NewPluginError(c, "run error", err)
+	if err != nil {
+		if !IsPluginError(err) {
+			err = NewPluginError(c, "run error", err)
+		}
+
+		close(outCh)
+
+		return nil, err
 	}
 
-	close(outCh)
+	for {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
 
-	// if err != nil {
-	// 	return nil, err
-	// }
+		if err != nil {
+			_ = stream.Close()
+			return ret, NewPluginError(c, "run error", err)
+		}
 
-	// for {
-	// 	res, err := stream.Recv()
-	// 	if err == io.EOF {
-	// 		break
-	// 	}
+		switch r := res.(type) {
+		case *plugin_go.RunningResponse:
+			// Seems that everything is running, continue to process messages asynchronously.
+			go func() {
+				defer func() {
+					stream.Close()
+					close(outCh)
+				}()
 
-	// 	if err != nil {
-	// 		_ = stream.Close()
-	// 		return ret, NewPluginError(c, "apply error", err)
-	// 	}
+				for {
+					res, err := stream.Recv()
+					if err == io.EOF {
+						errCh <- fmt.Errorf("run stopped unexpectedly")
+						return
+					}
 
-	// 	switch r := res.(type) {
-	// 	case *plugin_go.ApplyResponse:
-	// 		if callback != nil {
-	// 			for _, act := range r.Actions {
-	// 				callback(act)
-	// 			}
-	// 		}
-	// 	case *plugin_go.ApplyDoneResponse:
-	// 		ret = r
-	// 	default:
-	// 		return ret, NewPluginError(c, "unexpected response to apply request", err)
-	// 	}
-	// }
+					if err != nil {
+						errCh <- fmt.Errorf("run error: %w", err)
+						return
+					}
+
+					switch r := res.(type) {
+					case *plugin_go.RunOutputResponse:
+						outCh <- r
+					default:
+						errCh <- fmt.Errorf("unexpected response to run request: %w", err)
+						return
+					}
+				}
+			}()
+
+			return r, nil
+		default:
+			close(outCh)
+
+			return ret, NewPluginError(c, "unexpected response to run request", err)
+		}
+	}
 
 	if ret == nil {
+		close(outCh)
+
 		return nil, NewPluginError(c, "empty run response", nil)
 	}
 
-	return ret, stream.DrainAndClose()
+	return ret, nil
 }

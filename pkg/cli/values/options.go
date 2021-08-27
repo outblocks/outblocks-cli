@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/getter"
 	"github.com/outblocks/outblocks-cli/pkg/strvals"
 )
@@ -53,7 +54,7 @@ func (opts *Options) MergeValues(ctx context.Context, root string, p getter.Prov
 			return nil, fmt.Errorf("failed to parse %s: %w", filePath, err)
 		}
 		// Merge with the previous map
-		base = mergeMaps(base, currentMap)
+		base = util.MergeMaps(base, currentMap)
 	}
 
 	// User specified a value via --set
@@ -64,28 +65,6 @@ func (opts *Options) MergeValues(ctx context.Context, root string, p getter.Prov
 	}
 
 	return base, nil
-}
-
-func mergeMaps(a, b map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(a))
-	for k, v := range a {
-		out[k] = v
-	}
-
-	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
-			if bv, ok := out[k]; ok {
-				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = mergeMaps(bv, v)
-					continue
-				}
-			}
-		}
-
-		out[k] = v
-	}
-
-	return out
 }
 
 // readFile load a file from stdin, the local directory, or a remote file with a url.

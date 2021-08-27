@@ -89,6 +89,11 @@
         "port": {
           "description": "Port override, by default just assigns next port starting from listen-port.",
           "type": "integer"
+        },
+        "env": {
+          "description": "Additional environment variables",
+          "type": "object",
+          "additionalProperties": {"type": "string"}
         }
       }
     },

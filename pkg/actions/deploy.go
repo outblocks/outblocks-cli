@@ -19,6 +19,7 @@ import (
 type planParams struct {
 	apps      []*types.AppPlan
 	deps      []*types.DependencyPlan
+	args      map[string]interface{}
 	firstPass bool
 }
 
@@ -272,7 +273,9 @@ func calculatePlanMap(apps []config.App, deps map[string]*config.Dependency) map
 		includeDNS := dnsPlugin != nil && dnsPlugin == deployPlugin
 
 		if _, ok := planMap[deployPlugin]; !ok {
-			planMap[deployPlugin] = &planParams{}
+			planMap[deployPlugin] = &planParams{
+				args: deployPlugin.CommandArgs("deploy"),
+			}
 		}
 
 		appReq := &types.AppPlan{
@@ -291,7 +294,9 @@ func calculatePlanMap(apps []config.App, deps map[string]*config.Dependency) map
 		}
 
 		if _, ok := planMap[dnsPlugin]; !ok {
-			planMap[dnsPlugin] = &planParams{}
+			planMap[dnsPlugin] = &planParams{
+				args: dnsPlugin.CommandArgs("deploy"),
+			}
 		}
 
 		appReq = &types.AppPlan{
@@ -304,12 +309,15 @@ func calculatePlanMap(apps []config.App, deps map[string]*config.Dependency) map
 		planMap[dnsPlugin].apps = append(planMap[dnsPlugin].apps, appReq)
 	}
 
+	// Process dependencies.
 	for _, dep := range deps {
 		t := dep.PluginType()
 
 		p := dep.DeployPlugin()
 		if _, ok := planMap[p]; !ok {
-			planMap[p] = &planParams{}
+			planMap[p] = &planParams{
+				args: p.CommandArgs("deploy"),
+			}
 		}
 
 		planMap[p].deps = append(planMap[p].deps, &types.DependencyPlan{Dependency: t})
@@ -336,7 +344,7 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 		params := params
 
 		g.Go(func() error {
-			ret, err := plug.Client().Plan(ctx, state, params.apps, params.deps, verify, destroy)
+			ret, err := plug.Client().Plan(ctx, state, params.apps, params.deps, params.args, verify, destroy)
 			if err != nil {
 				return err
 			}
@@ -383,7 +391,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		}
 
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, destroy, callback)
+			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.args, destroy, callback)
 			if ret != nil {
 				retMap[plug] = ret
 				state.PluginsMap[plug.Name] = ret.PluginMap
@@ -419,7 +427,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		}
 
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, destroy, callback)
+			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.args, destroy, callback)
 			if ret != nil {
 				retMap[plug] = ret
 				state.PluginsMap[plug.Name] = ret.PluginMap

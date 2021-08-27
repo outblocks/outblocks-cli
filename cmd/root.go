@@ -2,18 +2,12 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/version"
 	"github.com/outblocks/outblocks-cli/pkg/cli/values"
-	"github.com/outblocks/outblocks-cli/pkg/config"
-	"github.com/outblocks/outblocks-cli/pkg/getter"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
@@ -265,44 +259,6 @@ func (e *Executor) newRoot() *cobra.Command {
 		Short:         pterm.Sprintf("%s - %s", pterm.Bold.Sprintf("ok"), pterm.Italic.Sprint(version.Version())),
 		Long:          e.rootLongHelp(),
 		SilenceErrors: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			e.opts.env = e.v.GetString("env")
-
-			skipLoadConfig := cmd.Annotations[cmdSkipLoadConfigAnnotation] == "1"
-			if skipLoadConfig {
-				return nil
-			}
-
-			// Load values.
-			for i, v := range e.opts.valueOpts.ValueFiles {
-				e.opts.valueOpts.ValueFiles[i] = strings.ReplaceAll(v, "<env>", e.opts.env)
-			}
-
-			defValuesYAML := strings.ReplaceAll(defaultValuesYAML, "<env>", e.opts.env)
-
-			pwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("cannot find current directory: %w", err)
-			}
-
-			cfgPath := fileutil.FindYAMLGoingUp(pwd, config.ProjectYAMLName)
-
-			v, err := e.opts.valueOpts.MergeValues(cmd.Context(), filepath.Dir(cfgPath), getter.All())
-			if err != nil && (len(e.opts.valueOpts.ValueFiles) != 1 || e.opts.valueOpts.ValueFiles[0] != defValuesYAML) {
-				return err
-			}
-
-			vals := map[string]interface{}{"var": v}
-			skipLoadPlugins := cmd.Annotations[cmdSkipLoadPluginsAnnotation] == "1"
-			skipCheckConfig := cmd.Annotations[cmdSkipCheckConfigAnnotation] == "1"
-
-			// Load config file.
-			if err := e.loadProjectConfig(cmd.Context(), cfgPath, vals, skipLoadPlugins, skipCheckConfig); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
-				return err
-			}
-
-			return nil
-		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
 			if e.cfg != nil {
 				if err := e.saveLockfile(); err != nil {

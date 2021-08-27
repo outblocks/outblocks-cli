@@ -28,10 +28,14 @@ build:
 
 # Run defines where how development is handled of application during `ok run`.
 run:
-{{- if .App.Run.Command }}
+{{- if .App.RunInfo.Command }}
   # Command to be run to for dev mode.
-  command: {{.App.Run.Command}}
+  command: {{.App.RunInfo.Command}}
 {{ end }}
+  # Additional environment variables to pass.
+  # env:
+  #   BROWSER: none  # disable opening browser for react app
+
   # Port override, by default just assigns next port starting from listen-port.
   # port: 8123
 

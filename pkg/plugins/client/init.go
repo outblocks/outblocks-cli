@@ -15,11 +15,11 @@ func (c *Client) Init(ctx context.Context, name string, deployPlugins, runPlugin
 		Args:          args,
 	})
 
-	if err != nil && !IsPluginError(err) {
-		err = NewPluginError(c, "init error", err)
-	}
-
 	if err != nil {
+		if !IsPluginError(err) {
+			err = NewPluginError(c, "init error", err)
+		}
+
 		return nil, err
 	}
 

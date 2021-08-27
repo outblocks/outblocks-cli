@@ -63,6 +63,7 @@ type AppRun struct {
 	Plugin  string                 `json:"plugin,omitempty"`
 	Command string                 `json:"command,omitempty"`
 	Port    int                    `json:"port,omitempty"`
+	Env     map[string]string      `json:"env,omitempty"`
 	Other   map[string]interface{} `yaml:"-,remain"`
 }
 

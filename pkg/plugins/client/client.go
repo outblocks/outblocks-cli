@@ -65,30 +65,38 @@ func (c *Client) lazyInit(_ context.Context) error {
 
 	go func() {
 		s := bufio.NewScanner(stderrPipe)
+
+		logFunc := c.log.Errorf
+
+		prefix := fmt.Sprintf("%s: ", c.name)
+
 		for s.Scan() {
 			b := s.Bytes()
-			if len(b) == 0 {
-				continue
+
+			if len(b) > 0 {
+				level := b[0]
+
+				switch plugin_log.Level(level) {
+				case plugin_log.LevelError:
+					logFunc = c.log.Errorf
+					b = b[1:]
+				case plugin_log.LevelWarn:
+					logFunc = c.log.Warnf
+					b = b[1:]
+				case plugin_log.LevelInfo:
+					logFunc = c.log.Infof
+					b = b[1:]
+				case plugin_log.LevelDebug:
+					logFunc = c.log.Debugf
+					b = b[1:]
+				case plugin_log.LevelSuccess:
+					logFunc = c.log.Successf
+					b = b[1:]
+				default:
+				}
 			}
 
-			level := b[0]
-
-			prefix := fmt.Sprintf("%s: ", c.name)
-
-			switch plugin_log.Level(level) {
-			case plugin_log.LevelError:
-				c.log.Errorf("%s%s\n", prefix, string(b[1:]))
-			case plugin_log.LevelWarn:
-				c.log.Warnf("%s%s': %s\n", prefix, string(b[1:]))
-			case plugin_log.LevelInfo:
-				c.log.Infof("%s%s\n", prefix, string(b[1:]))
-			case plugin_log.LevelDebug:
-				c.log.Debugf("%s%s\n", prefix, string(b[1:]))
-			case plugin_log.LevelSuccess:
-				c.log.Successf("%s%s\n", prefix, string(b[1:]))
-			default:
-				c.log.Errorf("%s%s\n", prefix, s.Text())
-			}
+			logFunc("%s%s\n", prefix, string(b))
 		}
 	}()
 
@@ -248,7 +256,10 @@ func (c *Client) Stop() error {
 		return nil
 	}
 
-	_ = c.cmd.Process.Signal(syscall.SIGTERM)
+	cmd := c.cmd
+	c.cmd = nil
 
-	return c.cmd.Wait()
+	_ = cmd.Process.Signal(syscall.SIGTERM)
+
+	return cmd.Wait()
 }

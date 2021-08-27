@@ -14,7 +14,6 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	"github.com/Masterminds/sprig"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
@@ -97,7 +96,7 @@ func (d *AppAdd) Run(ctx context.Context) error {
 
 	switch app := appInfo.(type) {
 	case *staticAppInfo:
-		tmpl = template.Must(template.New("static_app").Funcs(sprig.TxtFuncMap()).Funcs(funcMap()).Parse(templates.StaticAppYAML))
+		tmpl = templates.StaticAppYAMLTemplate()
 		path = app.App.AppPath
 	default:
 		return fmt.Errorf("unsupported app type (WIP)")
