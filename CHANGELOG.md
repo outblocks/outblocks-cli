@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.13](https://github.com/outblocks/outblocks-cli/compare/v0.1.12...v0.1.13)
+
+> 2021-08-28
+
+### FEATURES
+
+[`abe4f0e`](https://github.com/outblocks/outblocks-cli/commit/abe4f0eeb393bc7f4d865b39d7ee74b478744b09) plugin command initial support, initial support for docker plugin
+
+
 ## [v0.1.12](https://github.com/outblocks/outblocks-cli/compare/v0.1.11...v0.1.12)
 
 > 2021-08-13
