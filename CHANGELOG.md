@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.14](https://github.com/outblocks/outblocks-cli/compare/v0.1.13...v0.1.14)
+
+> 2021-08-30
+
+### BUG FIXES
+
+[`78d3eef`](https://github.com/outblocks/outblocks-cli/commit/78d3eefcc6ccbff0e3bca8b26be7640f73a468f3) passing env vars
+
+
 ## [v0.1.13](https://github.com/outblocks/outblocks-cli/compare/v0.1.12...v0.1.13)
 
 > 2021-08-28
