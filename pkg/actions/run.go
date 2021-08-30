@@ -232,6 +232,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 		host, _ := urlutil.ExtractHostname(app.URL)
 		env[fmt.Sprintf("%s_URL", prefix)] = app.URL
+		env[fmt.Sprintf("%s_PORT", prefix)] = strconv.Itoa(app.Port)
 		env[fmt.Sprintf("%s_HOST", prefix)] = host
 
 		hosts[host] = app.IP
@@ -250,9 +251,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 	for _, app := range info.apps {
 		app.Env = util.MergeStringMaps(app.Env, env)
 
-		host, _ := urlutil.ExtractHostname(app.URL)
 		app.Env["URL"] = app.URL
-		app.Env["HOST"] = host
 		app.Env["IP"] = app.IP
 		app.Env["PORT"] = strconv.Itoa(app.Port)
 	}
