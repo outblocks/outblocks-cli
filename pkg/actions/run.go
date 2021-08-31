@@ -54,9 +54,10 @@ type runInfo struct {
 }
 
 const (
-	loopbackHost   = "outblocks.host"
-	loopbackIP     = "127.0.0.1"
-	cleanupTimeout = 10 * time.Second
+	loopbackHost     = "outblocks.host"
+	loopbackIP       = "127.0.0.1"
+	cleanupTimeout   = 10 * time.Second
+	healthcheckSleep = 1 * time.Second
 )
 
 func NewRun(log logger.Logger, cfg *config.Project, opts *RunOptions) *Run {
@@ -240,7 +241,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 	for _, dep := range info.deps {
 		// TODO: treat deps differently, only use these that were added as needs
-		// + add secrets from plugin.PrepareLocalDependency()
+		// + add secrets from plugin.PrepareRunDependency()
 		prefix := dep.EnvPrefix()
 
 		env[fmt.Sprintf("%s_HOST", prefix)] = loopbackHost
@@ -362,6 +363,47 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 	return pluginRets, localRets, nil
 }
 
+func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
+	spinner, _ := d.log.Spinner().WithRemoveWhenDone(true).Start("Waiting for apps and dependencies to be up...")
+
+	var wg sync.WaitGroup
+
+	httpClient := &http.Client{}
+
+	wg.Add(len(runInfo.apps))
+
+	for _, app := range runInfo.apps {
+		app := app
+
+		req, err := http.NewRequestWithContext(ctx, "HEAD", fmt.Sprintf("http://%s:%d/", app.IP, app.Port), nil)
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			for {
+				resp, err := httpClient.Do(req)
+				if err == nil {
+					_ = resp.Body.Close()
+
+					d.log.Printf("%s App '%s' is UP.\n", strings.Title(app.App.Type), app.App.Name)
+					wg.Done()
+
+					return
+				}
+
+				time.Sleep(healthcheckSleep)
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	_ = spinner.Stop()
+
+	return nil
+}
+
 func formatRunOutput(log logger.Logger, r *plugin_go.RunOutputResponse) {
 	switch r.Source {
 	case plugin_go.RunOutpoutSourceApp:
@@ -448,12 +490,6 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 		}()
 	}
 
-	for _, a := range runInfo.apps {
-		d.log.Printf("%s App '%s' listening at %s\n", strings.Title(a.App.Type), a.App.Name, a.URL)
-	}
-
-	d.log.Println()
-
 	for _, localRet := range localRets {
 		localRet := localRet
 
@@ -504,6 +540,20 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 				errCh <- err
 			}
 		}()
+	}
+
+	// Healthcheck.
+	err = d.waitAll(ctx, runInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	// Show apps status.
+	d.log.Println()
+	d.log.Println("All apps are UP.")
+
+	for _, a := range runInfo.apps {
+		d.log.Printf("%s App '%s' listening at %s\n", strings.Title(a.App.Type), a.App.Name, a.URL)
 	}
 
 	<-runnerCtx.Done()

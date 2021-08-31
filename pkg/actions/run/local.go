@@ -79,28 +79,6 @@ func RunLocal(ctx context.Context, localApps []*LocalApp, localDeps []*LocalDepe
 			return nil, err
 		}
 
-		go func() {
-			for {
-				out := &plugin_go.RunOutputResponse{
-					Source: plugin_go.RunOutpoutSourceDependency,
-					ID:     dep.Dependency.ID,
-					Name:   dep.Dependency.Name,
-				}
-
-				select {
-				case msg := <-info.StdoutCh:
-					out.Message = msg
-				case msg := <-info.StderrCh:
-					out.Message = msg
-					out.IsStderr = true
-				case <-info.done:
-					return
-				}
-
-				ret.OutputCh <- out
-			}
-		}()
-
 		ret.Deps[dep.Dependency.ID] = info
 	}
 
