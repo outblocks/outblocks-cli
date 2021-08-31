@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.16](https://github.com/outblocks/outblocks-cli/compare/v0.1.15...v0.1.16)
+
+> 2021-09-01
+
+### BUG FIXES
+
+[`27c2e1d`](https://github.com/outblocks/outblocks-cli/commit/27c2e1d646ce491969687017701f38bdb1f32320) run output, permission setting, healthcheck timeout
+
+
 ## [v0.1.15](https://github.com/outblocks/outblocks-cli/compare/v0.1.14...v0.1.15)
 
 > 2021-08-31
