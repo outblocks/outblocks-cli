@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.15](https://github.com/outblocks/outblocks-cli/compare/v0.1.14...v0.1.15)
+
+> 2021-08-31
+
+### FEATURES
+
+[`7f47020`](https://github.com/outblocks/outblocks-cli/commit/7f4702002d2593ccb37a024f63f9feacb974e069) app healthcheck
+
+
 ## [v0.1.14](https://github.com/outblocks/outblocks-cli/compare/v0.1.13...v0.1.14)
 
 > 2021-08-30
