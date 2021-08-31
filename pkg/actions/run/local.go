@@ -73,14 +73,14 @@ func RunLocal(ctx context.Context, localApps []*LocalApp, localDeps []*LocalDepe
 		ret.Apps[app.App.ID] = info
 	}
 
-	for _, dep := range localDeps {
-		info, err := dep.Run()
-		if err != nil {
-			return nil, err
-		}
+	// for _, dep := range localDeps {
+	// 	info, err := dep.Run()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		ret.Deps[dep.Dependency.ID] = info
-	}
+	// 	ret.Deps[dep.Dependency.ID] = info
+	// }
 
 	return ret, nil
 }

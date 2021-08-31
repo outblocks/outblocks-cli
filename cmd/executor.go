@@ -61,7 +61,7 @@ func setupEnvVars(env *cli.Environment) {
 	env.AddVarWithDefault("log_level", "set logging level: debug | warn | error", "warn")
 }
 
-func (e *Executor) commandPreRun() error {
+func (e *Executor) commandPreRun(ctx context.Context) error {
 	var skipLoadConfig, skipLoadPlugins, skipCheckConfig bool
 
 	e.opts.env = e.v.GetString("env")
@@ -91,7 +91,7 @@ func (e *Executor) commandPreRun() error {
 
 	cfgPath := fileutil.FindYAMLGoingUp(pwd, config.ProjectYAMLName)
 
-	v, err := e.opts.valueOpts.MergeValues(cmd.Context(), filepath.Dir(cfgPath), getter.All())
+	v, err := e.opts.valueOpts.MergeValues(ctx, filepath.Dir(cfgPath), getter.All())
 	if err != nil && (len(e.opts.valueOpts.ValueFiles) != 1 || e.opts.valueOpts.ValueFiles[0] != defValuesYAML) {
 		return err
 	}
@@ -99,7 +99,7 @@ func (e *Executor) commandPreRun() error {
 	vals := map[string]interface{}{"var": v}
 
 	// Load config file.
-	if err := e.loadProjectConfig(cmd.Context(), cfgPath, vals, skipLoadPlugins, skipCheckConfig); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+	if err := e.loadProjectConfig(ctx, cfgPath, vals, skipLoadPlugins, skipCheckConfig); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
 		return err
 	}
 
@@ -153,7 +153,7 @@ func (e *Executor) Execute(ctx context.Context) error {
 		return err
 	}
 
-	if err := e.commandPreRun(); err != nil {
+	if err := e.commandPreRun(ctx); err != nil {
 		return err
 	}
 

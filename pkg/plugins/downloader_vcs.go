@@ -47,7 +47,7 @@ func (d *VCSDownloader) fetch(_ context.Context, pi *pluginInfo) (vcs.Repo, erro
 		return nil, fmt.Errorf("cannot find source repo: %w", err)
 	}
 
-	return repo, nil
+	return repo, plugin_util.LchownRToUser(cachePath)
 }
 
 func (d *VCSDownloader) download(ctx context.Context, pi *pluginInfo) (*DownloadedPlugin, string, error) {

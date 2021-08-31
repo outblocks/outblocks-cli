@@ -181,7 +181,7 @@ func (l *Loader) downloadPlugin(ctx context.Context, pi *pluginInfo) (string, *s
 		return "", nil, fmt.Errorf("failed to copy downloaded plugin %s: %w", destPath, err)
 	}
 
-	if err := plugin_util.ChownRToUser(destPath); err != nil {
+	if err := plugin_util.LchownRToUser(destPath); err != nil {
 		return "", nil, fmt.Errorf("failed to set permissions on downloaded plugin %s: %w", destPath, err)
 	}
 
@@ -222,11 +222,9 @@ func (l *Loader) installPlugin(pi *pluginInfo, from string) error {
 		if err := copy.Copy(from, dest); err != nil {
 			return fmt.Errorf("failed to copy cached plugin %s: %w", from, err)
 		}
-
-		return plugin_util.ChownRToUser(dest)
 	}
 
-	return nil
+	return plugin_util.LchownRToUser(dest)
 }
 
 func (l *Loader) loadPlugin(pi *pluginInfo, path string, ver *semver.Version) (*Plugin, error) {

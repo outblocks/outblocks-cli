@@ -2,6 +2,7 @@ package actions
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -22,6 +23,7 @@ import (
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
+	"github.com/outblocks/outblocks-plugin-go/util/errgroup"
 	"github.com/pterm/pterm"
 	"github.com/txn2/txeh"
 )
@@ -54,10 +56,11 @@ type runInfo struct {
 }
 
 const (
-	loopbackHost     = "outblocks.host"
-	loopbackIP       = "127.0.0.1"
-	cleanupTimeout   = 10 * time.Second
-	healthcheckSleep = 1 * time.Second
+	loopbackHost       = "outblocks.host"
+	loopbackIP         = "127.0.0.1"
+	cleanupTimeout     = 10 * time.Second
+	healthcheckSleep   = 1 * time.Second
+	healthcheckTimeout = 3 * time.Second
 )
 
 func NewRun(log logger.Logger, cfg *config.Project, opts *RunOptions) *Run {
@@ -366,11 +369,11 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 	spinner, _ := d.log.Spinner().WithRemoveWhenDone(true).Start("Waiting for apps and dependencies to be up...")
 
-	var wg sync.WaitGroup
+	httpClient := &http.Client{
+		Timeout: healthcheckTimeout,
+	}
 
-	httpClient := &http.Client{}
-
-	wg.Add(len(runInfo.apps))
+	g, _ := errgroup.WithContext(ctx)
 
 	for _, app := range runInfo.apps {
 		app := app
@@ -380,51 +383,88 @@ func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 			return err
 		}
 
-		go func() {
+		g.Go(func() error {
 			for {
 				resp, err := httpClient.Do(req)
+				if errors.Is(err, context.Canceled) {
+					return err
+				}
+
 				if err == nil {
 					_ = resp.Body.Close()
 
 					d.log.Printf("%s App '%s' is UP.\n", strings.Title(app.App.Type), app.App.Name)
-					wg.Done()
 
-					return
+					return nil
 				}
 
 				time.Sleep(healthcheckSleep)
 			}
-		}()
+		})
 	}
 
-	wg.Wait()
-
+	err := g.Wait()
 	_ = spinner.Stop()
 
-	return nil
+	return err
 }
 
 func formatRunOutput(log logger.Logger, r *plugin_go.RunOutputResponse) {
+	msg := plugin_util.StripAnsi(r.Message)
+
 	switch r.Source {
 	case plugin_go.RunOutpoutSourceApp:
 		if r.IsStderr {
-			log.StderrPrintf("%s %s\n", pterm.FgRed.Sprintf("APP:%s:", r.Name), r.Message)
+			log.Printf("%s %s\n", pterm.FgRed.Sprintf("APP:%s:", r.Name), msg)
 		} else {
-			log.Printf("%s %s\n", pterm.FgGreen.Sprintf("APP:%s:", r.Name), r.Message)
+			log.Printf("%s %s\n", pterm.FgGreen.Sprintf("APP:%s:", r.Name), msg)
 		}
 	case plugin_go.RunOutpoutSourceDependency:
 		if r.IsStderr {
-			log.StderrPrintf("%s %s\n", pterm.FgRed.Sprintf("DEP:%s:", r.Name), r.Message)
+			log.Printf("%s %s\n", pterm.FgRed.Sprintf("DEP:%s:", r.Name), msg)
 		} else {
-			log.Printf("%s %s\n", pterm.FgGreen.Sprintf("DEP:%s:", r.Name), r.Message)
+			log.Printf("%s %s\n", pterm.FgGreen.Sprintf("DEP:%s:", r.Name), msg)
 		}
 	}
+}
+
+func (d *Run) addAllHosts(runInfo *runInfo) (map[*url.URL]*url.URL, error) {
+	hosts := map[string]struct{}{
+		d.loopbackHost(): {},
+	}
+
+	routing := make(map[*url.URL]*url.URL)
+
+	for _, s := range runInfo.apps {
+		u, _ := url.Parse(s.URL)
+		hosts[u.Hostname()] = struct{}{}
+
+		uLocal := *u
+		uLocal.Host = fmt.Sprintf("%s:%d", s.IP, s.Port)
+		uLocal.Path = s.App.PathRedirect
+
+		routing[u] = &uLocal
+	}
+
+	hostsList := make([]string, 0, len(hosts))
+
+	for h := range hosts {
+		hostsList = append(hostsList, h)
+	}
+
+	err := d.AddHosts(hostsList...)
+	if err != nil {
+		return nil, fmt.Errorf("are you running with sudo? or try running with hosts-routing disabled")
+	}
+
+	return routing, nil
 }
 
 func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, error) {
 	var (
 		wg      sync.WaitGroup
 		routing map[*url.URL]*url.URL
+		err     error
 	)
 
 	errCh := make(chan error, 1)
@@ -433,32 +473,9 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 	defer runnerCancel()
 
 	if d.opts.HostsRouting {
-		hosts := map[string]struct{}{
-			d.loopbackHost(): {},
-		}
-
-		routing = make(map[*url.URL]*url.URL)
-
-		for _, s := range runInfo.apps {
-			u, _ := url.Parse(s.URL)
-			hosts[u.Hostname()] = struct{}{}
-
-			uLocal := *u
-			uLocal.Host = fmt.Sprintf("%s:%d", s.IP, s.Port)
-			uLocal.Path = s.App.PathRedirect
-
-			routing[u] = &uLocal
-		}
-
-		hostsList := make([]string, 0, len(hosts))
-
-		for h := range hosts {
-			hostsList = append(hostsList, h)
-		}
-
-		err := d.AddHosts(hostsList...)
+		routing, err = d.addAllHosts(runInfo)
 		if err != nil {
-			return &wg, fmt.Errorf("are you running with sudo? or try running with hosts-routing disabled")
+			return &wg, err
 		}
 	}
 
@@ -543,9 +560,15 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 	}
 
 	// Healthcheck.
-	err = d.waitAll(ctx, runInfo)
+	err = d.waitAll(runnerCtx, runInfo)
 	if err != nil {
-		return nil, err
+		select {
+		case err := <-errCh:
+			return &wg, err
+		default:
+		}
+
+		return &wg, err
 	}
 
 	// Show apps status.
@@ -555,6 +578,8 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 	for _, a := range runInfo.apps {
 		d.log.Printf("%s App '%s' listening at %s\n", strings.Title(a.App.Type), a.App.Name, a.URL)
 	}
+
+	d.log.Println()
 
 	<-runnerCtx.Done()
 
@@ -584,6 +609,10 @@ func (d *Run) Run(ctx context.Context) error {
 
 	if err != nil {
 		wg.Wait()
+
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
 
 		return err
 	}
