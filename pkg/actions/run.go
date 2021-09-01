@@ -235,9 +235,9 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		prefix := app.EnvPrefix()
 
 		host, _ := urlutil.ExtractHostname(app.URL)
-		env[fmt.Sprintf("%s_URL", prefix)] = app.URL
-		env[fmt.Sprintf("%s_PORT", prefix)] = strconv.Itoa(app.Port)
-		env[fmt.Sprintf("%s_HOST", prefix)] = host
+		env[fmt.Sprintf("%sURL", prefix)] = app.URL
+		env[fmt.Sprintf("%sPORT", prefix)] = strconv.Itoa(app.Port)
+		env[fmt.Sprintf("%sHOST", prefix)] = host
 
 		hosts[host] = app.IP
 	}
@@ -247,8 +247,8 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		// + add secrets from plugin.PrepareRunDependency()
 		prefix := dep.EnvPrefix()
 
-		env[fmt.Sprintf("%s_HOST", prefix)] = loopbackHost
-		env[fmt.Sprintf("%s_PORT", prefix)] = strconv.Itoa(dep.Port)
+		env[fmt.Sprintf("%sHOST", prefix)] = loopbackHost
+		env[fmt.Sprintf("%sPORT", prefix)] = strconv.Itoa(dep.Port)
 	}
 
 	// Fill envs per app/dep.
@@ -410,7 +410,7 @@ func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 }
 
 func formatRunOutput(log logger.Logger, r *plugin_go.RunOutputResponse) {
-	msg := plugin_util.StripAnsi(r.Message)
+	msg := plugin_util.StripAnsiControl(r.Message)
 
 	switch r.Source {
 	case plugin_go.RunOutpoutSourceApp:
