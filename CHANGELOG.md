@@ -1,5 +1,18 @@
 # Outblocks CLI Changelog
 
+## [v0.1.17](https://github.com/outblocks/outblocks-cli/compare/v0.1.16...v0.1.17)
+
+> 2021-09-03
+
+### BUG FIXES
+
+[`4cc8fe3`](https://github.com/outblocks/outblocks-cli/commit/4cc8fe374fe09e3179289fa3af7e7d016b4ae68a) lint
+
+### FEATURES
+
+[`3d25022`](https://github.com/outblocks/outblocks-cli/commit/3d2502264bf45e4dd970d1935a60cd97f75168ed) updates and build command
+
+
 ## [v0.1.16](https://github.com/outblocks/outblocks-cli/compare/v0.1.15...v0.1.16)
 
 > 2021-09-01
