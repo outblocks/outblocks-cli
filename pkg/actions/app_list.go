@@ -34,7 +34,7 @@ func (d *AppList) appsList() [][]string {
 			pterm.Yellow(a.Name()),
 			pterm.Magenta(a.Type()),
 			pterm.Green(a.DeployPlugin().Name),
-			a.Path(),
+			a.Dir(),
 		})
 	}
 

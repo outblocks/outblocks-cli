@@ -5,6 +5,9 @@
 
 # Name of the app.
 name: {{.App.Name}}
+
+# Working directory of the app where all commands will be run. All other dirs will be relative to this one.
+dir: {{.Dir}}
 {{- if .Type }}
 
 # Type of the app.
@@ -20,7 +23,7 @@ pathRedirect: /
 # Build defines where static files are stored and optionally which command should be used to generate them.
 build:
 {{- if .App.Build.Command }}
-  # Command to be run to generate output files.
+  # Optional command to be run to generate output files.
   command: {{.App.Build.Command}}
 {{ end }}
   # Directory where generated files will end up.

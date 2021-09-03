@@ -27,7 +27,7 @@ func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals m
 		return err
 	}
 
-	e.loader = plugins.NewLoader(cfg.Path, e.PluginsCacheDir())
+	e.loader = plugins.NewLoader(cfg.Dir, e.PluginsCacheDir())
 	e.cfg = cfg
 
 	if !skipLoadPlugins {
@@ -69,7 +69,7 @@ func (e *Executor) saveLockfile() error {
 		return fmt.Errorf("marshaling lockfile error: %w", err)
 	}
 
-	if err := plugin_util.WriteFile(filepath.Join(e.cfg.Path, config.LockfileName), data, 0755); err != nil {
+	if err := plugin_util.WriteFile(filepath.Join(e.cfg.Dir, config.LockfileName), data, 0755); err != nil {
 		return fmt.Errorf("writing lockfile error: %w", err)
 	}
 

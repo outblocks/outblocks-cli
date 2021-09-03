@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 	"github.com/outblocks/outblocks-plugin-go/types"
@@ -15,7 +16,7 @@ type LocalApp struct {
 }
 
 type LocalAppRunInfo struct {
-	*CmdInfo
+	*util.CmdInfo
 	*LocalApp
 	wg sync.WaitGroup
 }
@@ -33,9 +34,9 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 
 	var err error
 
-	info.CmdInfo, err = NewCmdInfo(
+	info.CmdInfo, err = util.NewCmdInfo(
 		a.App.Properties["run"].(*config.AppRun).Command,
-		a.Path,
+		a.Dir,
 		env,
 	)
 	if err != nil {
@@ -54,7 +55,7 @@ func (a *LocalAppRunInfo) Run(outputCh chan<- *plugin_go.RunOutputResponse) erro
 	a.wg.Add(2)
 
 	go func() {
-		s := bufio.NewScanner(a.stdoutPipe)
+		s := bufio.NewScanner(a.Stdout())
 		for s.Scan() {
 			out := &plugin_go.RunOutputResponse{
 				Source:  plugin_go.RunOutpoutSourceApp,
@@ -70,7 +71,7 @@ func (a *LocalAppRunInfo) Run(outputCh chan<- *plugin_go.RunOutputResponse) erro
 	}()
 
 	go func() {
-		s := bufio.NewScanner(a.stderrPipe)
+		s := bufio.NewScanner(a.Stderr())
 		for s.Scan() {
 			out := &plugin_go.RunOutputResponse{
 				Source:   plugin_go.RunOutpoutSourceApp,

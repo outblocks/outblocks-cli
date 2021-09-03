@@ -17,6 +17,10 @@
           "type": "string",
           "enum": ["static", "function", "service"]
         },
+        "dir": {
+          "description": "Working directory of the app where all commands will be run (defaults to directory where this yaml ends up). All other dirs will be relative to this one.",
+          "type": "string"
+        },
         "url": {
           "description": "External URL of the app.",
           "type": "string"
@@ -118,6 +122,7 @@
           "type": "string"
         },
         "dir": {
+          "description": "Output dir to where static files end up.",
           "type": "string"
         }
       }

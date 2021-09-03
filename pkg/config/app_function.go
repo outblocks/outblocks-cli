@@ -2,14 +2,13 @@ package config
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 )
 
 const (
-	TypeFunction = "function"
+	AppTypeFunction = "function"
 )
 
 type FunctionApp struct {
@@ -28,10 +27,9 @@ func LoadFunctionAppData(path string, data []byte) (App, error) {
 		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
-	out.AppPath = filepath.Dir(path)
 	out.yamlPath = path
 	out.yamlData = data
-	out.typ = TypeFunction
+	out.typ = AppTypeFunction
 
 	return out, nil
 }

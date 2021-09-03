@@ -10,7 +10,7 @@ import (
 // Initial first pass validation.
 func (p *Project) Normalize() error {
 	if p.Name == "" {
-		p.Name = filepath.Base(p.Path)
+		p.Name = filepath.Base(p.Dir)
 	}
 
 	err := func() error {

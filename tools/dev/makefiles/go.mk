@@ -4,29 +4,16 @@ _include_go_mk = 1
 SELF_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
 include $(SELF_DIR)shared.mk
-include $(SELF_DIR)gobin.mk
 
 GO ?= go
 FORMAT_FILES ?= .
 
 GOFUMPT_VERSION ?= 0.1.1
-GOFUMPT := $(DEV_BIN_PATH)/gofumpt_$(GOFUMPT_VERSION)
+GOFUMPT := go run mvdan.cc/gofumpt@v$(GOFUMPT_VERSION)
 
-GOLANGCILINT_VERSION ?= 1.41.1
-GOLANGCILINT := $(DEV_BIN_PATH)/golangci-lint_$(GOLANGCILINT_VERSION)
+GOLANGCILINT_VERSION ?= 1.42.0
+GOLANGCILINT := go run github.com/golangci/golangci-lint/cmd/golangci-lint@v$(GOLANGCILINT_VERSION)
 GOLANGCILINT_CONCURRENCY ?= 16
-
-$(GOFUMPT): $(GOBIN)
-	$(info $(_bullet) Installing <gofumpt>)
-	@mkdir -p $(DEV_BIN_PATH)
-	GOBIN=/tmp $(GOBIN) mvdan.cc/gofumpt@v$(GOFUMPT_VERSION)
-	mv /tmp/gofumpt $(DEV_BIN_PATH)/gofumpt_$(GOFUMPT_VERSION)
-
-$(GOLANGCILINT): $(GOBIN)
-	$(info $(_bullet) Installing <golangci-lint>)
-	@mkdir -p $(DEV_BIN_PATH)
-	GOBIN=/tmp $(GOBIN) github.com/golangci/golangci-lint/cmd/golangci-lint@v$(GOLANGCILINT_VERSION)
-	mv /tmp/golangci-lint $(DEV_BIN_PATH)/golangci-lint_$(GOLANGCILINT_VERSION)
 
 .PHONY: deps-go format-go lint-go test-go test-coverage-go integration-test-go
 
@@ -38,13 +25,13 @@ deps-go:
 
 format: format-go ## Format code
 
-format-go: $(GOFUMPT)
+format-go:
 	$(info $(_bullet) Formatting code)
 	$(GOFUMPT) -w $(FORMAT_FILES)
 
 lint: lint-go ## Lint code
 
-lint-go: $(GOLANGCILINT) ## Lint Go code
+lint-go: ## Lint Go code
 	$(info $(_bullet) Linting <go>)
 	$(GOLANGCILINT) run --concurrency $(GOLANGCILINT_CONCURRENCY) ./...
 

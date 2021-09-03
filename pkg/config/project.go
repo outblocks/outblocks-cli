@@ -27,9 +27,9 @@ const (
 
 var (
 	DefaultKnownTypes = map[string][]string{
-		TypeFunction: {"functions"},
-		TypeStatic:   {"statics"},
-		TypeService:  {"services"},
+		AppTypeFunction: {"functions"},
+		AppTypeStatic:   {"statics"},
+		AppTypeService:  {"services"},
 	}
 )
 
@@ -42,7 +42,7 @@ type Project struct {
 
 	Apps   []App          `json:"-"`
 	AppMap map[string]App `json:"-"`
-	Path   string         `json:"-"`
+	Dir    string         `json:"-"`
 
 	loadedPlugins []*plugins.Plugin
 	yamlPath      string
@@ -99,7 +99,7 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 
 	out := &Project{
 		yamlPath: path,
-		Path:     filepath.Dir(path),
+		Dir:      filepath.Dir(path),
 		yamlData: data,
 		lock:     lock,
 		vars:     vars,
@@ -116,7 +116,7 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 }
 
 func (p *Project) LoadApps() error {
-	files := fileutil.FindYAMLFiles(p.Path, AppYAMLName)
+	files := fileutil.FindYAMLFiles(p.Dir, AppYAMLName)
 
 	if err := p.LoadFiles(files); err != nil {
 		return err
@@ -198,13 +198,13 @@ func (p *Project) LoadFile(file string) error {
 	var app App
 
 	switch typ {
-	case TypeFunction:
+	case AppTypeFunction:
 		app, err = LoadFunctionAppData(file, data)
 
-	case TypeService:
+	case AppTypeService:
 		app, err = LoadServiceAppData(file, data)
 
-	case TypeStatic:
+	case AppTypeStatic:
 		app, err = LoadStaticAppData(file, data)
 	}
 
@@ -343,7 +343,7 @@ func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *pl
 		plugConfig := p.Plugins[i]
 		prefix := fmt.Sprintf("$.plugins[%d]", i)
 
-		if err := plug.Prepare(ctx, log, p.Name, p.Path, plugConfig.Other, prefix, p.YAMLData()); err != nil {
+		if err := plug.Prepare(ctx, log, p.Name, p.Dir, plugConfig.Other, prefix, p.YAMLData()); err != nil {
 			return fmt.Errorf("error starting plugin '%s': %w", plug.Name, err)
 		}
 	}

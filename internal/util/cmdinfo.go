@@ -1,4 +1,4 @@
-package run
+package util
 
 import (
 	"fmt"
@@ -99,6 +99,10 @@ func (i *CmdInfo) Wait() error {
 	<-i.done
 
 	return i.err
+}
+
+func (i *CmdInfo) WaitChannel() <-chan struct{} {
+	return i.done
 }
 
 func (i *CmdInfo) Stop() error {

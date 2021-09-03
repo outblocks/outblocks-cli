@@ -16,19 +16,19 @@ import (
 var (
 	ValidURLRegex  = regexp.MustCompile(`^(https?://)?([a-zA-Z][a-zA-Z0-9-]*)((\.)([a-zA-Z][a-zA-Z0-9-]*)){1,}(/[a-zA-Z0-9-_]+)*(/)?$`)
 	ValidNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,30}$`)
-	ValidAppTypes  = []string{TypeStatic, TypeFunction, TypeService}
+	ValidAppTypes  = []string{AppTypeStatic, AppTypeFunction, AppTypeService}
 	RunPluginLocal = "local"
 )
 
 type App interface {
 	ID() string
 	Name() string
+	Dir() string
 	URL() *url.URL
 	PathRedirect() string
 	Normalize(cfg *Project) error
 	Check(cfg *Project) error
 	Type() string
-	Path() string
 	PluginType() *types.App
 	RunInfo() *AppRun
 	DeployInfo() *AppDeploy
@@ -44,7 +44,7 @@ type BasicApp struct {
 	AppName         string                 `json:"name"`
 	AppURL          string                 `json:"url"`
 	AppPathRedirect string                 `json:"pathRedirect"`
-	AppPath         string                 `json:"-"`
+	AppDir          string                 `json:"dir"`
 	AppRun          *AppRun                `json:"run"`
 	AppDeploy       *AppDeploy             `json:"deploy"`
 	Needs           map[string]*AppNeed    `json:"needs"`
@@ -79,8 +79,19 @@ func (a *BasicApp) Validate() error {
 }
 
 func (a *BasicApp) Normalize(cfg *Project) error {
+	var err error
+
 	if a.AppRun == nil {
 		a.AppRun = &AppRun{}
+	}
+
+	if a.AppDir == "" {
+		a.AppDir = filepath.Dir(a.yamlPath)
+	} else {
+		a.AppDir, err = filepath.Abs(a.AppDir)
+		if err != nil {
+			return a.YAMLError("$.dir", "App.Dir is invalid")
+		}
 	}
 
 	if a.AppDeploy == nil {
@@ -88,7 +99,7 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 	}
 
 	if a.AppName == "" {
-		a.AppName = filepath.Base(a.AppPath)
+		a.AppName = filepath.Base(a.AppDir)
 	}
 
 	if a.AppPathRedirect == "" {
@@ -116,7 +127,7 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 		}
 	}
 
-	err := func() error {
+	err = func() error {
 		for name, n := range a.Needs {
 			if n == nil {
 				a.Needs[name] = &AppNeed{}
@@ -204,8 +215,8 @@ func (a *BasicApp) Type() string {
 	return a.typ
 }
 
-func (a *BasicApp) Path() string {
-	return a.AppPath
+func (a *BasicApp) Dir() string {
+	return a.AppDir
 }
 
 func (a *BasicApp) PluginType() *types.App {

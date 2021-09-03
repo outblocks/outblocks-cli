@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -13,7 +12,7 @@ import (
 )
 
 const (
-	TypeStatic = "static"
+	AppTypeStatic = "static"
 
 	StaticAppRoutingReact    = "react"
 	StaticAppRoutingDisabled = "disabled"
@@ -52,10 +51,9 @@ func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
 		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
-	out.AppPath = filepath.Dir(path)
 	out.yamlPath = path
 	out.yamlData = data
-	out.typ = TypeStatic
+	out.typ = AppTypeStatic
 
 	return out, nil
 }

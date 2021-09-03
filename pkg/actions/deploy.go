@@ -1,11 +1,15 @@
 package actions
 
 import (
+	"bufio"
 	"context"
+	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -30,8 +34,9 @@ type Deploy struct {
 }
 
 type DeployOptions struct {
-	Verify  bool
-	Destroy bool
+	Verify    bool
+	Destroy   bool
+	SkipBuild bool
 }
 
 func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
@@ -42,9 +47,83 @@ func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Dep
 	}
 }
 
+func (d *Deploy) buildApps(ctx context.Context) error {
+	for _, app := range d.cfg.Apps {
+		if app.Type() != config.AppTypeStatic {
+			continue
+		}
+
+		a := app.(*config.StaticApp)
+		if a.Build.Command == "" {
+			continue
+		}
+
+		cmd, err := util.NewCmdInfo(a.Build.Command, a.Dir(), nil)
+		if err != nil {
+			return fmt.Errorf("error preparing build command for app: %s: %w", app.Name(), err)
+		}
+
+		err = cmd.Run()
+		if err != nil {
+			return fmt.Errorf("error running build for app: %s: %w", app.Name(), err)
+		}
+
+		// Process stdout/stderr.
+		var wg sync.WaitGroup
+
+		wg.Add(2)
+
+		go func() {
+			s := bufio.NewScanner(cmd.Stdout())
+			for s.Scan() {
+				d.log.Printf("%s %s\n", pterm.FgGreen.Sprintf("APP:%s:", app.Name()), s.Text())
+			}
+
+			wg.Done()
+		}()
+
+		go func() {
+			s := bufio.NewScanner(cmd.Stderr())
+			for s.Scan() {
+				d.log.Printf("%s %s\n", pterm.FgRed.Sprintf("APP:%s:", app.Name()), s.Text())
+			}
+
+			wg.Done()
+		}()
+
+		select {
+		case <-ctx.Done():
+			_ = cmd.Stop()
+		case <-cmd.WaitChannel():
+		}
+
+		wg.Wait()
+
+		err = cmd.Wait()
+		if err != nil {
+			return fmt.Errorf("error running build for app: %s: %w", app.Name(), err)
+		}
+	}
+
+	return nil
+}
+
 func (d *Deploy) Run(ctx context.Context) error {
 	verify := d.opts.Verify
-	spinner, _ := d.log.Spinner().WithRemoveWhenDone(true).Start("Getting state...")
+	spinner := d.log.Spinner().WithRemoveWhenDone(true)
+
+	// Build apps.
+	if !d.opts.SkipBuild {
+		spinner, _ = spinner.Start("Building apps...")
+
+		err := d.buildApps(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Get state.
+	spinner, _ = spinner.Start("Getting state...")
 
 	stateRes, err := getState(ctx, d.cfg)
 	if err != nil {
@@ -60,6 +139,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 		verify = true
 	}
 
+	// Plan and apply.
 	spinner, _ = spinner.Start("Planning...")
 
 	planMap := calculatePlanMap(d.cfg.Apps, d.cfg.Dependencies)
@@ -132,7 +212,7 @@ func (d *Deploy) showStateStatus(state *types.StateData) error {
 			continue
 		}
 
-		if app.Type() != config.TypeStatic {
+		if app.Type() != config.AppTypeStatic {
 			continue
 		}
 
@@ -186,7 +266,7 @@ func (d *Deploy) showStateStatus(state *types.StateData) error {
 			continue
 		}
 
-		if app.Type() != config.TypeStatic {
+		if app.Type() != config.AppTypeStatic {
 			continue
 		}
 
@@ -282,7 +362,7 @@ func calculatePlanMap(apps []config.App, deps map[string]*config.Dependency) map
 			IsDeploy: true,
 			IsDNS:    includeDNS,
 			App:      appType,
-			Path:     app.Path(),
+			Dir:      app.Dir(),
 		}
 
 		planMap[deployPlugin].apps = append(planMap[deployPlugin].apps, appReq)
@@ -303,7 +383,7 @@ func calculatePlanMap(apps []config.App, deps map[string]*config.Dependency) map
 			IsDeploy: false,
 			IsDNS:    true,
 			App:      appType,
-			Path:     app.Path(),
+			Dir:      app.Dir(),
 		}
 
 		planMap[dnsPlugin].apps = append(planMap[dnsPlugin].apps, appReq)

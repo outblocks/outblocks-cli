@@ -29,6 +29,7 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 	f := cmd.Flags()
 	f.BoolVar(&opts.Verify, "verify", false, "verify existing resources")
 	f.BoolVar(&opts.Destroy, "destroy", false, "destroy all existing resources")
+	f.BoolVar(&opts.SkipBuild, "skip-build", false, "skip build command before deploy")
 
 	return cmd
 }

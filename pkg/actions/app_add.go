@@ -46,6 +46,7 @@ type AppAddOptions struct {
 
 	OutputPath string
 	Name       string
+	Dir        string
 	Type       string
 	URL        string
 	RunCommand string
@@ -59,7 +60,6 @@ type AppAddOptions struct {
 func (o *AppAddOptions) Validate() error {
 	return validation.ValidateStruct(o,
 		validation.Field(&o.Type, validation.Required, validation.In(util.InterfaceSlice(config.ValidAppTypes)...)),
-
 		validation.Field(&o.StaticRouting, validation.In(util.InterfaceSlice(config.StaticAppRoutings)...)),
 	)
 }
@@ -97,7 +97,7 @@ func (d *AppAdd) Run(ctx context.Context) error {
 	switch app := appInfo.(type) {
 	case *staticAppInfo:
 		tmpl = templates.StaticAppYAMLTemplate()
-		path = app.App.AppPath
+		path = app.App.AppDir
 	default:
 		return fmt.Errorf("unsupported app type (WIP)")
 	}
@@ -129,8 +129,18 @@ func validateAppAddURL(val interface{}) error {
 
 func validateAppAddOutputPath(cfg *config.Project) func(val interface{}) error {
 	return func(val interface{}) error {
-		if s, ok := val.(string); ok && !fileutil.IsRelativeSubdir(cfg.Path, s) {
+		if s, ok := val.(string); ok && !fileutil.IsRelativeSubdir(cfg.Dir, s) {
 			return fmt.Errorf("output path must be somewhere in current project config location tree")
+		}
+
+		return nil
+	}
+}
+
+func validateAppAddDir(cfg *config.Project) func(val interface{}) error {
+	return func(val interface{}) error {
+		if s, ok := val.(string); ok && !fileutil.IsRelativeSubdir(cfg.Dir, s) {
+			return fmt.Errorf("application dir must be somewhere in current project config location tree")
 		}
 
 		return nil
@@ -140,10 +150,11 @@ func validateAppAddOutputPath(cfg *config.Project) func(val interface{}) error {
 func (d *AppAdd) promptBasic() error {
 	var qs []*survey.Question
 
+	// 1st pass - get app name and type.
 	if d.opts.Name == "" {
 		qs = append(qs, &survey.Question{
 			Name:     "name",
-			Prompt:   &survey.Input{Message: "Name of application:"},
+			Prompt:   &survey.Input{Message: "Application name:"},
 			Validate: validateAppAddName,
 		})
 	} else {
@@ -152,23 +163,99 @@ func (d *AppAdd) promptBasic() error {
 			return err
 		}
 
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Name of application:"), pterm.Cyan(d.opts.Name))
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Application name:"), pterm.Cyan(d.opts.Name))
 	}
 
 	if d.opts.Type == "" {
 		qs = append(qs, &survey.Question{
 			Name: "type",
 			Prompt: &survey.Select{
-				Message: "Type of application:",
+				Message: "Application type:",
 				Options: config.ValidAppTypes,
-				Default: config.TypeStatic,
+				Default: config.AppTypeStatic,
 			},
 		})
 	} else {
 		d.opts.Type = strings.ToLower(d.opts.Type)
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Type of application:"), pterm.Cyan(d.opts.Type))
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Application type:"), pterm.Cyan(d.opts.Type))
 	}
 
+	// Get basic info about app.
+	if len(qs) != 0 {
+		err := survey.Ask(qs, d.opts)
+		if err != nil {
+			if err == terminal.InterruptErr {
+				return errAppAddCanceled
+			}
+
+			return err
+		}
+	}
+
+	err := d.opts.Validate()
+	if err != nil {
+		return err
+	}
+
+	// 2nd pass - get app path.
+	qs = []*survey.Question{}
+
+	validateAppDir := validateAppAddDir(d.cfg)
+
+	if d.opts.Dir == "" {
+		defaultDir := filepath.Join(d.cfg.Dir, d.opts.Type, d.opts.Name)
+
+		qs = append(qs, &survey.Question{
+			Name:     "dir",
+			Prompt:   &survey.Input{Message: "Application path:", Default: defaultDir},
+			Validate: validateAppDir,
+		})
+	} else {
+		d.opts.Dir, _ = filepath.Abs(d.opts.Dir)
+
+		err := validateAppDir(d.opts.Dir)
+		if err != nil {
+			return err
+		}
+
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Application path:"), pterm.Cyan(d.opts.Dir))
+	}
+
+	if len(qs) != 0 {
+		err := survey.Ask(qs, d.opts)
+		if err != nil {
+			if err == terminal.InterruptErr {
+				return errAppAddCanceled
+			}
+
+			return err
+		}
+	}
+
+	// 3rd pass - get output path and app URL.
+	qs = []*survey.Question{}
+
+	// Get output path.
+	validateOutputPath := validateAppAddOutputPath(d.cfg)
+
+	if d.opts.OutputPath == "" {
+		qs = append(qs, &survey.Question{
+			Name:     "outputpath",
+			Prompt:   &survey.Input{Message: "Path to save application YAML:", Default: d.opts.Dir},
+			Validate: validateOutputPath,
+		})
+	} else {
+		d.opts.OutputPath, _ = filepath.Abs(d.opts.OutputPath)
+
+		err := validateOutputPath(d.opts.OutputPath)
+		if err != nil {
+			return err
+		}
+
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Path to save application YAML:"), pterm.Cyan(d.opts.OutputPath))
+	}
+
+	// Get app URL.
 	if d.opts.URL == "" {
 		defaultURL := ""
 
@@ -189,47 +276,6 @@ func (d *AppAdd) promptBasic() error {
 
 		d.opts.URL = strings.ToLower(d.opts.URL)
 		d.log.Printf("%s %s\n", pterm.Bold.Sprint("URL of application:"), pterm.Cyan(d.opts.URL))
-	}
-
-	// Get basic info about app.
-	if len(qs) != 0 {
-		err := survey.Ask(qs, d.opts)
-		if err != nil {
-			if err == terminal.InterruptErr {
-				return errAppAddCanceled
-			}
-
-			return err
-		}
-	}
-
-	err := d.opts.Validate()
-	if err != nil {
-		return err
-	}
-
-	qs = []*survey.Question{}
-
-	// Get output path.
-	validateOutputPath := validateAppAddOutputPath(d.cfg)
-
-	if d.opts.OutputPath == "" {
-		defaultOutputPath := filepath.Join(d.cfg.Path, d.opts.Type, d.opts.Name)
-
-		qs = append(qs, &survey.Question{
-			Name:     "outputpath",
-			Prompt:   &survey.Input{Message: "Path to save application YAML:", Default: defaultOutputPath},
-			Validate: validateOutputPath,
-		})
-	} else {
-		d.opts.OutputPath, _ = filepath.Abs(d.opts.OutputPath)
-
-		err := validateOutputPath(d.opts.OutputPath)
-		if err != nil {
-			return err
-		}
-
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Path to save application YAML:"), pterm.Cyan(d.opts.OutputPath))
 	}
 
 	err = survey.Ask(qs, d.opts)
@@ -276,7 +322,7 @@ func (d *AppAdd) prompt(curDir string) (interface{}, error) {
 	}
 
 	switch d.opts.Type {
-	case config.TypeStatic:
+	case config.AppTypeStatic:
 		return d.promptStatic(curDir, d.opts)
 	default:
 		return nil, fmt.Errorf("unsupported app type (WIP)")
@@ -290,7 +336,7 @@ func validateAppStaticBuildDir(cfg *config.Project, opts *AppAddOptions) func(va
 			return nil
 		}
 
-		if !fileutil.IsRelativeSubdir(cfg.Path, str) {
+		if !fileutil.IsRelativeSubdir(cfg.Dir, str) {
 			return fmt.Errorf("build dir path must be somewhere in current project config location tree")
 		}
 
@@ -306,16 +352,16 @@ func suggestAppStaticBuildDir(cfg *config.Project, opts *AppAddOptions) func(toC
 	return func(toComplete string) []string {
 		var dirs []string
 
-		_ = filepath.WalkDir(cfg.Path, func(path string, entry fs.DirEntry, err error) error {
+		_ = filepath.WalkDir(opts.Dir, func(path string, entry fs.DirEntry, err error) error {
 			if !entry.IsDir() {
 				return nil
 			}
 
-			if strings.HasPrefix(entry.Name(), ".") {
+			if strings.HasPrefix(entry.Name(), ".") || entry.Name() == "node_modules" {
 				return fs.SkipDir
 			}
 
-			if !fileutil.IsRelativeSubdir(cfg.Path, path) || fileutil.IsRelativeSubdir(path, opts.OutputPath) {
+			if !fileutil.IsRelativeSubdir(cfg.Dir, path) || fileutil.IsRelativeSubdir(path, opts.OutputPath) {
 				return nil
 			}
 
@@ -333,13 +379,13 @@ func (d *AppAdd) promptStatic(curDir string, opts *AppAddOptions) (*staticAppInf
 	staticBuildDirValidator := validateAppStaticBuildDir(d.cfg, opts)
 
 	if opts.StaticBuildDir == "" {
-		def, _ := filepath.Rel(curDir, filepath.Join(opts.OutputPath, config.DefaultStaticAppBuildDir))
+		def := filepath.Join(curDir, opts.Dir, config.DefaultStaticAppBuildDir)
 
 		qs = append(qs, &survey.Question{
 			Name: "StaticBuildDir",
 			Prompt: &survey.Input{
 				Message: "Build directory of application:",
-				Default: "./" + def,
+				Default: def,
 				Suggest: suggestAppStaticBuildDir(d.cfg, opts),
 			},
 			Validate: staticBuildDirValidator,
@@ -397,7 +443,7 @@ func (d *AppAdd) promptStatic(curDir string, opts *AppAddOptions) (*staticAppInf
 	}
 
 	// Cleanup.
-	opts.StaticBuildDir, _ = filepath.Rel(opts.OutputPath, opts.StaticBuildDir)
+	opts.StaticBuildDir, _ = filepath.Rel(opts.Dir, opts.StaticBuildDir)
 	opts.StaticBuildDir = "./" + opts.StaticBuildDir
 
 	return &staticAppInfo{
@@ -405,7 +451,7 @@ func (d *AppAdd) promptStatic(curDir string, opts *AppAddOptions) (*staticAppInf
 			BasicApp: config.BasicApp{
 				AppName: opts.Name,
 				AppURL:  opts.URL,
-				AppPath: opts.OutputPath,
+				AppDir:  opts.Dir,
 				AppRun: &config.AppRun{
 					Command: opts.RunCommand,
 				},

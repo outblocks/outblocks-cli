@@ -158,7 +158,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		appType := app.PluginType()
 		appRun := &types.AppRun{
 			App:        appType,
-			Path:       app.Path(),
+			Dir:        app.Dir(),
 			URL:        d.localURL(app.URL(), appPort, app.PathRedirect()),
 			IP:         loopbackIP,
 			Port:       appPort,
