@@ -13,7 +13,7 @@ dir: {{.App.Dir}}
 type: {{.App.Type}}
 
 # URL of the app.
-url: {{.App.URL}}
+url: {{.App.AppURL}}
 # Path redirect rewrites URL to specified path. URL path from 'url' field will be stripped and replaced with value below.
 # '/' should be fine for most apps.
 pathRedirect: /
@@ -23,7 +23,7 @@ build:
   # Dockerfile name to be used.
   dockerfile: {{.App.Build.Dockerfile}}
   # Directory which is used for dockerfile context.
-  context: {{.App.Build.Context}}
+  context: {{.App.Build.DockerContext}}
 
 # Run defines where how development is handled of application during `ok run`.
 run:

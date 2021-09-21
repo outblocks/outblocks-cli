@@ -289,6 +289,12 @@ func (d *AppAdd) promptBasic() error {
 		return errAppAddCanceled
 	}
 
+	// Cleanup.
+	if filepath.IsAbs(d.opts.Dir) {
+		d.opts.Dir, _ = filepath.Rel(d.cfg.Dir, d.opts.Dir)
+		d.opts.Dir = "./" + d.opts.Dir
+	}
+
 	return err
 }
 
@@ -453,13 +459,16 @@ func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
 	}
 
 	// Cleanup.
-	d.opts.StaticBuildDir, _ = filepath.Rel(d.opts.Dir, d.opts.StaticBuildDir)
-	d.opts.StaticBuildDir = "./" + d.opts.StaticBuildDir
+	if filepath.IsAbs(d.opts.StaticBuildDir) {
+		d.opts.StaticBuildDir, _ = filepath.Rel(filepath.Join(d.cfg.Dir, d.opts.Dir), d.opts.StaticBuildDir)
+		d.opts.StaticBuildDir = "./" + d.opts.StaticBuildDir
+	}
 
 	return &staticAppInfo{
 		App: config.StaticApp{
 			BasicApp: config.BasicApp{
 				AppName: d.opts.Name,
+				AppType: config.AppTypeStatic,
 				AppURL:  d.opts.URL,
 				AppDir:  d.opts.Dir,
 				AppRun: &config.AppRun{
@@ -503,6 +512,7 @@ func (d *AppAdd) promptService() (*serviceAppInfo, error) {
 		App: config.ServiceApp{
 			BasicApp: config.BasicApp{
 				AppName: d.opts.Name,
+				AppType: config.AppTypeService,
 				AppURL:  d.opts.URL,
 				AppDir:  d.opts.Dir,
 				AppRun: &config.AppRun{
