@@ -19,11 +19,11 @@ const (
 	DataHomeEnvVar = "OUTBLOCKS_DATA_HOME"
 )
 
-// lazypath is an lazy-loaded path buffer for the XDG base directory specification.
-type lazypath string
+// lazydir is an lazy-loaded dir buffer for the XDG base directory specification.
+type lazydir string
 
-func (l lazypath) path(envVar string, defaultFn func() string, elem ...string) string {
-	// There is an order to checking for a path.
+func (l lazydir) dir(envVar string, defaultFn func() string, elem ...string) string {
+	// There is an order to checking for a dir.
 	// 1. See if a Outblocks environment variable has been set.
 	// 2. Fall back to a default
 	base := os.Getenv(envVar)
@@ -34,19 +34,19 @@ func (l lazypath) path(envVar string, defaultFn func() string, elem ...string) s
 	return filepath.Join(defaultFn(), string(l), filepath.Join(elem...))
 }
 
-// cachePath defines the base directory relative to which user specific non-essential data files
+// cacheDir defines the base directory relative to which user specific non-essential data files
 // should be stored.
-func (l lazypath) cachePath(elem ...string) string {
-	return l.path(CacheHomeEnvVar, cacheHome, filepath.Join(elem...))
+func (l lazydir) cacheDir(elem ...string) string {
+	return l.dir(CacheHomeEnvVar, cacheHome, filepath.Join(elem...))
 }
 
-// configPath defines the base directory relative to which user specific configuration files should
+// configDir defines the base directory relative to which user specific configuration files should
 // be stored.
-func (l lazypath) configPath(elem ...string) string {
-	return l.path(ConfigHomeEnvVar, configHome, filepath.Join(elem...))
+func (l lazydir) configDir(elem ...string) string {
+	return l.dir(ConfigHomeEnvVar, configHome, filepath.Join(elem...))
 }
 
-// dataPath defines the base directory relative to which user specific data files should be stored.
-func (l lazypath) dataPath(elem ...string) string {
-	return l.path(DataHomeEnvVar, dataHome, filepath.Join(elem...))
+// dataDir defines the base directory relative to which user specific data files should be stored.
+func (l lazydir) dataDir(elem ...string) string {
+	return l.dir(DataHomeEnvVar, dataHome, filepath.Join(elem...))
 }

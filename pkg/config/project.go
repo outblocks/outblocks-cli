@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -135,17 +134,17 @@ func (p *Project) LoadFiles(files []string) error {
 	return nil
 }
 
-func DetectAppType(file string) string {
-	f, err := os.Stat(file)
-	if err == nil && f.IsDir() {
-		return filepath.Base(filepath.Dir(file))
-	}
-
-	return filepath.Base(filepath.Dir(filepath.Dir(file)))
-}
-
 type fileType struct {
 	Type string
+}
+
+func DetectAppType(data []byte) (string, error) {
+	var f fileType
+	if err := yaml.Unmarshal(data, &f); err != nil {
+		return "", err
+	}
+
+	return f.Type, nil
 }
 
 func KnownType(typ string) string {
@@ -178,16 +177,13 @@ func (p *Project) LoadFile(file string) error {
 		return fmt.Errorf("load application file %s error: \n%w", file, err)
 	}
 
-	typ := DetectAppType(file)
-	if typ == "" {
-		var f fileType
-		if err := yaml.Unmarshal(data, &f); err != nil {
-			return err
-		}
+	typ, err := DetectAppType(data)
+	if err != nil {
+		return err
+	}
 
-		if f.Type == "" {
-			return fmt.Errorf("unknown application file found.\nfile: %s", file)
-		}
+	if typ == "" {
+		return fmt.Errorf("unknown application file found.\nfile: %s", file)
 	}
 
 	typ = KnownType(typ)

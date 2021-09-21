@@ -36,7 +36,7 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 
 	info.CmdInfo, err = util.NewCmdInfo(
 		a.App.Properties["run"].(*config.AppRun).Command,
-		a.Dir,
+		a.App.Dir,
 		env,
 	)
 	if err != nil {
@@ -100,6 +100,9 @@ func (a *LocalAppRunInfo) Stop() error {
 
 func (a *LocalAppRunInfo) Wait() error {
 	err := a.CmdInfo.Wait()
+	if err == nil {
+		err = fmt.Errorf("exited")
+	}
 
 	a.wg.Wait()
 

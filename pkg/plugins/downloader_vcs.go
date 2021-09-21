@@ -18,9 +18,9 @@ func NewVCSDownloader() *VCSDownloader {
 }
 
 type DownloadedPlugin struct {
-	Path     string
-	PathTemp bool
-	Version  *semver.Version
+	Dir     string
+	TempDir bool
+	Version *semver.Version
 }
 
 type vcsVersionInfo struct {
@@ -29,9 +29,9 @@ type vcsVersionInfo struct {
 }
 
 func (d *VCSDownloader) fetch(_ context.Context, pi *pluginInfo) (vcs.Repo, error) {
-	cachePath := clipath.CachePath("plugins", pi.author, pi.name)
+	cachePath := clipath.CacheDir("plugins", pi.author, pi.name)
 	if err := plugin_util.MkdirAll(cachePath, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create path %s: %w", cachePath, err)
+		return nil, fmt.Errorf("failed to create dir %s: %w", cachePath, err)
 	}
 
 	repo, err := vcs.NewRepo(pi.source, cachePath)
@@ -61,7 +61,7 @@ func (d *VCSDownloader) download(ctx context.Context, pi *pluginInfo) (*Download
 	}
 
 	return &DownloadedPlugin{
-		Path:    clipath.CachePath("plugins", pi.author, pi.name),
+		Dir:     clipath.CacheDir("plugins", pi.author, pi.name),
 		Version: ver.ver,
 	}, ver.tag, nil
 }

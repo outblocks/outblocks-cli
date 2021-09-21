@@ -1,4 +1,4 @@
-# Static app config.
+# Service app config.
 
 # You can use ${var.*} expansion to source it from values.yaml per environment,
 # e.g. url: ${var.base_url}/app1/
@@ -18,14 +18,12 @@ url: {{.App.URL}}
 # '/' should be fine for most apps.
 pathRedirect: /
 
-# Build defines where static files are stored and optionally which command should be used to generate them.
+# Build defines how docker image will be built for this application.
 build:
-{{- if .App.Build.Command }}
-  # Optional command to be run to generate output files.
-  command: {{.App.Build.Command}}
-{{ end }}
-  # Directory where generated files will end up.
-  dir: {{.App.Build.Dir}}
+  # Dockerfile name to be used.
+  dockerfile: {{.App.Build.Dockerfile}}
+  # Directory which is used for dockerfile context.
+  context: {{.App.Build.Context}}
 
 # Run defines where how development is handled of application during `ok run`.
 run:
@@ -39,8 +37,3 @@ run:
 
   # Port override, by default just assigns next port starting from listen-port.
   # port: 8123
-
-# Routing to be used:
-#   'react' for react browser routing.
-#   'disabled' for no additional routing.
-routing: {{.App.Routing}}

@@ -101,7 +101,7 @@ func (d *Run) init() error {
 		return err
 	}
 
-	backupHosts := clipath.DataPath("hosts.original")
+	backupHosts := clipath.DataDir("hosts.original")
 	if _, err := os.Stat(backupHosts); os.IsNotExist(err) {
 		if err = plugin_util.CopyFile(d.hosts.WriteFilePath, backupHosts, 0755); err != nil {
 			return fmt.Errorf("cannot backup hosts file: %w", err)
@@ -158,7 +158,6 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		appType := app.PluginType()
 		appRun := &types.AppRun{
 			App:        appType,
-			Dir:        app.Dir(),
 			URL:        d.localURL(app.URL(), appPort, app.PathRedirect()),
 			IP:         loopbackIP,
 			Port:       appPort,
@@ -232,12 +231,10 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 	env := make(map[string]string)
 
 	for _, app := range info.apps {
-		prefix := app.EnvPrefix()
+		prefix := app.App.EnvPrefix()
 
 		host, _ := urlutil.ExtractHostname(app.URL)
 		env[fmt.Sprintf("%sURL", prefix)] = app.URL
-		env[fmt.Sprintf("%sPORT", prefix)] = strconv.Itoa(app.Port)
-		env[fmt.Sprintf("%sHOST", prefix)] = host
 
 		hosts[host] = app.IP
 	}
@@ -245,7 +242,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 	for _, dep := range info.deps {
 		// TODO: treat deps differently, only use these that were added as needs
 		// + add secrets from plugin.PrepareRunDependency()
-		prefix := dep.EnvPrefix()
+		prefix := dep.Dependency.EnvPrefix()
 
 		env[fmt.Sprintf("%sHOST", prefix)] = loopbackHost
 		env[fmt.Sprintf("%sPORT", prefix)] = strconv.Itoa(dep.Port)
@@ -409,22 +406,24 @@ func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 	return err
 }
 
-func formatRunOutput(log logger.Logger, r *plugin_go.RunOutputResponse) {
+func formatRunOutput(log logger.Logger, cfg *config.Project, r *plugin_go.RunOutputResponse) {
+	var prefix string
+
 	msg := plugin_util.StripAnsiControl(r.Message)
 
 	switch r.Source {
 	case plugin_go.RunOutpoutSourceApp:
-		if r.IsStderr {
-			log.Printf("%s %s\n", pterm.FgRed.Sprintf("APP:%s:", r.Name), msg)
-		} else {
-			log.Printf("%s %s\n", pterm.FgGreen.Sprintf("APP:%s:", r.Name), msg)
-		}
+		app := cfg.AppMap[r.ID]
+		prefix = fmt.Sprintf("APP:%s:%s:", app.Type(), app.Name())
+
 	case plugin_go.RunOutpoutSourceDependency:
-		if r.IsStderr {
-			log.Printf("%s %s\n", pterm.FgRed.Sprintf("DEP:%s:", r.Name), msg)
-		} else {
-			log.Printf("%s %s\n", pterm.FgGreen.Sprintf("DEP:%s:", r.Name), msg)
-		}
+		prefix = fmt.Sprintf("DEP:%s", r.Name)
+	}
+
+	if r.IsStderr {
+		log.Printf("%s %s\n", pterm.FgRed.Sprintf(prefix), msg)
+	} else {
+		log.Printf("%s %s\n", pterm.FgGreen.Sprintf(prefix), msg)
 	}
 }
 
@@ -517,7 +516,7 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 					return
 				}
 
-				formatRunOutput(d.log, msg)
+				formatRunOutput(d.log, d.cfg, msg)
 			}
 		}()
 
@@ -543,7 +542,7 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 					return
 				}
 
-				formatRunOutput(d.log, msg)
+				formatRunOutput(d.log, d.cfg, msg)
 			}
 		}()
 

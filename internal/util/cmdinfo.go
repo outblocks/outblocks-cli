@@ -22,7 +22,7 @@ const (
 	commandCleanupTimeout = 5 * time.Second
 )
 
-func NewCmdInfo(cmdStr, path string, env []string) (*CmdInfo, error) {
+func NewCmdInfo(cmdStr, dir string, env []string) (*CmdInfo, error) {
 	cmd := plugin_util.NewCmdAsUser(cmdStr)
 
 	// Env.
@@ -30,7 +30,7 @@ func NewCmdInfo(cmdStr, path string, env []string) (*CmdInfo, error) {
 		env...,
 	)
 
-	cmd.Dir = path
+	cmd.Dir = dir
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -60,8 +60,6 @@ func (i *CmdInfo) Run() error {
 		err := i.cmd.Wait()
 		if err != nil {
 			i.err = fmt.Errorf("exited: %s", err)
-		} else {
-			i.err = fmt.Errorf("exited")
 		}
 
 		close(i.done)

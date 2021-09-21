@@ -42,6 +42,7 @@ type App interface {
 
 type BasicApp struct {
 	AppName         string                 `json:"name"`
+	AppType         string                 `json:"type"`
 	AppURL          string                 `json:"url"`
 	AppPathRedirect string                 `json:"pathRedirect"`
 	AppDir          string                 `json:"dir"`
@@ -56,7 +57,6 @@ type BasicApp struct {
 	deployPlugin *plugins.Plugin
 	dnsPlugin    *plugins.Plugin
 	runPlugin    *plugins.Plugin
-	typ          string
 }
 
 type AppRun struct {
@@ -144,7 +144,7 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 	}()
 
 	if err != nil {
-		return fmt.Errorf("%s config validation failed.\nfile: %s\n%s", a.typ, a.yamlPath, err)
+		return fmt.Errorf("%s config validation failed.\nfile: %s\n%s", a.Type(), a.yamlPath, err)
 	}
 
 	return nil
@@ -159,7 +159,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 			continue
 		}
 
-		if (deployPlugin != "" && deployPlugin != plug.Name) || !plug.SupportsApp(a.typ) {
+		if (deployPlugin != "" && deployPlugin != plug.Name) || !plug.SupportsApp(a.Type()) {
 			continue
 		}
 
@@ -170,7 +170,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 	}
 
 	if a.deployPlugin == nil {
-		return fmt.Errorf("%s has no matching deployment plugin available.\nfile: %s", a.typ, a.yamlPath)
+		return fmt.Errorf("%s has no matching deployment plugin available.\nfile: %s", a.Type(), a.yamlPath)
 	}
 
 	// Check run plugin.
@@ -181,7 +181,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 			continue
 		}
 
-		if (runPlugin != "" && runPlugin != plug.Name) || !plug.SupportsApp(a.typ) {
+		if (runPlugin != "" && runPlugin != plug.Name) || !plug.SupportsApp(a.Type()) {
 			continue
 		}
 
@@ -190,7 +190,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 	}
 
 	if a.runPlugin == nil && !strings.EqualFold(RunPluginLocal, runPlugin) {
-		return fmt.Errorf("%s has no matching run plugin available.\nfile: %s", a.typ, a.yamlPath)
+		return fmt.Errorf("%s has no matching run plugin available.\nfile: %s", a.Type(), a.yamlPath)
 	}
 
 	// Check dns plugin.
@@ -200,7 +200,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 
 	for k, need := range a.Needs {
 		if need.dep.deployPlugin != a.deployPlugin {
-			return a.YAMLError(fmt.Sprintf("$.needs[%s]", k), fmt.Sprintf("%s needs a dependency that uses different deployment plugin.", a.typ))
+			return a.YAMLError(fmt.Sprintf("$.needs[%s]", k), fmt.Sprintf("%s needs a dependency that uses different deployment plugin.", a.Type()))
 		}
 	}
 
@@ -212,7 +212,7 @@ func (a *BasicApp) YAMLError(path, msg string) error {
 }
 
 func (a *BasicApp) Type() string {
-	return a.typ
+	return a.AppType
 }
 
 func (a *BasicApp) Dir() string {
@@ -233,6 +233,7 @@ func (a *BasicApp) PluginType() *types.App {
 
 	return &types.App{
 		ID:           a.ID(),
+		Dir:          a.Dir(),
 		Name:         a.AppName,
 		Type:         a.Type(),
 		URL:          appURL,
@@ -263,7 +264,7 @@ func (a *BasicApp) URL() *url.URL {
 }
 
 func (a *BasicApp) ID() string {
-	return fmt.Sprintf("app_%s_%s", a.typ, a.AppName)
+	return fmt.Sprintf("app_%s_%s", a.AppType, a.AppName)
 }
 
 func (a *BasicApp) SupportsLocal() bool {

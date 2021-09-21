@@ -28,7 +28,7 @@ type Plugin struct {
 	SupportedTypes []*PluginType             `json:"supported_types"`
 	Commands       map[string]*PluginCommand `json:"commands"`
 
-	Path     string          `json:"-"`
+	Dir      string          `json:"-"`
 	Version  *semver.Version `json:"-"`
 	yamlPath string
 	yamlData []byte
@@ -122,7 +122,7 @@ func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, projectName, pr
 
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("OUTBLOCKS_BIN=%s", os.Args[0]),
-		fmt.Sprintf("OUTBLOCKS_PLUGIN_DIR=%s", p.Path),
+		fmt.Sprintf("OUTBLOCKS_PLUGIN_DIR=%s", p.Dir),
 		fmt.Sprintf("OUTBLOCKS_PROJECT_NAME=%s", projectName),
 		fmt.Sprintf("OUTBLOCKS_PROJECT_DIR=%s", projectDir),
 	)

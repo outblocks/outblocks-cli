@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 )
@@ -29,11 +30,16 @@ func LoadFunctionAppData(path string, data []byte) (App, error) {
 
 	out.yamlPath = path
 	out.yamlData = data
-	out.typ = AppTypeFunction
 
 	return out, nil
 }
 
-func (f *FunctionApp) SupportsLocal() bool {
+func (s *FunctionApp) SupportsLocal() bool {
 	return false
+}
+
+func (s *FunctionApp) Validate() error {
+	return validation.ValidateStruct(s,
+		validation.Field(&s.AppURL, validation.Required),
+	)
 }

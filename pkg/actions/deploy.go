@@ -1,15 +1,13 @@
 package actions
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"sort"
 	"sync"
 	"time"
 
+	dockerclient "github.com/docker/docker/client"
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
-	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -31,6 +29,11 @@ type Deploy struct {
 	log  logger.Logger
 	cfg  *config.Project
 	opts *DeployOptions
+
+	dockerCli *dockerclient.Client
+	once      struct {
+		dockerCli sync.Once
+	}
 }
 
 type DeployOptions struct {
@@ -47,67 +50,6 @@ func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Dep
 	}
 }
 
-func (d *Deploy) buildApps(ctx context.Context) error {
-	for _, app := range d.cfg.Apps {
-		if app.Type() != config.AppTypeStatic {
-			continue
-		}
-
-		a := app.(*config.StaticApp)
-		if a.Build.Command == "" {
-			continue
-		}
-
-		cmd, err := util.NewCmdInfo(a.Build.Command, a.Dir(), nil)
-		if err != nil {
-			return fmt.Errorf("error preparing build command for app: %s: %w", app.Name(), err)
-		}
-
-		err = cmd.Run()
-		if err != nil {
-			return fmt.Errorf("error running build for app: %s: %w", app.Name(), err)
-		}
-
-		// Process stdout/stderr.
-		var wg sync.WaitGroup
-
-		wg.Add(2)
-
-		go func() {
-			s := bufio.NewScanner(cmd.Stdout())
-			for s.Scan() {
-				d.log.Printf("%s %s\n", pterm.FgGreen.Sprintf("APP:%s:", app.Name()), s.Text())
-			}
-
-			wg.Done()
-		}()
-
-		go func() {
-			s := bufio.NewScanner(cmd.Stderr())
-			for s.Scan() {
-				d.log.Printf("%s %s\n", pterm.FgRed.Sprintf("APP:%s:", app.Name()), s.Text())
-			}
-
-			wg.Done()
-		}()
-
-		select {
-		case <-ctx.Done():
-			_ = cmd.Stop()
-		case <-cmd.WaitChannel():
-		}
-
-		wg.Wait()
-
-		err = cmd.Wait()
-		if err != nil {
-			return fmt.Errorf("error running build for app: %s: %w", app.Name(), err)
-		}
-	}
-
-	return nil
-}
-
 func (d *Deploy) Run(ctx context.Context) error {
 	verify := d.opts.Verify
 	spinner := d.log.Spinner().WithRemoveWhenDone(true)
@@ -120,6 +62,8 @@ func (d *Deploy) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+
+		_ = spinner.Stop()
 	}
 
 	// Get state.
@@ -212,10 +156,6 @@ func (d *Deploy) showStateStatus(state *types.StateData) error {
 			continue
 		}
 
-		if app.Type() != config.AppTypeStatic {
-			continue
-		}
-
 		host, err := urlutil.ExtractHostname(appState.DNS.URL)
 		if err != nil {
 			return err
@@ -266,10 +206,6 @@ func (d *Deploy) showStateStatus(state *types.StateData) error {
 			continue
 		}
 
-		if app.Type() != config.AppTypeStatic {
-			continue
-		}
-
 		apps = append(apps, app)
 	}
 
@@ -280,7 +216,7 @@ func (d *Deploy) showStateStatus(state *types.StateData) error {
 		d.log.Section().Println("App External URLs")
 
 		for _, app := range apps {
-			d.log.Printf("%s %s %s\n", appURLStyle.Sprint(app.URL()), pterm.Gray("==>"), appNameStyle.Sprint(app.Name()))
+			d.log.Printf("%s %s %s (%s)\n", appURLStyle.Sprint(app.URL()), pterm.Gray("==>"), appNameStyle.Sprint(app.Name()), app.Type())
 		}
 	}
 
@@ -288,13 +224,17 @@ func (d *Deploy) showStateStatus(state *types.StateData) error {
 	if len(dnsMap) > 0 {
 		d.log.Section().Println("SSL Certificates")
 
-		data := [][]string{
-			{"Domain", "Status", "Info"},
-		}
+		data := make([][]string, 0, len(dnsMap))
 
 		for host, v := range dnsMap {
 			data = append(data, []string{pterm.Green(host), pterm.Yellow(v.SSLStatus), v.SSLStatusInfo})
 		}
+
+		sort.Slice(data, func(i, j int) bool {
+			return data[i][0] < data[j][0]
+		})
+
+		data = append([][]string{{"Domain", "Status", "Info"}}, data...)
 
 		_ = d.log.Table().WithHasHeader().WithData(pterm.TableData(data)).Render()
 	}
@@ -362,7 +302,6 @@ func calculatePlanMap(apps []config.App, deps map[string]*config.Dependency) map
 			IsDeploy: true,
 			IsDNS:    includeDNS,
 			App:      appType,
-			Dir:      app.Dir(),
 		}
 
 		planMap[deployPlugin].apps = append(planMap[deployPlugin].apps, appReq)
@@ -383,7 +322,6 @@ func calculatePlanMap(apps []config.App, deps map[string]*config.Dependency) map
 			IsDeploy: false,
 			IsDNS:    true,
 			App:      appType,
-			Dir:      app.Dir(),
 		}
 
 		planMap[dnsPlugin].apps = append(planMap[dnsPlugin].apps, appReq)

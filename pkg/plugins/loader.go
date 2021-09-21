@@ -171,28 +171,28 @@ func (l *Loader) downloadPlugin(ctx context.Context, pi *pluginInfo) (string, *s
 		return "", nil, fmt.Errorf("failed to download plugin %s: %w", pi.name, err)
 	}
 
-	destPath := filepath.Join(l.pluginsCacheDir, pi.author, pi.name, fmt.Sprintf("%s-%s", CurrentArch(), download.Version))
+	destDir := filepath.Join(l.pluginsCacheDir, pi.author, pi.name, fmt.Sprintf("%s-%s", CurrentArch(), download.Version))
 
-	if err := plugin_util.MkdirAll(destPath, 0755); err != nil {
-		return "", nil, fmt.Errorf("failed to create path %s: %w", destPath, err)
+	if err := plugin_util.MkdirAll(destDir, 0755); err != nil {
+		return "", nil, fmt.Errorf("failed to create dir %s: %w", destDir, err)
 	}
 
-	if err := copy.Copy(download.Path, destPath); err != nil {
-		return "", nil, fmt.Errorf("failed to copy downloaded plugin %s: %w", destPath, err)
+	if err := copy.Copy(download.Dir, destDir); err != nil {
+		return "", nil, fmt.Errorf("failed to copy downloaded plugin %s: %w", destDir, err)
 	}
 
-	if err := plugin_util.LchownRToUser(destPath); err != nil {
-		return "", nil, fmt.Errorf("failed to set permissions on downloaded plugin %s: %w", destPath, err)
+	if err := plugin_util.LchownRToUser(destDir); err != nil {
+		return "", nil, fmt.Errorf("failed to set permissions on downloaded plugin %s: %w", destDir, err)
 	}
 
-	if download.PathTemp {
-		err = os.RemoveAll(download.Path)
+	if download.TempDir {
+		err = os.RemoveAll(download.Dir)
 		if err != nil {
-			return "", nil, fmt.Errorf("failed to remove downloaded plugin temp dir %s: %w", download.Path, err)
+			return "", nil, fmt.Errorf("failed to remove downloaded plugin temp dir %s: %w", download.Dir, err)
 		}
 	}
 
-	return destPath, download.Version, nil
+	return destDir, download.Version, nil
 }
 
 func (l *Loader) installCachedPlugin(pi *pluginInfo) (string, *semver.Version, error) {
@@ -210,12 +210,12 @@ func (l *Loader) installCachedPlugin(pi *pluginInfo) (string, *semver.Version, e
 }
 
 func (l *Loader) installPlugin(pi *pluginInfo, from string) error {
-	localPath := filepath.Join(l.baseDir, ".outblocks", "plugins", pi.author, pi.name)
-	if err := plugin_util.MkdirAll(localPath, 0755); err != nil {
-		return fmt.Errorf("failed to create path %s: %w", localPath, err)
+	localDir := filepath.Join(l.baseDir, ".outblocks", "plugins", pi.author, pi.name)
+	if err := plugin_util.MkdirAll(localDir, 0755); err != nil {
+		return fmt.Errorf("failed to create dir %s: %w", localDir, err)
 	}
 
-	dest := filepath.Join(localPath, filepath.Base(from))
+	dest := filepath.Join(localDir, filepath.Base(from))
 	_ = os.RemoveAll(dest)
 
 	if err := plugin_util.Symlink(from, dest); err != nil {
@@ -227,10 +227,10 @@ func (l *Loader) installPlugin(pi *pluginInfo, from string) error {
 	return plugin_util.LchownRToUser(dest)
 }
 
-func (l *Loader) loadPlugin(pi *pluginInfo, path string, ver *semver.Version) (*Plugin, error) {
-	p := fileutil.FindYAML(filepath.Join(path, "plugin"))
+func (l *Loader) loadPlugin(pi *pluginInfo, dir string, ver *semver.Version) (*Plugin, error) {
+	p := fileutil.FindYAML(filepath.Join(dir, "plugin"))
 	if p == "" {
-		return nil, fmt.Errorf("plugin yaml is missing in: %s", path)
+		return nil, fmt.Errorf("plugin yaml is missing in: %s", dir)
 	}
 
 	data, err := ioutil.ReadFile(p)
@@ -239,7 +239,7 @@ func (l *Loader) loadPlugin(pi *pluginInfo, path string, ver *semver.Version) (*
 	}
 
 	plugin := Plugin{
-		Path:     path,
+		Dir:      dir,
 		Version:  ver,
 		yamlData: data,
 		yamlPath: p,

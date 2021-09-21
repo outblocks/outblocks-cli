@@ -56,7 +56,7 @@ func NewExecutor() *Executor {
 }
 
 func setupEnvVars(env *cli.Environment) {
-	env.AddVarWithDefault("plugins_cache_dir", "plugins cache directory", clipath.DataPath("plugin-cache"))
+	env.AddVarWithDefault("plugins_cache_dir", "plugins cache directory", clipath.DataDir("plugin-cache"))
 	env.AddVar("no_color", "disable color output")
 	env.AddVarWithDefault("log_level", "set logging level: debug | warn | error", "warn")
 }
@@ -193,7 +193,7 @@ func (e *Executor) initConfig() error {
 	}
 
 	e.v.AddConfigPath(dir)
-	e.v.AddConfigPath(clipath.ConfigPath())
+	e.v.AddConfigPath(clipath.ConfigDir())
 	e.v.SetConfigType("yaml")
 	e.v.SetConfigName(".outblocks")
 

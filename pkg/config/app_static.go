@@ -53,7 +53,6 @@ func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
 
 	out.yamlPath = path
 	out.yamlData = data
-	out.typ = AppTypeStatic
 
 	return out, nil
 }
@@ -61,6 +60,7 @@ func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
 func (s *StaticApp) Validate() error {
 	return validation.ValidateStruct(s,
 		validation.Field(&s.Routing, validation.In(util.InterfaceSlice(StaticAppRoutings)...)),
+		validation.Field(&s.AppURL, validation.Required),
 	)
 }
 

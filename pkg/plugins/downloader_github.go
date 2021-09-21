@@ -78,9 +78,9 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 		return info, err
 	}
 
-	dest := clipath.CachePath("plugin-release", pi.author, pi.name, filepath.Base(matchingAsset.GetName()))
+	dest := clipath.CacheDir("plugin-release", pi.author, pi.name, filepath.Base(matchingAsset.GetName()))
 	if err := plugin_util.MkdirAll(filepath.Dir(dest), 0755); err != nil {
-		return nil, fmt.Errorf("failed to create path %s: %w", dest, err)
+		return nil, fmt.Errorf("failed to create dir %s: %w", dest, err)
 	}
 
 	g, err := getter.NewHTTPGetter()
@@ -98,7 +98,7 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 		return nil, fmt.Errorf("writing downloaded file error: %w", err)
 	}
 
-	outDest := clipath.CachePath("plugin-release", pi.author, pi.name, "out")
+	outDest := clipath.CacheDir("plugin-release", pi.author, pi.name, "out")
 	_ = os.RemoveAll(outDest)
 
 	err = archiver.Unarchive(dest, outDest)
@@ -112,9 +112,9 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 	}
 
 	return &DownloadedPlugin{
-		Path:     outDest,
-		PathTemp: true,
-		Version:  info.Version,
+		Dir:     outDest,
+		TempDir: true,
+		Version: info.Version,
 	}, nil
 }
 

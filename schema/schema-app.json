@@ -1,6 +1,6 @@
 {
   "title": "JSON schema for Outblocks App configuration files",
-  "$schema": "http://json-schema.org/draft-04/schema",
+  "$schema": "http://json-schema.org/draft-07/schema",
   "$ref": "#/definitions/OutblocksApp",
   "definitions": {
     "OutblocksApp": {
@@ -9,16 +9,20 @@
       "additionalProperties": false,
       "properties": {
         "name": {
-          "description": "Name of the app (defaults to directory name).",
+          "description": "Name of the app. Defaults to directory name.",
           "type": "string"
         },
         "type": {
           "description": "Type of the app.",
           "type": "string",
-          "enum": ["static", "function", "service"]
+          "enum": [
+            "static",
+            "function",
+            "service"
+          ]
         },
         "dir": {
-          "description": "Working directory of the app where all commands will be run (defaults to directory where this yaml ends up). All other dirs will be relative to this one.",
+          "description": "Working directory of the app where all commands will be run. Defaults to location of this yaml. All other dirs will be relative to this one.",
           "type": "string"
         },
         "url": {
@@ -37,10 +41,6 @@
           "description": "Run config used for dev builds during run.",
           "$ref": "#/definitions/Run"
         },
-        "build": {
-          "description": "Build config used for deployment builds.",
-          "$ref": "#/definitions/Build"
-        },
         "deploy": {
           "description": "Deploy config.",
           "$ref": "#/definitions/Deploy"
@@ -50,15 +50,60 @@
           "type": "string"
         },
         "routing": {
-          "description": "Routing type (defaults to 'react').",
+          "description": "Routing type. Defaults to 'react'.",
           "type": "string",
-          "enum": ["react", "disabled"]
+          "enum": [
+            "react",
+            "disabled"
+          ]
         },
         "cdn": {
           "description": "CDN settings.",
           "$ref": "#/definitions/CDN"
+        },
+        "build": {
+          "type": "object"
         }
-      }
+      },
+      "required": [
+        "type"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "static"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "build": {
+                "description": "Static application build config used for deployment builds.",
+                "$ref": "#/definitions/BuildStatic"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "service"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "build": {
+                "description": "Service application build config used for deployment builds.",
+                "$ref": "#/definitions/BuildService"
+              }
+            }
+          }
+        }
+      ]
     },
     "Needs": {
       "title": "Needs",
@@ -83,7 +128,7 @@
       "additionalProperties": true,
       "properties": {
         "plugin": {
-          "description": "Run plugin override, defaults to first supported plugin available.",
+          "description": "Run plugin override. Defaults to first supported plugin available.",
           "type": "string"
         },
         "command": {
@@ -97,7 +142,9 @@
         "env": {
           "description": "Additional environment variables",
           "type": "object",
-          "additionalProperties": {"type": "string"}
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -107,13 +154,23 @@
       "additionalProperties": true,
       "properties": {
         "plugin": {
-          "description": "Deploy plugin override, defaults to first supported plugin available.",
+          "description": "Deploy plugin override. Defaults to first supported plugin available.",
           "type": "string"
         }
       }
     },
-    "Build": {
-      "title": "Build",
+    "CDN": {
+      "title": "CDN",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "BuildStatic": {
+      "title": "Build static app",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -127,13 +184,18 @@
         }
       }
     },
-    "CDN": {
-      "title": "CDN",
+    "BuildService": {
+      "title": "Build service app",
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "enabled": {
-          "type": "boolean"
+        "context": {
+          "description": "Docker context directory, relative to application dir.",
+          "type": "string"
+        },
+        "dockerfile": {
+          "description": "Dockerfile to use, relative to context path. Defaults to 'Dockerfile'.",
+          "type": "string"
         }
       }
     }
