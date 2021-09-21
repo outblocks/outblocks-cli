@@ -1,5 +1,15 @@
 # Outblocks CLI Changelog
 
+## [v0.1.19](https://github.com/outblocks/outblocks-cli/compare/v0.1.18...v0.1.19)
+
+> 2021-09-21
+
+### BUG FIXES
+
+[`e97e160`](https://github.com/outblocks/outblocks-cli/commit/e97e160972e4fb9515744a4a7c6e1adf9e9f62b8) dir templates
+[`b499fd6`](https://github.com/outblocks/outblocks-cli/commit/b499fd6302782404bbb56ff75cca9fe66e6173ed) outputdir
+
+
 ## [v0.1.18](https://github.com/outblocks/outblocks-cli/compare/v0.1.17...v0.1.18)
 
 > 2021-09-21
