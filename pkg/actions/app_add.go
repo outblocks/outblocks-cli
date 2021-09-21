@@ -242,23 +242,23 @@ func (d *AppAdd) promptBasic() error {
 	qs = []*survey.Question{}
 
 	// Get output dir.
-	validateOutputPath := validateAppAddOutputDir(d.cfg)
+	validateOutputDir := validateAppAddOutputDir(d.cfg)
 
 	if d.opts.OutputDir == "" {
 		qs = append(qs, &survey.Question{
-			Name:     "outputpath",
-			Prompt:   &survey.Input{Message: "Path to save application YAML:", Default: d.opts.Dir},
-			Validate: validateOutputPath,
+			Name:     "outputdir",
+			Prompt:   &survey.Input{Message: "Dir to save application YAML:", Default: d.opts.Dir},
+			Validate: validateOutputDir,
 		})
 	} else {
 		d.opts.OutputDir, _ = filepath.Abs(d.opts.OutputDir)
 
-		err := validateOutputPath(d.opts.OutputDir)
+		err := validateOutputDir(d.opts.OutputDir)
 		if err != nil {
 			return err
 		}
 
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Path to save application YAML:"), pterm.Cyan(d.opts.OutputDir))
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Dir to save application YAML:"), pterm.Cyan(d.opts.OutputDir))
 	}
 
 	// Get app URL.
