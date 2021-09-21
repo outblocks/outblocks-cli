@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.18](https://github.com/outblocks/outblocks-cli/compare/v0.1.17...v0.1.18)
+
+> 2021-09-21
+
+### FEATURES
+
+[`b33676a`](https://github.com/outblocks/outblocks-cli/commit/b33676aae04eb4431fcc28ab372f0d76401cf72d) service app support, bugfixes
+
+
 ## [v0.1.17](https://github.com/outblocks/outblocks-cli/compare/v0.1.16...v0.1.17)
 
 > 2021-09-03
