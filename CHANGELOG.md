@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.20](https://github.com/outblocks/outblocks-cli/compare/v0.1.19...v0.1.20)
+
+> 2021-09-22
+
+### FEATURES
+
+[`b1a7310`](https://github.com/outblocks/outblocks-cli/commit/b1a731001319b5a1169f557565370052bd2850a0) strip build ansi output, project id, passing env
+
+
 ## [v0.1.19](https://github.com/outblocks/outblocks-cli/compare/v0.1.18...v0.1.19)
 
 > 2021-09-21
