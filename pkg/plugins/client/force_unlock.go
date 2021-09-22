@@ -7,10 +7,9 @@ import (
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 )
 
-func (c *Client) ReleaseLock(ctx context.Context, typ, env string, props map[string]interface{}, lockID string) error {
+func (c *Client) ReleaseLock(ctx context.Context, typ string, props map[string]interface{}, lockID string) error {
 	err := c.lazySendReceive(ctx, &plugin_go.ReleaseLockRequest{
 		StateType:  typ,
-		Env:        env,
 		LockID:     lockID,
 		Properties: props,
 	}, func(res plugin_go.Response) error {

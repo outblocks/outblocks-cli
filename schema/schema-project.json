@@ -58,10 +58,6 @@
           "description": "State type, plugin specific value e.g. 'gcp' for gcp plugin or use 'local' for local state.",
           "type": "string"
         },
-        "env": {
-          "description": "State env to separate different environments. Overrides --env settings.",
-          "type": "string"
-        },
         "path": {
           "description": "Path of local state, used only when state type is 'local'.",
           "type": "string"

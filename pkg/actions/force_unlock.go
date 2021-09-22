@@ -38,5 +38,5 @@ func releaseLock(cfg *config.Project, lockID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultTimeout)
 	defer cancel()
 
-	return state.Plugin().Client().ReleaseLock(ctx, state.Type, state.Env, state.Other, lockID)
+	return state.Plugin().Client().ReleaseLock(ctx, state.Type, state.Other, lockID)
 }

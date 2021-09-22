@@ -112,7 +112,7 @@ func (p *Plugin) SupportsApp(app string) bool {
 	return false
 }
 
-func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, projectName, projectDir string, props map[string]interface{}, yamlPrefix string, yamlData []byte) error {
+func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, env, projectID, projectName, projectDir string, props map[string]interface{}, yamlPrefix string, yamlData []byte) error {
 	runCommand, ok := p.Cmd[runtime.GOOS]
 	if !ok {
 		runCommand = p.Cmd["default"]
@@ -123,7 +123,9 @@ func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, projectName, pr
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("OUTBLOCKS_BIN=%s", os.Args[0]),
 		fmt.Sprintf("OUTBLOCKS_PLUGIN_DIR=%s", p.Dir),
+		fmt.Sprintf("OUTBLOCKS_ENV=%s", env),
 		fmt.Sprintf("OUTBLOCKS_PROJECT_NAME=%s", projectName),
+		fmt.Sprintf("OUTBLOCKS_PROJECT_ID=%s", projectID),
 		fmt.Sprintf("OUTBLOCKS_PROJECT_DIR=%s", projectDir),
 	)
 

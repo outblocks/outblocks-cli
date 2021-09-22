@@ -79,7 +79,7 @@ func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *util.CmdInfo, app 
 		s := bufio.NewScanner(cmd.Stdout())
 
 		for s.Scan() {
-			d.log.Printf("%s %s\n", pterm.FgGreen.Sprint(prefix), s.Text())
+			d.log.Printf("%s %s\n", pterm.FgGreen.Sprint(prefix), plugin_util.StripAnsiControl(s.Text()))
 		}
 
 		wg.Done()
@@ -89,7 +89,7 @@ func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *util.CmdInfo, app 
 		s := bufio.NewScanner(cmd.Stderr())
 
 		for s.Scan() {
-			d.log.Printf("%s %s\n", pterm.FgYellow.Sprint(prefix), s.Text())
+			d.log.Printf("%s %s\n", pterm.FgYellow.Sprint(prefix), plugin_util.StripAnsiControl(s.Text()))
 		}
 
 		wg.Done()

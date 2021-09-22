@@ -64,6 +64,14 @@ func setupEnvVars(env *cli.Environment) {
 func (e *Executor) commandPreRun(ctx context.Context) error {
 	var skipLoadConfig, skipLoadPlugins, skipCheckConfig bool
 
+	// Parse critical root flags.
+	e.rootCmd.PersistentFlags().ParseErrorsWhitelist.UnknownFlags = true
+
+	err := e.rootCmd.PersistentFlags().Parse(os.Args[1:])
+	if err != nil {
+		return err
+	}
+
 	e.opts.env = e.v.GetString("env")
 	cmd, _, _ := e.rootCmd.Find(os.Args[1:])
 
@@ -82,8 +90,6 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 		e.opts.valueOpts.ValueFiles[i] = strings.ReplaceAll(v, "<env>", e.opts.env)
 	}
 
-	defValuesYAML := strings.ReplaceAll(defaultValuesYAML, "<env>", e.opts.env)
-
 	pwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("cannot find current directory: %w", err)
@@ -92,7 +98,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	cfgPath := fileutil.FindYAMLGoingUp(pwd, config.ProjectYAMLName)
 
 	v, err := e.opts.valueOpts.MergeValues(ctx, filepath.Dir(cfgPath), getter.All())
-	if err != nil && (len(e.opts.valueOpts.ValueFiles) != 1 || e.opts.valueOpts.ValueFiles[0] != defValuesYAML) {
+	if err != nil {
 		return err
 	}
 

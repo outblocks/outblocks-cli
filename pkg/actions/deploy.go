@@ -253,7 +253,7 @@ func saveState(cfg *config.Project, data *types.StateData) (*plugin_go.SaveState
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultTimeout)
 	defer cancel()
 
-	return plug.Client().SaveState(ctx, data, state.Type, state.Env, state.Other)
+	return plug.Client().SaveState(ctx, data, state.Type, state.Other)
 }
 
 func getState(ctx context.Context, cfg *config.Project) (*plugin_go.GetStateResponse, error) {
@@ -271,7 +271,7 @@ func getState(ctx context.Context, cfg *config.Project) (*plugin_go.GetStateResp
 		}, nil
 	}
 
-	ret, err := plug.Client().GetState(ctx, state.Type, state.Env, state.Other, true, client.YAMLContext{
+	ret, err := plug.Client().GetState(ctx, state.Type, state.Other, false, client.YAMLContext{
 		Prefix: "$.state",
 		Data:   cfg.YAMLData(),
 	})

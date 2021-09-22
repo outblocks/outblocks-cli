@@ -5,31 +5,23 @@ import (
 	"io/ioutil"
 	"strings"
 
-	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 const (
-	StateLocal      = "local"
-	StateDefaultEnv = "dev"
-	StateLocalPath  = ".outblocks.state"
+	StateLocal     = "local"
+	StateLocalPath = ".outblocks.state"
 )
 
 type State struct {
 	Type  string                 `json:"type"`
-	Env   string                 `json:"env"`
 	Path  string                 `json:"path"`
 	Other map[string]interface{} `yaml:"-,remain"`
 
+	env    string
 	plugin *plugins.Plugin
-}
-
-func (s *State) Validate() error {
-	return validation.ValidateStruct(s,
-		validation.Field(&s.Env, validation.Required, validation.Match(ValidNameRegex)),
-	)
 }
 
 func (s *State) IsLocal() bool {
@@ -38,7 +30,7 @@ func (s *State) IsLocal() bool {
 
 func (s *State) LocalPath() string {
 	if s.Path == "" {
-		return s.Env + StateLocalPath
+		return s.env + StateLocalPath
 	}
 
 	return s.Path
@@ -70,12 +62,6 @@ func (s *State) Normalize(cfg *Project) error {
 
 	if s.Type == "" {
 		return cfg.yamlError("$.state.type", "state has no type defined, did you want \"type: local\"?")
-	}
-
-	s.Env = strings.ToLower(s.Env)
-
-	if s.Env == "" {
-		s.Env = StateDefaultEnv
 	}
 
 	return nil

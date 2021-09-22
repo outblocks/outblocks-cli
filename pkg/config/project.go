@@ -43,11 +43,16 @@ type Project struct {
 	AppMap map[string]App `json:"-"`
 	Dir    string         `json:"-"`
 
+	env           string
 	loadedPlugins []*plugins.Plugin
 	yamlPath      string
 	yamlData      []byte
 	lock          *lockfile.Lockfile
 	vars          map[string]interface{}
+}
+
+func (p *Project) ID() string {
+	return fmt.Sprintf("%s_%s", p.Name, p.env)
 }
 
 func (p *Project) Validate() error {
@@ -98,12 +103,13 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 
 	out := &Project{
 		yamlPath: path,
+		env:      opts.Env,
 		Dir:      filepath.Dir(path),
 		yamlData: data,
 		lock:     lock,
 		vars:     vars,
 		State: &State{
-			Env: opts.Env,
+			env: opts.Env,
 		},
 	}
 
@@ -339,7 +345,7 @@ func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *pl
 		plugConfig := p.Plugins[i]
 		prefix := fmt.Sprintf("$.plugins[%d]", i)
 
-		if err := plug.Prepare(ctx, log, p.Name, p.Dir, plugConfig.Other, prefix, p.YAMLData()); err != nil {
+		if err := plug.Prepare(ctx, log, p.env, p.ID(), p.Name, p.Dir, plugConfig.Other, prefix, p.YAMLData()); err != nil {
 			return fmt.Errorf("error starting plugin '%s': %w", plug.Name, err)
 		}
 	}
