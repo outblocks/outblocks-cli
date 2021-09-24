@@ -158,7 +158,7 @@ func mapResponseType(header *plugin_go.ResponseHeader) plugin_go.Response {
 	case plugin_go.ResponseTypeValidationError:
 		return &plugin_go.ValidationErrorResponse{}
 	case plugin_go.ResponseTypeInit:
-		return &plugin_go.InitResponse{}
+		return &plugin_go.ProjectInitResponse{}
 	case plugin_go.ResponseTypeRunning:
 		return &plugin_go.RunningResponse{}
 	case plugin_go.ResponseTypeRunOutput:
@@ -214,7 +214,7 @@ func (c *Client) lazyStartBiDi(ctx context.Context, req plugin_go.Request) (*Sen
 		return nil, err
 	}
 
-	_, isInit := req.(*plugin_go.InitRequest)
+	_, isInit := req.(*plugin_go.ProjectInitRequest)
 	_, isStart := req.(*plugin_go.StartRequest)
 
 	if !isInit && !isStart {

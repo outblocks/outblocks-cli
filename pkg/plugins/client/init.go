@@ -7,8 +7,8 @@ import (
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 )
 
-func (c *Client) Init(ctx context.Context, name string, deployPlugins, runPlugins []string, args map[string]interface{}) (*plugin_go.InitResponse, error) {
-	stream, err := c.lazyStartBiDi(ctx, &plugin_go.InitRequest{
+func (c *Client) ProjectInit(ctx context.Context, name string, deployPlugins, runPlugins []string, args map[string]interface{}) (*plugin_go.ProjectInitResponse, error) {
+	stream, err := c.lazyStartBiDi(ctx, &plugin_go.ProjectInitRequest{
 		Name:          name,
 		DeployPlugins: deployPlugins,
 		RunPlugins:    runPlugins,
@@ -35,7 +35,7 @@ func (c *Client) Init(ctx context.Context, name string, deployPlugins, runPlugin
 		}
 
 		switch r := res.(type) {
-		case *plugin_go.InitResponse:
+		case *plugin_go.ProjectInitResponse:
 			return r, nil
 		case *plugin_go.EmptyResponse:
 		default:

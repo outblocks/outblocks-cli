@@ -124,7 +124,7 @@ func (d *Init) Run(ctx context.Context) error {
 	}
 
 	for _, plug := range cfg.Plugins {
-		initRes, err := plug.Loaded().Client().Init(ctx, cfg.Name, []string{d.opts.DeployPlugin}, []string{d.opts.RunPlugin}, pluginOpts[plug.Name])
+		initRes, err := plug.Loaded().Client().ProjectInit(ctx, cfg.Name, []string{d.opts.DeployPlugin}, []string{d.opts.RunPlugin}, pluginOpts[plug.Name])
 		if err != nil {
 			if errors.Is(err, terminal.InterruptErr) {
 				d.log.Println("Init canceled.")
