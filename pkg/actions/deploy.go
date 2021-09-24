@@ -1,7 +1,9 @@
 package actions
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"sort"
 	"sync"
 	"time"
@@ -52,30 +54,20 @@ func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Dep
 
 func (d *Deploy) Run(ctx context.Context) error {
 	verify := d.opts.Verify
-	spinner := d.log.Spinner().WithRemoveWhenDone(true)
 
 	// Build apps.
 	if !d.opts.SkipBuild {
-		spinner, _ = spinner.Start("Building apps...")
-
 		err := d.buildApps(ctx)
 		if err != nil {
 			return err
 		}
-
-		_ = spinner.Stop()
 	}
 
 	// Get state.
-	spinner, _ = spinner.Start("Getting state...")
-
 	stateRes, err := getState(ctx, d.cfg)
 	if err != nil {
-		_ = spinner.Stop()
 		return err
 	}
-
-	_ = spinner.Stop()
 
 	if stateRes.Source.Created {
 		d.log.Infof("New state created: '%s'\n", stateRes.Source.Name)
@@ -83,10 +75,20 @@ func (d *Deploy) Run(ctx context.Context) error {
 		verify = true
 	}
 
-	// Plan and apply.
-	spinner, _ = spinner.Start("Planning...")
+	stateBeforeStr, _ := json.Marshal(stateRes.State)
 
+	// Plan and apply.
 	planMap := calculatePlanMap(d.cfg.Apps, d.cfg.Dependencies)
+
+	// Start plugins.
+	for plug := range planMap {
+		err = plug.Client().Start(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	spinner, _ := d.log.Spinner().WithRemoveWhenDone(true).Start("Planning...")
 
 	planRetMap, err := plan(ctx, stateRes.State, planMap, verify, d.opts.Destroy)
 	if err != nil {
@@ -100,24 +102,24 @@ func (d *Deploy) Run(ctx context.Context) error {
 
 	_ = spinner.Stop()
 
+	stateAfterStr, _ := json.Marshal(stateRes.State)
 	empty, canceled := planPrompt(d.log, deployChanges, dnsChanges)
 
-	if canceled || empty {
-		releaseErr := releaseLock(d.cfg, stateRes.LockInfo)
-
-		if releaseErr != nil {
-			return releaseErr
-		}
-
-		return d.showStateStatus(stateRes.State)
-	}
+	shouldApply := !canceled && !empty
+	shouldSave := !canceled && (!empty || !bytes.Equal(stateBeforeStr, stateAfterStr))
 
 	start := time.Now()
 
-	callback := applyProgress(d.log, deployChanges, dnsChanges)
-	err = apply(ctx, stateRes.State, planMap, d.opts.Destroy, callback)
+	var saveErr error
 
-	_, saveErr := saveState(d.cfg, stateRes.State)
+	if shouldApply {
+		callback := applyProgress(d.log, deployChanges, dnsChanges)
+		err = apply(ctx, stateRes.State, planMap, d.opts.Destroy, callback)
+	}
+
+	if shouldSave {
+		_, saveErr = saveState(d.cfg, stateRes.State)
+	}
 
 	// Release lock if needed.
 	releaseErr := releaseLock(d.cfg, stateRes.LockInfo)
@@ -130,7 +132,9 @@ func (d *Deploy) Run(ctx context.Context) error {
 	default:
 	}
 
-	d.log.Printf("All changes applied in %s.\n", time.Since(start).Truncate(timeTruncate))
+	if shouldApply {
+		d.log.Printf("All changes applied in %s.\n", time.Since(start).Truncate(timeTruncate))
+	}
 
 	err = d.showStateStatus(stateRes.State)
 	if err != nil {

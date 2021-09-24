@@ -59,6 +59,12 @@ func NewInit(log logger.Logger, pluginCacheDir string, opts *InitOptions) *Init 
 	}
 }
 
+type projectInit struct {
+	*config.Project
+
+	Values map[string]interface{}
+}
+
 func (d *Init) Run(ctx context.Context) error {
 	curDir, err := os.Getwd()
 	if err != nil {
@@ -112,6 +118,11 @@ func (d *Init) Run(ctx context.Context) error {
 		},
 	}
 
+	initCfg := &projectInit{
+		Project: cfg,
+		Values:  make(map[string]interface{}),
+	}
+
 	for _, plug := range cfg.Plugins {
 		initRes, err := plug.Loaded().Client().Init(ctx, cfg.Name, []string{d.opts.DeployPlugin}, []string{d.opts.RunPlugin}, pluginOpts[plug.Name])
 		if err != nil {
@@ -125,6 +136,12 @@ func (d *Init) Run(ctx context.Context) error {
 
 		if initRes != nil {
 			plug.Other = initRes.Properties
+
+			for k, v := range plug.Other {
+				valueKey := fmt.Sprintf("%s_%s", plug.Name, k)
+				initCfg.Values[valueKey] = v
+				plug.Other[k] = fmt.Sprintf("${var.%s}", valueKey)
+			}
 		}
 	}
 
@@ -133,7 +150,7 @@ func (d *Init) Run(ctx context.Context) error {
 
 	var projectYAML bytes.Buffer
 
-	err = tmpl.Execute(&projectYAML, cfg)
+	err = tmpl.Execute(&projectYAML, initCfg)
 	if err != nil {
 		return err
 	}
@@ -148,7 +165,7 @@ func (d *Init) Run(ctx context.Context) error {
 
 	var valuesYAML bytes.Buffer
 
-	err = tmpl.Execute(&valuesYAML, cfg)
+	err = tmpl.Execute(&valuesYAML, initCfg)
 	if err != nil {
 		return err
 	}

@@ -253,7 +253,6 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		app.Env = util.MergeStringMaps(app.Env, env)
 
 		app.Env["URL"] = app.URL
-		app.Env["IP"] = app.IP
 		app.Env["PORT"] = strconv.Itoa(app.Port)
 	}
 

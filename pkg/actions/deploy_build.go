@@ -161,7 +161,14 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp) er
 	return nil
 }
 
+type appBuilder struct {
+	app   config.App
+	build func() error
+}
+
 func (d *Deploy) buildApps(ctx context.Context) error {
+	var builders []*appBuilder
+
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 
 	for _, app := range d.cfg.Apps {
@@ -174,14 +181,42 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 				continue
 			}
 
-			g.Go(func() error { return d.buildStaticApp(ctx, a) })
+			builders = append(builders, &appBuilder{
+				app:   a,
+				build: func() error { return d.buildStaticApp(ctx, a) },
+			})
 
 		case config.AppTypeService:
 			a := app.(*config.ServiceApp)
 
-			g.Go(func() error { return d.buildServiceApp(ctx, a) })
+			builders = append(builders, &appBuilder{
+				app:   a,
+				build: func() error { return d.buildServiceApp(ctx, a) },
+			})
 		}
 	}
+
+	if len(builders) == 0 {
+		return nil
+	}
+
+	prog, _ := d.log.ProgressBar().WithTotal(len(builders)).WithTitle("Building apps...").Start()
+
+	for _, b := range builders {
+		g.Go(func() error {
+			err := b.build()
+			if err != nil {
+				return err
+			}
+
+			pterm.Success.Printf("Service app '%s' built\n", b.app.Name())
+			prog.Increment()
+
+			return nil
+		})
+	}
+
+	defer func() { _, _ = prog.Stop() }()
 
 	return g.Wait()
 }

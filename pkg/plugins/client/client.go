@@ -173,15 +173,6 @@ type ResponseWithHeader struct {
 	Response plugin_go.Response
 }
 
-func (c *Client) sendReceive(ctx context.Context, req plugin_go.Request, callback func(res plugin_go.Response) error) error {
-	stream, err := c.startBiDi(ctx, req)
-	if err != nil {
-		return err
-	}
-
-	return c.handleOneWay(callback, stream)
-}
-
 func (c *Client) lazySendReceive(ctx context.Context, req plugin_go.Request, callback func(res plugin_go.Response) error) error {
 	stream, err := c.lazyStartBiDi(ctx, req)
 	if err != nil {
@@ -195,7 +186,7 @@ func (c *Client) handleOneWay(callback func(res plugin_go.Response) error, strea
 	res, err := stream.Recv()
 	if res == nil {
 		_ = stream.Close()
-		return fmt.Errorf("unhandled request")
+		return nil
 	}
 
 	if err != nil {
@@ -219,14 +210,15 @@ func (c *Client) lazyStartBiDi(ctx context.Context, req plugin_go.Request) (*Sen
 		err = c.lazyInit(ctx)
 	})
 
-	if _, ok := req.(*plugin_go.InitRequest); !ok {
-		c.startOnce.Do(func() {
-			// Send Start request to validate YAML.
-			err = c.Start(ctx, c.yamlContext)
-			if err != nil {
-				err = NewPluginError(c, "start error", err)
-			}
-		})
+	if err != nil {
+		return nil, err
+	}
+
+	_, isInit := req.(*plugin_go.InitRequest)
+	_, isStart := req.(*plugin_go.StartRequest)
+
+	if !isInit && !isStart {
+		err = c.Start(ctx)
 	}
 
 	if err != nil {
