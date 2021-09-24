@@ -1,5 +1,18 @@
 # Outblocks CLI Changelog
 
+## [v0.1.21](https://github.com/outblocks/outblocks-cli/compare/v0.1.20...v0.1.21)
+
+> 2021-09-24
+
+### BUG FIXES
+
+[`03efd40`](https://github.com/outblocks/outblocks-cli/commit/03efd40e732eef2289e647237089f98e831fa036) adapt for project init
+
+### FEATURES
+
+[`ec14df4`](https://github.com/outblocks/outblocks-cli/commit/ec14df40e185e9c33c2d8eef26149bb25bed7eb5) start before plan, progress app builder, move plugin props to values
+
+
 ## [v0.1.20](https://github.com/outblocks/outblocks-cli/compare/v0.1.19...v0.1.20)
 
 > 2021-09-22
