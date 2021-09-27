@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.22](https://github.com/outblocks/outblocks-cli/compare/v0.1.21...v0.1.22)
+
+> 2021-09-27
+
+### FEATURES
+
+[`709a48f`](https://github.com/outblocks/outblocks-cli/commit/709a48feac685eb5b0a0a15e8f74e34233d62c01) progress bar builder, version function, fix completion and root
+
+
 ## [v0.1.21](https://github.com/outblocks/outblocks-cli/compare/v0.1.20...v0.1.21)
 
 > 2021-09-24
