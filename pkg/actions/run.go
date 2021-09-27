@@ -363,7 +363,7 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 }
 
 func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
-	spinner, _ := d.log.Spinner().WithRemoveWhenDone(true).Start("Waiting for apps and dependencies to be up...")
+	prog, _ := d.log.ProgressBar().WithTotal(len(runInfo.apps)).WithTitle("Waiting for apps and dependencies to be up...").Start()
 
 	httpClient := &http.Client{
 		Timeout: healthcheckTimeout,
@@ -390,6 +390,7 @@ func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 					_ = resp.Body.Close()
 
 					d.log.Printf("%s App '%s' is UP.\n", strings.Title(app.App.Type), app.App.Name)
+					prog.Increment()
 
 					return nil
 				}
@@ -400,7 +401,7 @@ func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 	}
 
 	err := g.Wait()
-	_ = spinner.Stop()
+	_, _ = prog.Stop()
 
 	return err
 }

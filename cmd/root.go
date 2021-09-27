@@ -259,6 +259,9 @@ func (e *Executor) newRoot() *cobra.Command {
 		Short:         pterm.Sprintf("%s - %s", pterm.Bold.Sprintf("ok"), pterm.Italic.Sprint(version.Version())),
 		Long:          e.rootLongHelp(),
 		SilenceErrors: true,
+		Annotations: map[string]string{
+			cmdSkipLoadConfigAnnotation: "1",
+		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
 			if e.cfg != nil {
 				if err := e.saveLockfile(); err != nil {
@@ -292,6 +295,7 @@ func (e *Executor) newRoot() *cobra.Command {
 		e.newForceUnlockCmd(),
 		e.newInitCmd(),
 		e.newAppsCmd(),
+		e.newVersionCmd(),
 	)
 
 	return cmd

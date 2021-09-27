@@ -99,7 +99,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 
 	v, err := e.opts.valueOpts.MergeValues(ctx, filepath.Dir(cfgPath), getter.All())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot load values files: %w", err)
 	}
 
 	vals := map[string]interface{}{"var": v}

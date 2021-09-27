@@ -17,10 +17,10 @@ var (
 type BuildInfo struct {
 	// Version is the current semver.
 	Version string `json:"version,omitempty"`
+	// Build date.
+	Date string `json:"date,omitempty"`
 	// GitCommit is the git sha1.
 	GitCommit string `json:"git_commit,omitempty"`
-	// GitTreeState is the state of the git tree.
-	GitTreeState string `json:"git_tree_state,omitempty"`
 	// GoVersion is the version of the Go compiler used.
 	GoVersion string `json:"go_version,omitempty"`
 }
@@ -42,6 +42,7 @@ func UserAgent() string {
 // Get returns build info.
 func Get() BuildInfo {
 	v := BuildInfo{
+		Date:      Date(),
 		Version:   Version(),
 		GitCommit: gitCommit,
 		GoVersion: runtime.Version(),

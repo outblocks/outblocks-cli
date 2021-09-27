@@ -48,6 +48,9 @@ func (e *Executor) newCompletionCmd() *cobra.Command {
 		DisableFlagsInUseLine: true,
 		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 		Args:                  cobra.ExactValidArgs(1),
+		Annotations: map[string]string{
+			cmdSkipLoadConfigAnnotation: "1",
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch args[0] {
 			case "bash":

@@ -200,6 +200,7 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 		return nil
 	}
 
+	d.log.Printf("Building %d apps...\n", len(builders))
 	prog, _ := d.log.ProgressBar().WithTotal(len(builders)).WithTitle("Building apps...").Start()
 
 	for _, b := range builders {
@@ -216,7 +217,9 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 		})
 	}
 
-	defer func() { _, _ = prog.Stop() }()
+	err := g.Wait()
 
-	return g.Wait()
+	_, _ = prog.Stop()
+
+	return err
 }
