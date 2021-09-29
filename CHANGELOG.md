@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.23](https://github.com/outblocks/outblocks-cli/compare/v0.1.22...v0.1.23)
+
+> 2021-09-29
+
+### FEATURES
+
+[`0c5c7d8`](https://github.com/outblocks/outblocks-cli/commit/0c5c7d8e1d9b0160e9cabf5366ba1a888a682666) rerun as sudo, defaults support (plugin and options), direct running improved, improved templates and schema
+
+
 ## [v0.1.22](https://github.com/outblocks/outblocks-cli/compare/v0.1.21...v0.1.22)
 
 > 2021-09-27
