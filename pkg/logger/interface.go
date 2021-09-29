@@ -22,7 +22,8 @@ type Logger interface {
 	Errorln(a ...interface{})
 
 	Level() LogLevel
-	SetLevel(logLevel string) error
+	SetLevel(logLevel LogLevel)
+	SetLevelString(logLevel string) error
 
 	Spinner() pterm.SpinnerPrinter
 	Table() pterm.TablePrinter

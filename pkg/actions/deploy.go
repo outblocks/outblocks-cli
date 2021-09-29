@@ -10,6 +10,7 @@ import (
 
 	dockerclient "github.com/docker/docker/client"
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -78,7 +79,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 	stateBeforeStr, _ := json.Marshal(stateRes.State)
 
 	// Plan and apply.
-	planMap := calculatePlanMap(d.cfg.Apps, d.cfg.Dependencies)
+	planMap := calculatePlanMap(d.cfg)
 
 	// Start plugins.
 	for plug := range planMap {
@@ -286,13 +287,14 @@ func getState(ctx context.Context, cfg *config.Project) (*plugin_go.GetStateResp
 	return ret, nil
 }
 
-func calculatePlanMap(apps []config.App, deps map[string]*config.Dependency) map[*plugins.Plugin]*planParams {
+func calculatePlanMap(cfg *config.Project) map[*plugins.Plugin]*planParams {
 	planMap := make(map[*plugins.Plugin]*planParams)
 
-	for _, app := range apps {
+	for _, app := range cfg.Apps {
 		dnsPlugin := app.DNSPlugin()
 		deployPlugin := app.DeployPlugin()
 		appType := app.PluginType()
+		deployProps := util.MergeMaps(cfg.Defaults.Deploy.Other, app.DeployInfo().Other)
 
 		includeDNS := dnsPlugin != nil && dnsPlugin == deployPlugin
 
@@ -303,9 +305,10 @@ func calculatePlanMap(apps []config.App, deps map[string]*config.Dependency) map
 		}
 
 		appReq := &types.AppPlan{
-			IsDeploy: true,
-			IsDNS:    includeDNS,
-			App:      appType,
+			IsDeploy:   true,
+			IsDNS:      includeDNS,
+			App:        appType,
+			Properties: deployProps,
 		}
 
 		planMap[deployPlugin].apps = append(planMap[deployPlugin].apps, appReq)
@@ -323,16 +326,17 @@ func calculatePlanMap(apps []config.App, deps map[string]*config.Dependency) map
 		}
 
 		appReq = &types.AppPlan{
-			IsDeploy: false,
-			IsDNS:    true,
-			App:      appType,
+			IsDeploy:   false,
+			IsDNS:      true,
+			App:        appType,
+			Properties: deployProps,
 		}
 
 		planMap[dnsPlugin].apps = append(planMap[dnsPlugin].apps, appReq)
 	}
 
 	// Process dependencies.
-	for _, dep := range deps {
+	for _, dep := range cfg.Dependencies {
 		t := dep.PluginType()
 
 		p := dep.DeployPlugin()

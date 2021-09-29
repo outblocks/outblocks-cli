@@ -46,36 +46,45 @@ func CopyMapStringString(m map[string]string) map[string]string {
 	return out
 }
 
-func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
-	out := make(map[string]interface{}, len(a))
-	for k, v := range a {
+func MergeMaps(a ...map[string]interface{}) map[string]interface{} {
+	if len(a) == 0 {
+		return nil
+	}
+
+	out := make(map[string]interface{}, len(a[0]))
+	for k, v := range a[0] {
 		out[k] = v
 	}
 
-	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
-			if bv, ok := out[k]; ok {
-				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = MergeMaps(bv, v)
-					continue
+	for _, m := range a[1:] {
+		for k, v := range m {
+			if v, ok := v.(map[string]interface{}); ok {
+				if bv, ok := out[k]; ok {
+					if bv, ok := bv.(map[string]interface{}); ok {
+						out[k] = MergeMaps(bv, v)
+						continue
+					}
 				}
 			}
-		}
 
-		out[k] = v
+			out[k] = v
+		}
 	}
 
 	return out
 }
 
-func MergeStringMaps(a, b map[string]string) map[string]string {
-	out := make(map[string]string, len(a))
-	for k, v := range a {
-		out[k] = v
+func MergeStringMaps(a ...map[string]string) map[string]string {
+	if len(a) == 0 {
+		return nil
 	}
 
-	for k, v := range b {
-		out[k] = v
+	out := make(map[string]string, len(a[0]))
+
+	for _, m := range a {
+		for k, v := range m {
+			out[k] = v
+		}
 	}
 
 	return out

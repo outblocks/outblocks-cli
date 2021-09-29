@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	ValidURLRegex  = regexp.MustCompile(`^(https?://)?([a-zA-Z][a-zA-Z0-9-]*)((\.)([a-zA-Z][a-zA-Z0-9-]*)){1,}(/[a-zA-Z0-9-_]+)*(/)?$`)
-	ValidNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,30}$`)
-	ValidAppTypes  = []string{AppTypeStatic, AppTypeFunction, AppTypeService}
-	RunPluginLocal = "local"
+	ValidURLRegex   = regexp.MustCompile(`^(https?://)?([a-zA-Z][a-zA-Z0-9-]*)((\.)([a-zA-Z][a-zA-Z0-9-]*)){1,}(/[a-zA-Z0-9-_]+)*(/)?$`)
+	ValidNameRegex  = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,30}$`)
+	ValidAppTypes   = []string{AppTypeStatic, AppTypeFunction, AppTypeService}
+	RunPluginDirect = "direct"
 )
 
 type App interface {
@@ -153,6 +153,9 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 func (a *BasicApp) Check(cfg *Project) error {
 	// Check deploy plugin.
 	deployPlugin := a.AppDeploy.Plugin
+	if deployPlugin == "" {
+		deployPlugin = cfg.Defaults.Deploy.Plugin
+	}
 
 	for _, plug := range cfg.loadedPlugins {
 		if !plug.HasAction(plugins.ActionDeploy) {
@@ -175,6 +178,9 @@ func (a *BasicApp) Check(cfg *Project) error {
 
 	// Check run plugin.
 	runPlugin := a.AppRun.Plugin
+	if runPlugin == "" {
+		runPlugin = cfg.Defaults.Run.Plugin
+	}
 
 	for _, plug := range cfg.loadedPlugins {
 		if !plug.HasAction(plugins.ActionRun) {
@@ -189,7 +195,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 		a.AppRun.Plugin = plug.Name
 	}
 
-	if a.runPlugin == nil && !strings.EqualFold(RunPluginLocal, runPlugin) {
+	if a.runPlugin == nil && !strings.EqualFold(RunPluginDirect, runPlugin) {
 		return fmt.Errorf("%s has no matching run plugin available.\nfile: %s", a.Type(), a.yamlPath)
 	}
 

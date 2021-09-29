@@ -25,8 +25,13 @@ build:
   # Directory which is used for dockerfile context.
   context: {{.App.Build.DockerContext}}
 
+# Deploy defines where how deployment is handled of application during `ok deploy`.
+deploy:
+  plugin: {{.App.DeployInfo.Plugin}}
+
 # Run defines where how development is handled of application during `ok run`.
 run:
+  plugin: {{.App.RunInfo.Plugin}}
 {{- if .App.RunInfo.Command }}
   # Command to be run to for dev mode.
   command: {{.App.RunInfo.Command}}

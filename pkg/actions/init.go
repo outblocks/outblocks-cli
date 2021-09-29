@@ -34,10 +34,11 @@ type Init struct {
 type InitOptions struct {
 	Overwrite bool
 
-	Name         string
-	DeployPlugin string
-	RunPlugin    string
-	DNSDomain    string
+	Name             string
+	DeployPlugin     string
+	RunPlugin        string
+	DefaultRunPlugin string
+	DNSDomain        string
 
 	GCP struct {
 		Project string
@@ -250,6 +251,37 @@ func (d *Init) prompt(ctx context.Context, cfg *config.Project, loader *plugins.
 		}
 	}
 
+	// Proceed to questions about defaults.
+	qs = []*survey.Question{}
+
+	if d.opts.DefaultRunPlugin == "" {
+		qs = append(qs, &survey.Question{
+			Name: "DefaultRunPlugin",
+			Prompt: &survey.Select{
+				Message: "Default run plugin:",
+				Options: []string{
+					config.RunPluginDirect,
+					d.opts.RunPlugin,
+				},
+				Default: config.RunPluginDirect,
+			},
+		})
+	} else {
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Default run plugin:"), pterm.Cyan(d.opts.DefaultRunPlugin))
+	}
+
+	if len(qs) != 0 {
+		err := survey.Ask(qs, d.opts)
+		if err != nil {
+			if err == terminal.InterruptErr {
+				return nil, errInitCanceled
+			}
+
+			return nil, err
+		}
+	}
+
+	// Setup config object.
 	cfg.Name = d.opts.Name
 
 	_, latestDeployVersion, err := loader.MatchingVersion(ctx, d.opts.DeployPlugin, "", nil)
@@ -265,6 +297,15 @@ func (d *Init) prompt(ctx context.Context, cfg *config.Project, loader *plugins.
 	cfg.Plugins = []*config.Plugin{
 		{Name: d.opts.DeployPlugin, Version: fmt.Sprintf("^%s", latestDeployVersion.String())},
 		{Name: d.opts.RunPlugin, Version: fmt.Sprintf("^%s", latestRunVersion.String())},
+	}
+
+	cfg.Defaults = &config.Defaults{
+		Run: config.DefaultsRun{
+			Plugin: d.opts.DefaultRunPlugin,
+		},
+		Deploy: config.DefaultsDeploy{
+			Plugin: d.opts.DeployPlugin,
+		},
 	}
 
 	cfg.State = &config.State{

@@ -27,7 +27,7 @@ func (e *Executor) newRunCmd() *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.BoolVar(&opts.Local, "local", false, "run all apps in local mode, directly running their commands")
+	f.BoolVar(&opts.Direct, "direct", false, "force run all apps in local mode, directly running their commands")
 	f.StringVarP(&opts.ListenIP, "listen-ip", "l", "127.0.0.1", "local server ip to listen on")
 	f.IntVarP(&opts.ListenPort, "port", "p", 8000, "local server port")
 	f.StringVar(&opts.HostsSuffix, "hosts-suffix", ".local.test", "local hosts suffix to use for url matching")

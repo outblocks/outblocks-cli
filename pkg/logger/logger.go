@@ -155,7 +155,7 @@ func (l *Log) Errorln(a ...interface{}) {
 	l.Errorf(fmt.Sprintln(a...))
 }
 
-func (l *Log) SetLevel(logLevel string) error {
+func (l *Log) SetLevelString(logLevel string) error {
 	var level LogLevel
 
 	switch strings.ToLower(logLevel) {
@@ -174,6 +174,10 @@ func (l *Log) SetLevel(logLevel string) error {
 	l.logLevel = level
 
 	return nil
+}
+
+func (l *Log) SetLevel(logLevel LogLevel) {
+	l.logLevel = logLevel
 }
 
 func (l *Log) Level() LogLevel {

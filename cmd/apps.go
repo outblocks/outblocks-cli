@@ -86,6 +86,8 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 	f.StringVar(&addOpts.RunCommand, "run-command", "", "app dev run command")
 	f.StringVar(&addOpts.StaticRouting, "static-routing", "", "static app routing (options: react, disabled)")
 	f.StringVarP(&addOpts.OutputDir, "output-dir", "o", "", "output dir, defaults to application dir")
+	f.StringVar(&addOpts.DeployPlugin, "deploy-plugin", "", "deploy plugin, defaults to first available")
+	f.StringVar(&addOpts.RunPlugin, "run-plugin", "direct", "deploy plugin, defaults to direct run")
 
 	cmd.AddCommand(
 		list,

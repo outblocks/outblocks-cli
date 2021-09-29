@@ -8,6 +8,8 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,7 +40,7 @@ type Run struct {
 }
 
 type RunOptions struct {
-	Local        bool
+	Direct       bool
 	ListenIP     string
 	ListenPort   int
 	HostsSuffix  string
@@ -163,12 +165,12 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 			Port:       appPort,
 			Command:    runInfo.Command,
 			Env:        runInfo.Env,
-			Properties: runInfo.Other,
+			Properties: util.MergeMaps(cfg.Defaults.Run.Other, runInfo.Other),
 		}
 
 		info.apps = append(info.apps, appRun)
 
-		if d.opts.Local && app.SupportsLocal() {
+		if d.opts.Direct && app.SupportsLocal() {
 			info.localApps = append(info.localApps, &run.LocalApp{
 				AppRun: appRun,
 			})
@@ -202,12 +204,12 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 			Dependency: depType,
 			IP:         loopbackIP,
 			Port:       depPort,
-			Properties: dep.Run.Other,
+			Properties: util.MergeMaps(cfg.Defaults.Run.Other, dep.Run.Other),
 		}
 
 		info.deps = append(info.deps, depRun)
 
-		if d.opts.Local && dep.SupportsLocal() {
+		if d.opts.Direct && dep.SupportsLocal() {
 			info.localDeps = append(info.localDeps, &run.LocalDependency{
 				DependencyRun: depRun,
 			})
@@ -250,14 +252,14 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 	// Fill envs per app/dep.
 	for _, app := range info.apps {
-		app.Env = util.MergeStringMaps(app.Env, env)
+		app.Env = util.MergeStringMaps(cfg.Defaults.Run.Env, app.Env, env)
 
 		app.Env["URL"] = app.URL
 		app.Env["PORT"] = strconv.Itoa(app.Port)
 	}
 
 	for _, dep := range info.deps {
-		dep.Env = util.MergeStringMaps(dep.Env, env)
+		dep.Env = util.MergeStringMaps(cfg.Defaults.Run.Env, dep.Env, env)
 
 		dep.Env["IP"] = dep.IP
 		dep.Env["PORT"] = strconv.Itoa(dep.Port)
@@ -591,7 +593,29 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 	return &wg, nil
 }
 
+func (d *Run) runSelfAsSudo() error {
+	args := []string{"-E"}
+
+	d.log.Println("Hosts routing requires admin privileges, re-running with sudo...")
+
+	d.log.Level()
+	d.log.SetLevel(logger.LogLevelError)
+
+	args = append(args, os.Args...)
+	cmd := exec.Command("sudo", args...)
+	cmd.Env = os.Environ()
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+
+	return cmd.Run()
+}
+
 func (d *Run) Run(ctx context.Context) error {
+	if d.opts.HostsRouting && runtime.GOOS != "windows" && os.Geteuid() > 0 {
+		return d.runSelfAsSudo()
+	}
+
 	err := d.init()
 	if err != nil {
 		return err

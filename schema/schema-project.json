@@ -29,6 +29,10 @@
           "items": {
             "$ref": "#/definitions/Plugin"
           }
+        },
+        "default": {
+          "description": "Project-wide default app settings.",
+          "$ref": "#/definitions/Defaults"
         }
       }
     },
@@ -127,6 +131,50 @@
       "required": [
         "name"
       ]
+    },
+    "Defaults": {
+      "title": "Defaults",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "deploy": {
+          "description": "Deploy config.",
+          "$ref": "#/definitions/DefaultDeploy"
+        },
+        "run": {
+          "description": "Run config.",
+          "$ref": "#/definitions/DefaultRun"
+        }
+      }
+    },
+    "DefaultDeploy": {
+      "title": "Deploy defaults",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "plugin": {
+          "description": "Deploy plugin override. Defaults to first supported plugin available.",
+          "type": "string"
+        }
+      }
+    },
+    "DefaultRun": {
+      "title": "Run defaults",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "plugin": {
+          "description": "Run plugin override. Defaults to first supported plugin available.",
+          "type": "string"
+        },
+        "env": {
+          "description": "Additional environment variables",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
     }
   }
 }

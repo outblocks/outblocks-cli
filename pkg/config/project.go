@@ -32,12 +32,29 @@ var (
 	}
 )
 
+type DefaultsRun struct {
+	Plugin string                 `json:"plugin,omitempty"`
+	Env    map[string]string      `json:"env,omitempty"`
+	Other  map[string]interface{} `yaml:"-,remain"`
+}
+
+type DefaultsDeploy struct {
+	Plugin string                 `json:"plugin,omitempty"`
+	Other  map[string]interface{} `yaml:"-,remain"`
+}
+
+type Defaults struct {
+	Run    DefaultsRun    `json:"run,omitempty"`
+	Deploy DefaultsDeploy `json:"deploy,omitempty"`
+}
+
 type Project struct {
 	Name         string                 `json:"name,omitempty"`
 	State        *State                 `json:"state,omitempty"`
 	Dependencies map[string]*Dependency `json:"dependencies,omitempty"`
 	Plugins      []*Plugin              `json:"plugins,omitempty"`
 	DNS          []*DNS                 `json:"dns,omitempty"`
+	Defaults     *Defaults              `json:"defaults,omitempty"`
 
 	Apps   []App          `json:"-"`
 	AppMap map[string]App `json:"-"`
@@ -111,6 +128,7 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 		State: &State{
 			env: opts.Env,
 		},
+		Defaults: &Defaults{},
 	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {

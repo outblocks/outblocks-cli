@@ -175,7 +175,7 @@ func (e *Executor) Execute(ctx context.Context) error {
 func (e *Executor) setupLogging() error {
 	l := e.LogLevel()
 
-	if err := e.log.SetLevel(l); err != nil {
+	if err := e.log.SetLevelString(l); err != nil {
 		return err
 	}
 

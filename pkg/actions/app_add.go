@@ -19,6 +19,7 @@ import (
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
+	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/templates"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/pterm/pterm"
@@ -46,12 +47,14 @@ type serviceAppInfo struct {
 type AppAddOptions struct {
 	Overwrite bool
 
-	OutputDir  string
-	Name       string
-	Dir        string
-	Type       string
-	URL        string
-	RunCommand string
+	OutputDir    string
+	Name         string
+	Dir          string
+	Type         string
+	URL          string
+	RunCommand   string
+	RunPlugin    string
+	DeployPlugin string
 
 	// Static App Options.
 	StaticBuildCommand string
@@ -153,7 +156,7 @@ func validateAppAddDir(cfg *config.Project) func(val interface{}) error {
 	}
 }
 
-func (d *AppAdd) promptBasic() error {
+func (d *AppAdd) promptBasic() error { // nolint: gocyclo
 	var qs []*survey.Question
 
 	// 1st pass - get app name and type.
@@ -238,7 +241,7 @@ func (d *AppAdd) promptBasic() error {
 		}
 	}
 
-	// 3rd pass - get output dir and app URL.
+	// 3rd pass - get output dir, plugin info, URL.
 	qs = []*survey.Question{}
 
 	// Get output dir.
@@ -282,6 +285,58 @@ func (d *AppAdd) promptBasic() error {
 
 		d.opts.URL = strings.ToLower(d.opts.URL)
 		d.log.Printf("%s %s\n", pterm.Bold.Sprint("URL of application:"), pterm.Cyan(d.opts.URL))
+	}
+
+	// Run info and plugins.
+	if d.opts.RunCommand == "" {
+		qs = append(qs, &survey.Question{
+			Name:   "RunCommand",
+			Prompt: &survey.Input{Message: "Run command of application to serve app during dev (optional, e.g. yarn dev):"},
+		})
+	} else {
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Run command of application:"), pterm.Cyan(d.opts.RunCommand))
+	}
+
+	if d.opts.RunPlugin == "" {
+		opts := []string{
+			config.RunPluginDirect,
+		}
+
+		for _, p := range d.cfg.Plugins {
+			if p.Loaded().HasAction(plugins.ActionRun) && p.Loaded().SupportsApp(d.opts.Type) {
+				opts = append(opts, p.Name)
+			}
+		}
+
+		qs = append(qs, &survey.Question{
+			Name: "RunPlugin",
+			Prompt: &survey.Select{
+				Message: "Run plugin used for application:",
+				Options: opts,
+			},
+		})
+	} else {
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Run plugin used for application:"), pterm.Cyan(d.opts.RunPlugin))
+	}
+
+	if d.opts.DeployPlugin == "" {
+		opts := []string{}
+
+		for _, p := range d.cfg.Plugins {
+			if p.Loaded().HasAction(plugins.ActionDeploy) && p.Loaded().SupportsApp(d.opts.Type) {
+				opts = append(opts, p.Name)
+			}
+		}
+
+		qs = append(qs, &survey.Question{
+			Name: "DeployPlugin",
+			Prompt: &survey.Select{
+				Message: "Deploy plugin used for application:",
+				Options: opts,
+			},
+		})
+	} else {
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Deploy plugin used for application:"), pterm.Cyan(d.opts.DeployPlugin))
 	}
 
 	err = survey.Ask(qs, d.opts)
@@ -424,15 +479,6 @@ func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
 		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Build command of application:"), pterm.Cyan(d.opts.StaticBuildCommand))
 	}
 
-	if d.opts.RunCommand == "" {
-		qs = append(qs, &survey.Question{
-			Name:   "RunCommand",
-			Prompt: &survey.Input{Message: "Run command of application to serve app during dev (optional, e.g. yarn dev):"},
-		})
-	} else {
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Run command of application:"), pterm.Cyan(d.opts.RunCommand))
-	}
-
 	if d.opts.StaticRouting == "" {
 		qs = append(qs, &survey.Question{
 			Name: "StaticRouting",
@@ -446,7 +492,7 @@ func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
 		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Routing of application:"), pterm.Cyan(d.opts.StaticBuildCommand))
 	}
 
-	// Get info about static app.
+	// Ask questions about static app.
 	if len(qs) != 0 {
 		err := survey.Ask(qs, d.opts)
 		if err != nil {
@@ -471,7 +517,11 @@ func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
 				AppType: config.AppTypeStatic,
 				AppURL:  d.opts.URL,
 				AppDir:  d.opts.Dir,
+				AppDeploy: &config.AppDeploy{
+					Plugin: d.opts.DeployPlugin,
+				},
 				AppRun: &config.AppRun{
+					Plugin:  d.opts.RunPlugin,
 					Command: d.opts.RunCommand,
 				},
 			},
@@ -484,30 +534,7 @@ func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
 	}, nil
 }
 
-func (d *AppAdd) promptService() (*serviceAppInfo, error) {
-	var qs []*survey.Question
-
-	if d.opts.RunCommand == "" {
-		qs = append(qs, &survey.Question{
-			Name:   "RunCommand",
-			Prompt: &survey.Input{Message: "Run command of application to serve app during dev (optional, e.g. yarn dev):"},
-		})
-	} else {
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Run command of application:"), pterm.Cyan(d.opts.RunCommand))
-	}
-
-	// Get info about service app.
-	if len(qs) != 0 {
-		err := survey.Ask(qs, d.opts)
-		if err != nil {
-			if err == terminal.InterruptErr {
-				return nil, errAppAddCanceled
-			}
-
-			return nil, err
-		}
-	}
-
+func (d *AppAdd) promptService() (*serviceAppInfo, error) { // nolint: unparam
 	return &serviceAppInfo{
 		App: config.ServiceApp{
 			BasicApp: config.BasicApp{

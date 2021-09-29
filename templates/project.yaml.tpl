@@ -17,3 +17,7 @@ dns:
 # Plugins that will be used for running, deployment etc.
 plugins:
 {{ .Plugins | toYaml | indent 2 -}}
+
+# Default settings and plugins used for applications.
+default:
+{{.Default || toYaml | indent 2 -}}
