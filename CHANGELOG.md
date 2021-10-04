@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.24](https://github.com/outblocks/outblocks-cli/compare/v0.1.23...v0.1.24)
+
+> 2021-10-04
+
+### BUG FIXES
+
+[`e10409f`](https://github.com/outblocks/outblocks-cli/commit/e10409f5f2f2e9a965c1e919cf64ca7a75091c6f) default->defaults
+
+
 ## [v0.1.23](https://github.com/outblocks/outblocks-cli/compare/v0.1.22...v0.1.23)
 
 > 2021-09-29
