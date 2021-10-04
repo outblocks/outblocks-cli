@@ -19,5 +19,5 @@ plugins:
 {{ .Plugins | toYaml | indent 2 -}}
 
 # Default settings and plugins used for applications.
-default:
-{{.Default || toYaml | indent 2 -}}
+defaults:
+{{.Defaults || toYaml | indent 2 -}}

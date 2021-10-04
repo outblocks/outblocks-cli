@@ -30,7 +30,7 @@
             "$ref": "#/definitions/Plugin"
           }
         },
-        "default": {
+        "defaults": {
           "description": "Project-wide default app settings.",
           "$ref": "#/definitions/Defaults"
         }
@@ -168,7 +168,7 @@
           "type": "string"
         },
         "env": {
-          "description": "Additional environment variables",
+          "description": "Additional environment variables added to every app that supports environment variables.",
           "type": "object",
           "additionalProperties": {
             "type": "string"
