@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.25](https://github.com/outblocks/outblocks-cli/compare/v0.1.24...v0.1.25)
+
+> 2021-10-08
+
+### FEATURES
+
+[`c88a4d8`](https://github.com/outblocks/outblocks-cli/commit/c88a4d885de5ce51d99b1b6989ce23ce23b1ea2d) add gatsby routing
+
+
 ## [v0.1.24](https://github.com/outblocks/outblocks-cli/compare/v0.1.23...v0.1.24)
 
 > 2021-10-04
