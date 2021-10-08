@@ -15,13 +15,14 @@ const (
 	AppTypeStatic = "static"
 
 	StaticAppRoutingReact    = "react"
+	StaticAppRoutingGatsby   = "gatsby"
 	StaticAppRoutingDisabled = "disabled"
 
 	DefaultStaticAppBuildDir = "build"
 )
 
 var (
-	StaticAppRoutings = []string{StaticAppRoutingReact, StaticAppRoutingDisabled}
+	StaticAppRoutings = []string{StaticAppRoutingReact, StaticAppRoutingGatsby, StaticAppRoutingDisabled}
 )
 
 type StaticApp struct {

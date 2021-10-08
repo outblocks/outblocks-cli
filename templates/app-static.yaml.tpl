@@ -47,5 +47,6 @@ run:
 
 # Routing to be used:
 #   'react' for react browser routing.
+#   'gatsby' for gatsby routing.
 #   'disabled' for no additional routing.
 routing: {{.App.Routing}}

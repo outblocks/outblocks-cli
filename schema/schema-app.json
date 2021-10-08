@@ -54,6 +54,7 @@
           "type": "string",
           "enum": [
             "react",
+            "gatsby",
             "disabled"
           ]
         },
