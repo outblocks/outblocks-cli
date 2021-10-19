@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.26](https://github.com/outblocks/outblocks-cli/compare/v0.1.25...v0.1.26)
+
+> 2021-10-19
+
+### BUG FIXES
+
+[`cc58db7`](https://github.com/outblocks/outblocks-cli/commit/cc58db79657c23fcfe2ec5a90b8b497625ddc5e6) project.yaml template
+
+
 ## [v0.1.25](https://github.com/outblocks/outblocks-cli/compare/v0.1.24...v0.1.25)
 
 > 2021-10-08
