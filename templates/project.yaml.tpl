@@ -20,4 +20,4 @@ plugins:
 
 # Default settings and plugins used for applications.
 defaults:
-{{.Defaults || toYaml | indent 2 -}}
+{{.Defaults | toYaml | indent 2 -}}
