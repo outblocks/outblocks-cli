@@ -6,7 +6,7 @@
     "OutblocksApp": {
       "title": "OutblocksApp",
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "name": {
           "description": "Name of the app. Defaults to directory name.",
@@ -20,6 +20,13 @@
             "function",
             "service"
           ]
+        },
+        "env": {
+          "description": "Additional environment variables common for both deploy and run",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "dir": {
           "description": "Working directory of the app where all commands will be run. Defaults to location of this yaml. All other dirs will be relative to this one.",
@@ -45,19 +52,6 @@
           "description": "Deploy config.",
           "$ref": "#/definitions/Deploy"
         },
-        "src": {
-          "description": "Source definition.",
-          "type": "string"
-        },
-        "routing": {
-          "description": "Routing type. Defaults to 'react'.",
-          "type": "string",
-          "enum": [
-            "react",
-            "gatsby",
-            "disabled"
-          ]
-        },
         "cdn": {
           "description": "CDN settings.",
           "$ref": "#/definitions/CDN"
@@ -80,9 +74,18 @@
           },
           "then": {
             "properties": {
+              "routing": {
+                "description": "Routing type. Defaults to 'react'.",
+                "type": "string",
+                "enum": [
+                  "react",
+                  "gatsby",
+                  "disabled"
+                ]
+              },
               "build": {
                 "description": "Static application build config used for deployment builds.",
-                "$ref": "#/definitions/BuildStatic"
+                "$ref": "#/definitions/StaticBuild"
               }
             }
           }
@@ -99,7 +102,11 @@
             "properties": {
               "build": {
                 "description": "Service application build config used for deployment builds.",
-                "$ref": "#/definitions/BuildService"
+                "$ref": "#/definitions/ServiceBuild"
+              },
+              "container": {
+                "description": "Service application container config used for docker based deployments/runs.",
+                "$ref": "#/definitions/ServiceContainer"
               }
             }
           }
@@ -157,6 +164,13 @@
         "plugin": {
           "description": "Deploy plugin override. Defaults to first supported plugin available.",
           "type": "string"
+        },
+        "env": {
+          "description": "Additional environment variables",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -170,7 +184,7 @@
         }
       }
     },
-    "BuildStatic": {
+    "StaticBuild": {
       "title": "Build static app",
       "type": "object",
       "additionalProperties": false,
@@ -185,8 +199,8 @@
         }
       }
     },
-    "BuildService": {
-      "title": "Build service app",
+    "ServiceBuild": {
+      "title": "Service app build definition",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -197,6 +211,17 @@
         "dockerfile": {
           "description": "Dockerfile to use, relative to context path. Defaults to 'Dockerfile'.",
           "type": "string"
+        }
+      }
+    },
+    "ServiceContainer": {
+      "title": "Service app container definition",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "description": "Docker container port to use.",
+          "type": "integer"
         }
       }
     }

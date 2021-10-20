@@ -12,9 +12,9 @@ import (
 	"strings"
 
 	"github.com/goccy/go-yaml"
-	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/getter"
 	"github.com/outblocks/outblocks-cli/pkg/strvals"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 type Options struct {
@@ -54,7 +54,7 @@ func (opts *Options) MergeValues(ctx context.Context, root string, p getter.Prov
 			return nil, fmt.Errorf("failed to parse %s: %w", filePath, err)
 		}
 		// Merge with the previous map
-		base = util.MergeMaps(base, currentMap)
+		base = plugin_util.MergeMaps(base, currentMap)
 	}
 
 	// User specified a value via --set

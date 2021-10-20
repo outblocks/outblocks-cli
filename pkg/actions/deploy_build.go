@@ -204,6 +204,8 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 	prog, _ := d.log.ProgressBar().WithTotal(len(builders)).WithTitle("Building apps...").Start()
 
 	for _, b := range builders {
+		b := b
+
 		g.Go(func() error {
 			err := b.build()
 			if err != nil {

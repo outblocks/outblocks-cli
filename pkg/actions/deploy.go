@@ -10,13 +10,13 @@ import (
 
 	dockerclient "github.com/docker/docker/client"
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
-	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 	"github.com/outblocks/outblocks-plugin-go/types"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/outblocks/outblocks-plugin-go/util/errgroup"
 	"github.com/pterm/pterm"
 )
@@ -43,6 +43,7 @@ type DeployOptions struct {
 	Verify    bool
 	Destroy   bool
 	SkipBuild bool
+	Lock      bool
 }
 
 func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
@@ -65,7 +66,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 	}
 
 	// Get state.
-	stateRes, err := getState(ctx, d.cfg)
+	stateRes, err := getState(ctx, d.cfg, d.opts.Lock)
 	if err != nil {
 		return err
 	}
@@ -261,7 +262,7 @@ func saveState(cfg *config.Project, data *types.StateData) (*plugin_go.SaveState
 	return plug.Client().SaveState(ctx, data, state.Type, state.Other)
 }
 
-func getState(ctx context.Context, cfg *config.Project) (*plugin_go.GetStateResponse, error) {
+func getState(ctx context.Context, cfg *config.Project, lock bool) (*plugin_go.GetStateResponse, error) {
 	state := cfg.State
 	plug := state.Plugin()
 
@@ -276,7 +277,7 @@ func getState(ctx context.Context, cfg *config.Project) (*plugin_go.GetStateResp
 		}, nil
 	}
 
-	ret, err := plug.Client().GetState(ctx, state.Type, state.Other, false, client.YAMLContext{
+	ret, err := plug.Client().GetState(ctx, state.Type, state.Other, lock, client.YAMLContext{
 		Prefix: "$.state",
 		Data:   cfg.YAMLData(),
 	})
@@ -294,7 +295,7 @@ func calculatePlanMap(cfg *config.Project) map[*plugins.Plugin]*planParams {
 		dnsPlugin := app.DNSPlugin()
 		deployPlugin := app.DeployPlugin()
 		appType := app.PluginType()
-		deployProps := util.MergeMaps(cfg.Defaults.Deploy.Other, app.DeployInfo().Other)
+		deployProps := plugin_util.MergeMaps(cfg.Defaults.Deploy.Other, app.DeployInfo().Other)
 
 		includeDNS := dnsPlugin != nil && dnsPlugin == deployPlugin
 
@@ -308,6 +309,7 @@ func calculatePlanMap(cfg *config.Project) map[*plugins.Plugin]*planParams {
 			IsDeploy:   true,
 			IsDNS:      includeDNS,
 			App:        appType,
+			Env:        plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, app.Env(), app.DeployInfo().Env),
 			Properties: deployProps,
 		}
 
@@ -346,7 +348,9 @@ func calculatePlanMap(cfg *config.Project) map[*plugins.Plugin]*planParams {
 			}
 		}
 
-		planMap[p].deps = append(planMap[p].deps, &types.DependencyPlan{Dependency: t})
+		planMap[p].deps = append(planMap[p].deps, &types.DependencyPlan{
+			Dependency: t,
+		})
 	}
 
 	return planMap

@@ -36,5 +36,9 @@ func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*types
 		err = NewPluginError(c, "plan error", err)
 	}
 
+	if err == nil && ret == nil {
+		return nil, NewPluginError(c, "empty plan response", nil)
+	}
+
 	return ret, err
 }

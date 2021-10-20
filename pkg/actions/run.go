@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
-	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/actions/run"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"
 	"github.com/outblocks/outblocks-cli/pkg/config"
@@ -164,8 +163,8 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 			IP:         loopbackIP,
 			Port:       appPort,
 			Command:    runInfo.Command,
-			Env:        runInfo.Env,
-			Properties: util.MergeMaps(cfg.Defaults.Run.Other, runInfo.Other),
+			Env:        plugin_util.MergeStringMaps(app.Env(), runInfo.Env),
+			Properties: plugin_util.MergeMaps(cfg.Defaults.Run.Other, runInfo.Other),
 		}
 
 		info.apps = append(info.apps, appRun)
@@ -204,7 +203,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 			Dependency: depType,
 			IP:         loopbackIP,
 			Port:       depPort,
-			Properties: util.MergeMaps(cfg.Defaults.Run.Other, dep.Run.Other),
+			Properties: plugin_util.MergeMaps(cfg.Defaults.Run.Other, dep.Run.Other),
 		}
 
 		info.deps = append(info.deps, depRun)
@@ -252,14 +251,14 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 	// Fill envs per app/dep.
 	for _, app := range info.apps {
-		app.Env = util.MergeStringMaps(cfg.Defaults.Run.Env, app.Env, env)
+		app.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, app.Env, env)
 
 		app.Env["URL"] = app.URL
 		app.Env["PORT"] = strconv.Itoa(app.Port)
 	}
 
 	for _, dep := range info.deps {
-		dep.Env = util.MergeStringMaps(cfg.Defaults.Run.Env, dep.Env, env)
+		dep.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, dep.Env, env)
 
 		dep.Env["IP"] = dep.IP
 		dep.Env["PORT"] = strconv.Itoa(dep.Port)

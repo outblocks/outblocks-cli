@@ -25,6 +25,7 @@ type App interface {
 	Name() string
 	Dir() string
 	URL() *url.URL
+	Env() map[string]string
 	PathRedirect() string
 	Normalize(cfg *Project) error
 	Check(cfg *Project) error
@@ -45,6 +46,7 @@ type BasicApp struct {
 	AppType         string                 `json:"type"`
 	AppURL          string                 `json:"url"`
 	AppPathRedirect string                 `json:"pathRedirect"`
+	AppEnv          map[string]string      `json:"env"`
 	AppDir          string                 `json:"dir"`
 	AppRun          *AppRun                `json:"run"`
 	AppDeploy       *AppDeploy             `json:"deploy"`
@@ -69,6 +71,7 @@ type AppRun struct {
 
 type AppDeploy struct {
 	Plugin string                 `json:"plugin,omitempty"`
+	Env    map[string]string      `json:"env,omitempty"`
 	Other  map[string]interface{} `yaml:"-,remain"`
 }
 
@@ -287,4 +290,8 @@ func (a *BasicApp) DeployInfo() *AppDeploy {
 
 func (a *BasicApp) PathRedirect() string {
 	return a.AppPathRedirect
+}
+
+func (a *BasicApp) Env() map[string]string {
+	return a.AppEnv
 }

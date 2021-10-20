@@ -152,7 +152,12 @@ func (l *Log) Errorf(format string, a ...interface{}) {
 }
 
 func (l *Log) Errorln(a ...interface{}) {
-	l.Errorf(fmt.Sprintln(a...))
+	l.err.Println(a...)
+
+	if l.logLevel == LogLevelDebug {
+		_, fileName, line, _ := runtime.Caller(1)
+		pterm.Println(pterm.FgGray.Sprint("└ " + fmt.Sprintf("(%s:%d)", fileName, line)))
+	}
 }
 
 func (l *Log) SetLevelString(logLevel string) error {

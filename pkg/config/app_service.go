@@ -15,13 +15,18 @@ const (
 
 type ServiceApp struct {
 	BasicApp   `json:",inline"`
-	Build      *ServiceAppBuild `json:"build,omitempty"`
-	DockerHash string           `json:"-"`
+	Build      *ServiceAppBuild     `json:"build,omitempty"`
+	Container  *ServiceAppContainer `json:"container,omitempty"`
+	DockerHash string               `json:"-"`
 }
 
 type ServiceAppBuild struct {
 	Dockerfile    string `json:"dockerfile,omitempty"`
 	DockerContext string `json:"context,omitempty"`
+}
+
+type ServiceAppContainer struct {
+	Port int `json:"port,omitempty"`
 }
 
 func LoadServiceAppData(path string, data []byte) (App, error) {
@@ -67,6 +72,7 @@ func (s *ServiceApp) PluginType() *types.App {
 	}
 
 	base.Properties["build"] = s.Build
+	base.Properties["container"] = s.Container
 	base.Properties["local_docker_image"] = s.LocalDockerImage()
 	base.Properties["local_docker_hash"] = s.DockerHash
 

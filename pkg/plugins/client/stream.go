@@ -3,6 +3,7 @@ package client
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -204,7 +205,7 @@ func (s *SenderStream) handleResponse(res *ResponseWithHeader) (handled bool, er
 			Answer: input,
 		})
 	case *plugin_go.ErrorResponse:
-		return true, fmt.Errorf(r.Error)
+		return true, errors.New(r.Error)
 	case *plugin_go.MessageResponse:
 		switch r.Level() {
 		case plugin_go.MessageLogLevelDebug:
