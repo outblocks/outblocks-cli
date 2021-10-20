@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.27](https://github.com/outblocks/outblocks-cli/compare/v0.1.26...v0.1.27)
+
+> 2021-10-20
+
+### FEATURES
+
+[`26b59d5`](https://github.com/outblocks/outblocks-cli/commit/26b59d538a7b7b5e0b2660ca050d83d1fd1ee718) postgres deployment, new options and customizations in schema
+
+
 ## [v0.1.26](https://github.com/outblocks/outblocks-cli/compare/v0.1.25...v0.1.26)
 
 > 2021-10-19
