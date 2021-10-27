@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.28](https://github.com/outblocks/outblocks-cli/compare/v0.1.27...v0.1.28)
+
+> 2021-10-27
+
+### FEATURES
+
+[`08253cb`](https://github.com/outblocks/outblocks-cli/commit/08253cbe852c85baf90e8d48e925967e7330ac48) props unification, dependency and app states
+
+
 ## [v0.1.27](https://github.com/outblocks/outblocks-cli/compare/v0.1.26...v0.1.27)
 
 > 2021-10-20
