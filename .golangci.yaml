@@ -68,6 +68,7 @@ linters:
     - nestif
     - noctx
     - nolintlint
+    - revive
     - rowserrcheck
     - staticcheck
     - structcheck
@@ -91,4 +92,3 @@ linters:
     # - gosec
     # - lll
     # - maligned
-    # - revive

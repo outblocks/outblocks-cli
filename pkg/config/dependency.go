@@ -122,7 +122,7 @@ func (d *Dependency) RunPlugin() *plugins.Plugin {
 }
 
 func (d *Dependency) ID() string {
-	return d.Name
+	return fmt.Sprintf("dep_%s", d.Name)
 }
 
 func (d *Dependency) SupportsLocal() bool {

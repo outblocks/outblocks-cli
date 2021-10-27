@@ -75,6 +75,13 @@ func (p *Project) Normalize() error {
 		return nil
 	}()
 
+	// Create dependency map.
+	p.DependencyMap = make(map[string]*Dependency, len(p.Dependencies))
+
+	for _, dep := range p.Dependencies {
+		p.DependencyMap[dep.ID()] = dep
+	}
+
 	return err
 }
 

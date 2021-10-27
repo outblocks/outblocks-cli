@@ -229,6 +229,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 	}
 
 	// Gather envs.
+	// TODO!: process envs similar as when deployment rather then have same for all, dont add anything automatically
 	env := make(map[string]string)
 
 	for _, app := range info.apps {
@@ -290,7 +291,7 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 
 	// Process remote plugin dependencies.
 	if len(runInfo.pluginDepsMap) > 0 {
-		pluginRet, err := run.RunPlugin(ctx, runInfo.pluginDepsMap)
+		pluginRet, err := run.ThroughPlugin(ctx, runInfo.pluginDepsMap)
 		if err != nil {
 			_ = spinner.Stop()
 			return nil, nil, err
@@ -307,7 +308,7 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 
 	// Process local dependencies.
 	if len(runInfo.localDeps) > 0 {
-		localRet, err := run.RunLocal(ctx, nil, runInfo.localDeps)
+		localRet, err := run.Local(ctx, nil, runInfo.localDeps)
 
 		if err != nil {
 			_ = spinner.Stop()
@@ -325,7 +326,7 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 
 	// Process remote plugin apps.
 	if len(runInfo.pluginAppsMap) > 0 {
-		pluginRet, err := run.RunPlugin(ctx, runInfo.pluginAppsMap)
+		pluginRet, err := run.ThroughPlugin(ctx, runInfo.pluginAppsMap)
 		if err != nil {
 			_ = spinner.Stop()
 			return nil, nil, err
@@ -342,7 +343,7 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 
 	// Process local apps.
 	if len(runInfo.localApps) > 0 {
-		localRet, err := run.RunLocal(ctx, runInfo.localApps, nil)
+		localRet, err := run.Local(ctx, runInfo.localApps, nil)
 
 		if err != nil {
 			_ = spinner.Stop()

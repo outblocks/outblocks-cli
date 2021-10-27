@@ -21,6 +21,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/templates"
+	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/pterm/pterm"
 )
@@ -525,11 +526,13 @@ func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
 					Command: d.opts.RunCommand,
 				},
 			},
-			Build: &config.StaticAppBuild{
-				Command: d.opts.StaticBuildCommand,
-				Dir:     d.opts.StaticBuildDir,
+			StaticAppProperties: types.StaticAppProperties{
+				Build: &types.StaticAppBuild{
+					Command: d.opts.StaticBuildCommand,
+					Dir:     d.opts.StaticBuildDir,
+				},
+				Routing: d.opts.StaticRouting,
 			},
-			Routing: d.opts.StaticRouting,
 		},
 	}, nil
 }
@@ -546,9 +549,11 @@ func (d *AppAdd) promptService() (*serviceAppInfo, error) { // nolint: unparam
 					Command: d.opts.RunCommand,
 				},
 			},
-			Build: &config.ServiceAppBuild{
-				Dockerfile:    "Dockerfile",
-				DockerContext: ".",
+			ServiceAppProperties: types.ServiceAppProperties{
+				Build: &types.ServiceAppBuild{
+					Dockerfile:    "Dockerfile",
+					DockerContext: ".",
+				},
 			},
 		},
 	}, nil

@@ -57,7 +57,7 @@ func (l *LocalRunResult) Wait() error {
 	return err
 }
 
-func RunLocal(ctx context.Context, localApps []*LocalApp, localDeps []*LocalDependency) (*LocalRunResult, error) {
+func Local(ctx context.Context, localApps []*LocalApp, localDeps []*LocalDependency) (*LocalRunResult, error) {
 	ret := &LocalRunResult{
 		Apps:     make(map[string]*LocalAppRunInfo),
 		Deps:     make(map[string]*LocalDependencyRunInfo),

@@ -7,6 +7,7 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/outblocks/outblocks-plugin-go/types"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 const (
@@ -14,19 +15,8 @@ const (
 )
 
 type ServiceApp struct {
-	BasicApp   `json:",inline"`
-	Build      *ServiceAppBuild     `json:"build,omitempty"`
-	Container  *ServiceAppContainer `json:"container,omitempty"`
-	DockerHash string               `json:"-"`
-}
-
-type ServiceAppBuild struct {
-	Dockerfile    string `json:"dockerfile,omitempty"`
-	DockerContext string `json:"context,omitempty"`
-}
-
-type ServiceAppContainer struct {
-	Port int `json:"port,omitempty"`
+	BasicApp                   `json:",inline"`
+	types.ServiceAppProperties `json:",inline"`
 }
 
 func LoadServiceAppData(path string, data []byte) (App, error) {
@@ -35,14 +25,18 @@ func LoadServiceAppData(path string, data []byte) (App, error) {
 			AppRun:    &AppRun{},
 			AppDeploy: &AppDeploy{},
 		},
-		Build: &ServiceAppBuild{
-			Dockerfile: "Dockerfile",
+		ServiceAppProperties: types.ServiceAppProperties{
+			Build: &types.ServiceAppBuild{
+				Dockerfile: "Dockerfile",
+			},
 		},
 	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, fmt.Errorf("load service config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
+
+	out.LocalDockerImage = fmt.Sprintf("outblocks/%s", out.ID())
 
 	out.yamlPath = path
 	out.yamlData = data
@@ -54,10 +48,6 @@ func (s *ServiceApp) SupportsLocal() bool {
 	return false
 }
 
-func (s *ServiceApp) LocalDockerImage() string {
-	return fmt.Sprintf("outblocks/%s", s.ID())
-}
-
 func (s *ServiceApp) Validate() error {
 	return validation.ValidateStruct(s,
 		validation.Field(&s.AppURL, validation.Required),
@@ -67,14 +57,12 @@ func (s *ServiceApp) Validate() error {
 func (s *ServiceApp) PluginType() *types.App {
 	base := s.BasicApp.PluginType()
 
-	if base.Properties == nil {
-		base.Properties = make(map[string]interface{})
+	props, err := s.ServiceAppProperties.Encode()
+	if err != nil {
+		panic(err)
 	}
 
-	base.Properties["build"] = s.Build
-	base.Properties["container"] = s.Container
-	base.Properties["local_docker_image"] = s.LocalDockerImage()
-	base.Properties["local_docker_hash"] = s.DockerHash
+	base.Properties = plugin_util.MergeMaps(base.Properties, props)
 
 	return base
 }

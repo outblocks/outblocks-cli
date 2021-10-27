@@ -100,7 +100,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 		return err
 	}
 
-	deployChanges, dnsChanges := computeChange(planRetMap)
+	deployChanges, dnsChanges := computeChange(d.cfg.AppMap, d.cfg.DependencyMap, planRetMap)
 
 	_ = spinner.Stop()
 
@@ -148,13 +148,13 @@ func (d *Deploy) Run(ctx context.Context) error {
 
 type dnsSetup struct {
 	record string
-	dns    *types.DNS
+	dns    *types.DNSState
 }
 
 func (d *Deploy) showStateStatus(state *types.StateData) error {
 	var dns []*dnsSetup
 
-	dnsMap := make(map[string]*types.DNS)
+	dnsMap := make(map[string]*types.DNSState)
 
 	for _, app := range d.cfg.Apps {
 		appState, ok := state.AppStates[app.ID()]
@@ -203,26 +203,41 @@ func (d *Deploy) showStateStatus(state *types.StateData) error {
 		_ = d.log.Table().WithHasHeader().WithData(pterm.TableData(data)).Render()
 	}
 
-	// External App URLs.
-	var apps []config.App
+	// App Status.
+	appURLStyle := pterm.NewStyle(pterm.FgGreen, pterm.Underscore)
+	appURLErrorStyle := pterm.NewStyle(pterm.FgRed, pterm.Underscore)
+	appNameStyle := pterm.NewStyle(pterm.Reset, pterm.Bold)
+	appFailingStyle := pterm.NewStyle(pterm.FgRed, pterm.Bold)
 
-	for _, app := range d.cfg.Apps {
-		_, ok := state.AppStates[app.ID()]
-		if !ok {
-			continue
+	if len(state.AppStates) > 0 {
+		d.log.Section().Println("App Status")
+
+		for _, appState := range state.AppStates {
+			app := appState.App
+
+			if appState.Ready {
+				d.log.Printf("%s %s %s (%s)\n", appURLStyle.Sprint(app.URL), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type)
+			}
 		}
 
-		apps = append(apps, app)
+		for _, appState := range state.AppStates {
+			app := appState.App
+
+			if !appState.Ready {
+				d.log.Printf("%s %s %s (%s) %s\n", appURLErrorStyle.Sprint(app.URL), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type, appFailingStyle.Sprint("FAILING"))
+				d.log.Errorln(appState.Message)
+			}
+		}
 	}
 
-	appURLStyle := pterm.NewStyle(pterm.FgGreen, pterm.Underscore)
-	appNameStyle := pterm.NewStyle(pterm.Reset, pterm.Bold)
+	// Dependency Status.
+	if len(state.DependencyStates) > 0 {
+		d.log.Section().Println("Dependency Status")
 
-	if len(apps) > 0 {
-		d.log.Section().Println("App External URLs")
+		for _, depState := range state.DependencyStates {
+			dep := depState.Dependency
 
-		for _, app := range apps {
-			d.log.Printf("%s %s %s (%s)\n", appURLStyle.Sprint(app.URL()), pterm.Gray("==>"), appNameStyle.Sprint(app.Name()), app.Type())
+			d.log.Printf("%s %s %s (%s)\n", pterm.Green(depState.DNS.ConnectionInfo), pterm.Gray("==>"), appNameStyle.Sprint(dep.Name), dep.Type)
 		}
 	}
 

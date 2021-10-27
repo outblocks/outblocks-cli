@@ -25,7 +25,7 @@ func (i *PluginInfo) Wait() error {
 	return i.err
 }
 
-func RunPlugin(ctx context.Context, runMap map[*plugins.Plugin]*plugin_go.RunRequest) (*PluginRunResult, error) {
+func ThroughPlugin(ctx context.Context, runMap map[*plugins.Plugin]*plugin_go.RunRequest) (*PluginRunResult, error) {
 	ret := &PluginRunResult{
 		Info:     make(map[*plugins.Plugin]*PluginInfo),
 		OutputCh: make(chan *plugin_go.RunOutputResponse),

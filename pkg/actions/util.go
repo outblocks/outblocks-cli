@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
@@ -21,8 +22,8 @@ type changeID struct {
 }
 
 type change struct {
-	app    *types.App
-	dep    *types.Dependency
+	app    config.App
+	dep    *config.Dependency
 	plugin *plugins.Plugin
 	obj    string
 	info   map[changeID][]string
@@ -30,11 +31,11 @@ type change struct {
 
 func (i *change) Name() string {
 	if i.app != nil {
-		return i.app.TargetName()
+		return fmt.Sprintf("App '%s'", i.app.Name())
 	}
 
 	if i.dep != nil {
-		return i.dep.TargetName()
+		return fmt.Sprintf("Dependency '%s'", i.dep.Name)
 	}
 
 	return fmt.Sprintf("Plugin '%s' %s", i.plugin.Name, i.obj)
@@ -57,69 +58,52 @@ func (i *changeID) Type() string {
 	panic("unknown type")
 }
 
-func computeChangeInfo(actions []*types.PlanAction) (ret map[changeID][]string) {
-	ret = make(map[changeID][]string)
+func computeChangeInfo(appMap map[string]config.App, depMap map[string]*config.Dependency, plugin *plugins.Plugin, actions []*types.PlanAction) (changes []*change) {
+	changesMap := make(map[string]*change)
 
 	for _, act := range actions {
+		chg := changesMap[act.Namespace]
+
+		if chg == nil {
+			if app, ok := appMap[act.Namespace]; ok {
+				chg = &change{
+					app: app,
+				}
+			} else if dep, ok := depMap[act.Namespace]; ok {
+				chg = &change{
+					dep: dep,
+				}
+			} else {
+				chg = &change{
+					plugin: plugin,
+					obj:    act.Namespace,
+				}
+			}
+
+			chg.info = make(map[changeID][]string)
+			changesMap[act.Namespace] = chg
+			changes = append(changes, chg)
+		}
+
 		key := changeID{
 			planType:   act.Type,
 			objectType: act.ObjectType,
 		}
 
-		ret[key] = append(ret[key], act.ObjectName)
+		chg.info[key] = append(chg.info[key], act.ObjectName)
 	}
 
-	return ret
+	return changes
 }
 
-func computeChange(planMap map[*plugins.Plugin]*plugin_go.PlanResponse) (deploy, dns []*change) {
+func computeChange(appMap map[string]config.App, depMap map[string]*config.Dependency, planMap map[*plugins.Plugin]*plugin_go.PlanResponse) (deploy, dns []*change) {
 	for plugin, p := range planMap {
 		if p.DeployPlan != nil {
-			for _, act := range p.DeployPlan.Plugin {
-				deploy = append(deploy, &change{
-					plugin: plugin,
-					obj:    act.Object,
-					info:   computeChangeInfo(act.Actions),
-				})
-			}
-
-			for _, app := range p.DeployPlan.Apps {
-				deploy = append(deploy, &change{
-					app:  app.App,
-					info: computeChangeInfo(app.Actions),
-				})
-			}
-
-			for _, dep := range p.DeployPlan.Dependencies {
-				deploy = append(deploy, &change{
-					dep:  dep.Dependency,
-					info: computeChangeInfo(dep.Actions),
-				})
-			}
+			deploy = computeChangeInfo(appMap, depMap, plugin, p.DeployPlan.Actions)
 		}
 
 		if p.DNSPlan != nil {
-			for _, act := range p.DNSPlan.Plugin {
-				dns = append(dns, &change{
-					plugin: plugin,
-					obj:    act.Object,
-					info:   computeChangeInfo(act.Actions),
-				})
-			}
-
-			for _, app := range p.DNSPlan.Apps {
-				dns = append(dns, &change{
-					app:  app.App,
-					info: computeChangeInfo(app.Actions),
-				})
-			}
-
-			for _, dep := range p.DNSPlan.Dependencies {
-				dns = append(dns, &change{
-					dep:  dep.Dependency,
-					info: computeChangeInfo(dep.Actions),
-				})
-			}
+			dns = computeChangeInfo(appMap, depMap, plugin, p.DeployPlan.Actions)
 		}
 	}
 

@@ -139,7 +139,7 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp) er
 		return err
 	}
 
-	cmdStr := fmt.Sprintf("docker build --tag %s --pull --file %s --progress=plain .", app.LocalDockerImage(), app.Build.Dockerfile)
+	cmdStr := fmt.Sprintf("docker build --tag %s --pull --file %s --progress=plain .", app.LocalDockerImage, app.Build.Dockerfile)
 
 	cmd, err := util.NewCmdInfo(cmdStr, dockercontext, []string{"DOCKER_BUILDKIT=1"})
 	if err != nil {
@@ -151,12 +151,12 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp) er
 		return err
 	}
 
-	insp, _, err := cli.ImageInspectWithRaw(ctx, app.LocalDockerImage())
+	insp, _, err := cli.ImageInspectWithRaw(ctx, app.LocalDockerImage)
 	if err != nil {
 		return fmt.Errorf("error inspecting created image for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
 
-	app.DockerHash = insp.ID
+	app.LocalDockerHash = insp.ID
 
 	return nil
 }

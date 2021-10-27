@@ -9,6 +9,7 @@ import (
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/outblocks/outblocks-plugin-go/types"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 const (
@@ -26,14 +27,8 @@ var (
 )
 
 type StaticApp struct {
-	BasicApp `json:",inline"`
-	Build    *StaticAppBuild `json:"build,omitempty"`
-	Routing  string          `json:"routing"`
-}
-
-type StaticAppBuild struct {
-	Command string `json:"command,omitempty"`
-	Dir     string `json:"dir,omitempty"`
+	BasicApp                  `json:",inline"`
+	types.StaticAppProperties `json:",inline"`
 }
 
 func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
@@ -42,9 +37,11 @@ func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
 			AppRun:    &AppRun{},
 			AppDeploy: &AppDeploy{},
 		},
-		Routing: StaticAppRoutingReact,
-		Build: &StaticAppBuild{
-			Dir: DefaultStaticAppBuildDir,
+		StaticAppProperties: types.StaticAppProperties{
+			Build: &types.StaticAppBuild{
+				Dir: DefaultStaticAppBuildDir,
+			},
+			Routing: StaticAppRoutingReact,
 		},
 	}
 
@@ -68,13 +65,12 @@ func (s *StaticApp) Validate() error {
 func (s *StaticApp) PluginType() *types.App {
 	base := s.BasicApp.PluginType()
 
-	if base.Properties == nil {
-		base.Properties = make(map[string]interface{})
+	props, err := s.StaticAppProperties.Encode()
+	if err != nil {
+		panic(err)
 	}
 
-	base.Properties["routing"] = s.Routing
-	base.Properties["build"] = s.Build
-	base.Properties["run"] = s.AppRun
+	base.Properties = plugin_util.MergeMaps(base.Properties, props)
 
 	return base
 }

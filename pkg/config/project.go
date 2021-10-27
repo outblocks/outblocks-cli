@@ -56,9 +56,10 @@ type Project struct {
 	DNS          []*DNS                 `json:"dns,omitempty"`
 	Defaults     *Defaults              `json:"defaults,omitempty"`
 
-	Apps   []App          `json:"-"`
-	AppMap map[string]App `json:"-"`
-	Dir    string         `json:"-"`
+	Apps          []App                  `json:"-"`
+	AppMap        map[string]App         `json:"-"`
+	DependencyMap map[string]*Dependency `json:"-"`
+	Dir           string                 `json:"-"`
 
 	env           string
 	loadedPlugins []*plugins.Plugin
