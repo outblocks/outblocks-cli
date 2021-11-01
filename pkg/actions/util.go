@@ -180,7 +180,7 @@ func planChangeInfo(header string, changes []*change) (info string) {
 	return info
 }
 
-func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool) {
+func planPrompt(log logger.Logger, deploy, dns []*change, approve bool) (empty, canceled bool) {
 	sort.Slice(deploy, func(i, j int) bool {
 		return deploy[i].Name() < deploy[j].Name()
 	})
@@ -208,6 +208,10 @@ func planPrompt(log logger.Logger, deploy, dns []*change) (empty, canceled bool)
 		log.Println("No changes detected.")
 
 		return true, false
+	}
+
+	if approve {
+		return false, false
 	}
 
 	log.Println(strings.Join(info, "\n\n"))

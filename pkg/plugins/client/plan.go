@@ -8,17 +8,16 @@ import (
 	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
-func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*types.AppPlan, deps []*types.DependencyPlan, args map[string]interface{}, verify, destroy bool) (ret *plugin_go.PlanResponse, err error) {
+func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*types.AppPlan, deps []*types.DependencyPlan, targetApps []string, args map[string]interface{}, verify, destroy bool) (ret *plugin_go.PlanResponse, err error) {
 	err = c.lazySendReceive(ctx, &plugin_go.PlanRequest{
 		Apps:         apps,
 		Dependencies: deps,
 		Args:         args,
+		TargetApps:   targetApps,
 
-		PluginMap:        state.PluginsMap[c.name],
-		AppStates:        state.AppStates,
-		DependencyStates: state.DependencyStates,
-		Verify:           verify,
-		Destroy:          destroy,
+		PluginMap: state.PluginsMap[c.name],
+		Verify:    verify,
+		Destroy:   destroy,
 	},
 		func(res plugin_go.Response) error {
 			switch r := res.(type) {

@@ -171,7 +171,12 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 
-	for _, app := range d.cfg.Apps {
+	apps := d.cfg.Apps
+	if len(d.opts.TargetApps) > 0 {
+		apps = d.opts.TargetApps
+	}
+
+	for _, app := range apps {
 		// TODO: add build app function
 		switch app.Type() {
 		case config.AppTypeStatic:

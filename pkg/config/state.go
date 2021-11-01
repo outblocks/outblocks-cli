@@ -2,7 +2,9 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -39,6 +41,10 @@ func (s *State) LocalPath() string {
 func (s *State) LoadLocal() (*types.StateData, error) {
 	data, err := ioutil.ReadFile(s.LocalPath())
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return &types.StateData{}, nil
+		}
+
 		return nil, err
 	}
 

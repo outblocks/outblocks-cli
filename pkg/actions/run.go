@@ -29,6 +29,8 @@ import (
 	"github.com/txn2/txeh"
 )
 
+const runCommand = "run"
+
 type Run struct {
 	log  logger.Logger
 	cfg  *config.Project
@@ -181,7 +183,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 		if _, ok := info.pluginAppsMap[runPlugin]; !ok {
 			info.pluginAppsMap[runPlugin] = &plugin_go.RunRequest{
-				Args:  runPlugin.CommandArgs("run"),
+				Args:  runPlugin.CommandArgs(runCommand),
 				Hosts: hosts,
 			}
 		}
@@ -220,7 +222,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 		if _, ok := info.pluginDepsMap[runPlugin]; !ok {
 			info.pluginDepsMap[runPlugin] = &plugin_go.RunRequest{
-				Args:  runPlugin.CommandArgs("run"),
+				Args:  runPlugin.CommandArgs(runCommand),
 				Hosts: hosts,
 			}
 		}

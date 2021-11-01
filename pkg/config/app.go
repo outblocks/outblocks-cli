@@ -273,7 +273,11 @@ func (a *BasicApp) URL() *url.URL {
 }
 
 func (a *BasicApp) ID() string {
-	return fmt.Sprintf("app_%s_%s", a.AppType, a.AppName)
+	return ComputeAppID(a.AppType, a.AppName)
+}
+
+func ComputeAppID(typ, name string) string {
+	return fmt.Sprintf("app_%s_%s", typ, name)
 }
 
 func (a *BasicApp) SupportsLocal() bool {
