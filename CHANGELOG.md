@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.30](https://github.com/outblocks/outblocks-cli/compare/v0.1.29...v0.1.30)
+
+> 2021-11-01
+
+### FEATURES
+
+[`cecf6af`](https://github.com/outblocks/outblocks-cli/commit/cecf6aff12ff2d4818632bfafb7f6bd6474601d4) skip apps
+
+
 ## [v0.1.29](https://github.com/outblocks/outblocks-cli/compare/v0.1.28...v0.1.29)
 
 > 2021-11-01
