@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.29](https://github.com/outblocks/outblocks-cli/compare/v0.1.28...v0.1.29)
+
+> 2021-11-01
+
+### FEATURES
+
+[`3b56c55`](https://github.com/outblocks/outblocks-cli/commit/3b56c55ed31e14139c97244ba4089eaf2527710a) target apps, sdk update, fix for state
+
+
 ## [v0.1.28](https://github.com/outblocks/outblocks-cli/compare/v0.1.27...v0.1.28)
 
 > 2021-10-27
