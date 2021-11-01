@@ -31,7 +31,7 @@ type change struct {
 
 func (i *change) Name() string {
 	if i.app != nil {
-		return fmt.Sprintf("App '%s'", i.app.Name())
+		return fmt.Sprintf("%s App '%s'", strings.Title(i.app.Type()), i.app.Name())
 	}
 
 	if i.dep != nil {
@@ -65,11 +65,11 @@ func computeChangeInfo(appMap map[string]config.App, depMap map[string]*config.D
 		chg := changesMap[act.Namespace]
 
 		if chg == nil {
-			if app, ok := appMap[act.Namespace]; ok {
+			if app, ok := appMap[act.Namespace]; ok && act.Source == types.SourceApp {
 				chg = &change{
 					app: app,
 				}
-			} else if dep, ok := depMap[act.Namespace]; ok {
+			} else if dep, ok := depMap[act.Namespace]; ok && act.Source == types.SourceDependency {
 				chg = &change{
 					dep: dep,
 				}
@@ -182,6 +182,14 @@ func planChangeInfo(header string, changes []*change) (info string) {
 
 func planPrompt(log logger.Logger, deploy, dns []*change, approve bool) (empty, canceled bool) {
 	sort.Slice(deploy, func(i, j int) bool {
+		if deploy[i].app == nil && deploy[j].app != nil {
+			return false
+		}
+
+		if deploy[i].app != nil && deploy[j].app == nil {
+			return true
+		}
+
 		return deploy[i].Name() < deploy[j].Name()
 	})
 

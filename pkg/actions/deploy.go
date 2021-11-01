@@ -24,11 +24,11 @@ import (
 const deployCommand = "deploy"
 
 type planParams struct {
-	apps       []*types.AppPlan
-	deps       []*types.DependencyPlan
-	targetApps []string
-	args       map[string]interface{}
-	firstPass  bool
+	apps                 []*types.AppPlan
+	deps                 []*types.DependencyPlan
+	targetApps, skipApps []string
+	args                 map[string]interface{}
+	firstPass            bool
 }
 
 type Deploy struct {
@@ -43,12 +43,12 @@ type Deploy struct {
 }
 
 type DeployOptions struct {
-	Verify     bool
-	Destroy    bool
-	SkipBuild  bool
-	Lock       bool
-	Approve    bool
-	TargetApps []config.App
+	Verify               bool
+	Destroy              bool
+	SkipBuild            bool
+	Lock                 bool
+	AutoApprove          bool
+	TargetApps, SkipApps []config.App
 }
 
 func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
@@ -85,7 +85,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 	stateBeforeStr, _ := json.Marshal(stateRes.State)
 
 	// Plan and apply.
-	planMap := calculatePlanMap(d.cfg, d.opts.TargetApps)
+	planMap := calculatePlanMap(d.cfg, d.opts.TargetApps, d.opts.SkipApps)
 
 	// Start plugins.
 	for plug := range planMap {
@@ -110,7 +110,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 	_ = spinner.Stop()
 
 	stateAfterStr, _ := json.Marshal(stateRes.State)
-	empty, canceled := planPrompt(d.log, deployChanges, dnsChanges, d.opts.Approve)
+	empty, canceled := planPrompt(d.log, deployChanges, dnsChanges, d.opts.AutoApprove)
 
 	shouldApply := !canceled && !empty
 	shouldSave := !canceled && (!empty || !bytes.Equal(stateBeforeStr, stateAfterStr))
@@ -321,7 +321,7 @@ func getState(ctx context.Context, cfg *config.Project, lock bool) (*plugin_go.G
 	return ret, nil
 }
 
-func calculatePlanMap(cfg *config.Project, targetApps []config.App) map[*plugins.Plugin]*planParams {
+func calculatePlanMap(cfg *config.Project, targetApps, skipApps []config.App) map[*plugins.Plugin]*planParams {
 	planMap := make(map[*plugins.Plugin]*planParams)
 
 	for _, app := range cfg.Apps {
@@ -386,31 +386,54 @@ func calculatePlanMap(cfg *config.Project, targetApps []config.App) map[*plugins
 		})
 	}
 
-	// Add target app ids.
+	return filterPlanMap(planMap, targetApps, skipApps)
+}
+
+func filterPlanMap(planMap map[*plugins.Plugin]*planParams, targetApps, skipApps []config.App) map[*plugins.Plugin]*planParams {
+	if len(targetApps) == 0 && len(skipApps) == 0 {
+		return planMap
+	}
+
+	// Add target and skip app ids.
 	targetAppIDsMap := make(map[string]struct{}, len(targetApps))
+	skipAppIDsMap := make(map[string]struct{}, len(skipApps))
 
 	for _, app := range targetApps {
 		appID := app.ID()
 		targetAppIDsMap[appID] = struct{}{}
 	}
 
-	// Skip plan maps that do not include target apps.
-	if len(targetAppIDsMap) > 0 {
-		planMapTemp := make(map[*plugins.Plugin]*planParams)
+	for _, app := range skipApps {
+		appID := app.ID()
+		skipAppIDsMap[appID] = struct{}{}
+	}
 
-		for p, planParam := range planMap {
-			for _, app := range planParam.apps {
-				if _, ok := targetAppIDsMap[app.App.ID]; ok {
-					planParam.targetApps = append(planParam.targetApps, app.App.ID)
-					planMapTemp[p] = planParam
-				}
+	// Skip plan maps that do not include target apps or includes only skipped ones.
+	planMapTemp := make(map[*plugins.Plugin]*planParams)
+
+	for p, planParam := range planMap {
+		for _, app := range planParam.apps {
+			if _, ok := targetAppIDsMap[app.App.ID]; ok {
+				planParam.targetApps = append(planParam.targetApps, app.App.ID)
+			}
+
+			if _, ok := skipAppIDsMap[app.App.ID]; ok {
+				planParam.skipApps = append(planParam.skipApps, app.App.ID)
 			}
 		}
 
-		planMap = planMapTemp
+		if len(skipApps) > 0 && len(planParam.apps) == len(planParam.skipApps) {
+			continue
+		}
+
+		if len(targetApps) > 0 && len(planParam.targetApps) == 0 {
+			continue
+		}
+
+		planMapTemp[p] = planParam
 	}
 
-	return planMap
+	return planMapTemp
 }
 
 func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, verify, destroy bool) (retMap map[*plugins.Plugin]*plugin_go.PlanResponse, appStates map[string]*types.AppState, dependencyStates map[string]*types.DependencyState, err error) {
@@ -430,7 +453,7 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 		params := params
 
 		g.Go(func() error {
-			ret, err := plug.Client().Plan(ctx, state, params.apps, params.deps, params.targetApps, params.args, verify, destroy)
+			ret, err := plug.Client().Plan(ctx, state, params.apps, params.deps, params.targetApps, params.skipApps, params.args, verify, destroy)
 			if err != nil {
 				return err
 			}
@@ -477,7 +500,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		}
 
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.targetApps, params.args, destroy, callback)
+			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.targetApps, params.skipApps, params.args, destroy, callback)
 			if ret != nil {
 				retMap[plug] = ret
 				state.PluginsMap[plug.Name] = ret.PluginMap
@@ -513,7 +536,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		}
 
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.targetApps, params.args, destroy, callback)
+			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.targetApps, params.skipApps, params.args, destroy, callback)
 			if ret != nil {
 				retMap[plug] = ret
 				state.PluginsMap[plug.Name] = ret.PluginMap
