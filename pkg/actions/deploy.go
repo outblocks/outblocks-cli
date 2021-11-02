@@ -398,6 +398,40 @@ func calculatePlanMap(cfg *config.Project, targetApps, skipApps []config.App) ma
 		})
 	}
 
+	return addPlanTargetAndSkipApps(planMap, targetApps, skipApps)
+}
+
+func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetApps, skipApps []config.App) map[*plugins.Plugin]*planParams {
+	if len(targetApps) == 0 && len(skipApps) == 0 {
+		return planMap
+	}
+
+	// Add target and skip app ids.
+	targetAppIDsMap := make(map[string]struct{}, len(targetApps))
+	skipAppIDsMap := make(map[string]struct{}, len(skipApps))
+
+	for _, app := range targetApps {
+		appID := app.ID()
+		targetAppIDsMap[appID] = struct{}{}
+	}
+
+	for _, app := range skipApps {
+		appID := app.ID()
+		skipAppIDsMap[appID] = struct{}{}
+	}
+
+	for _, planParam := range planMap {
+		for _, app := range planParam.apps {
+			if _, ok := targetAppIDsMap[app.App.ID]; ok {
+				planParam.targetApps = append(planParam.targetApps, app.App.ID)
+			}
+
+			if _, ok := skipAppIDsMap[app.App.ID]; ok {
+				planParam.skipApps = append(planParam.skipApps, app.App.ID)
+			}
+		}
+	}
+
 	return planMap
 }
 
