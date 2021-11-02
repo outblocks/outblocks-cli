@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"regexp"
 )
@@ -41,6 +42,16 @@ func CopyMapStringString(m map[string]string) map[string]string {
 
 	for k, v := range m {
 		out[k] = v
+	}
+
+	return out
+}
+
+func FlattenEnvMap(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+
+	for k, v := range m {
+		out = append(out, fmt.Sprintf("%s=%s", k, v))
 	}
 
 	return out

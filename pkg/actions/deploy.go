@@ -49,6 +49,7 @@ type DeployOptions struct {
 	Lock                 bool
 	AutoApprove          bool
 	TargetApps, SkipApps []config.App
+	SkipAllApps          bool
 }
 
 func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
@@ -63,7 +64,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 	verify := d.opts.Verify
 
 	// Build apps.
-	if !d.opts.SkipBuild {
+	if !d.opts.SkipBuild && !d.opts.SkipAllApps {
 		err := d.buildApps(ctx)
 		if err != nil {
 			return err
@@ -223,24 +224,35 @@ func (d *Deploy) showStateStatus(appStates map[string]*types.AppState, dependenc
 	appNameStyle := pterm.NewStyle(pterm.Reset, pterm.Bold)
 	appFailingStyle := pterm.NewStyle(pterm.FgRed, pterm.Bold)
 
-	if len(appStates) > 0 {
-		d.log.Section().Println("App Status")
+	readyApps := make(map[string]*types.AppState)
+	unreadyApps := make(map[string]*types.AppState)
 
-		for _, appState := range appStates {
-			app := appState.App
-
-			if appState.Deployment.Ready {
-				d.log.Printf("%s %s %s (%s)\n", appURLStyle.Sprint(app.URL), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type)
-			}
+	for k, appState := range appStates {
+		if appState.Deployment == nil {
+			continue
 		}
 
-		for _, appState := range appStates {
+		if appState.Deployment.Ready {
+			readyApps[k] = appState
+		} else {
+			unreadyApps[k] = appState
+		}
+	}
+
+	if len(readyApps) > 0 || len(unreadyApps) > 0 {
+		d.log.Section().Println("App Status")
+
+		for _, appState := range readyApps {
 			app := appState.App
 
-			if !appState.Deployment.Ready {
-				d.log.Printf("%s %s %s (%s) %s\n", appURLErrorStyle.Sprint(app.URL), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type, appFailingStyle.Sprint("FAILING"))
-				d.log.Errorln(appState.Deployment.Message)
-			}
+			d.log.Printf("%s %s %s (%s)\n", appURLStyle.Sprint(app.URL), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type)
+		}
+
+		for _, appState := range unreadyApps {
+			app := appState.App
+
+			d.log.Printf("%s %s %s (%s) %s\n", appURLErrorStyle.Sprint(app.URL), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type, appFailingStyle.Sprint("FAILING"))
+			d.log.Errorln(appState.Deployment.Message)
 		}
 	}
 

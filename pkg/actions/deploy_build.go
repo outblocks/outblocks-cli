@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/Masterminds/semver"
@@ -112,7 +113,9 @@ func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *util.CmdInfo, app 
 }
 
 func (d *Deploy) buildStaticApp(ctx context.Context, app *config.StaticApp) error {
-	cmd, err := util.NewCmdInfo(app.Build.Command, app.Dir(), nil)
+	env := plugin_util.MergeStringMaps(app.Env(), app.Build.Env)
+
+	cmd, err := util.NewCmdInfo(app.Build.Command, app.Dir(), util.FlattenEnvMap(env))
 	if err != nil {
 		return fmt.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
@@ -139,7 +142,20 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp) er
 		return err
 	}
 
-	cmdStr := fmt.Sprintf("docker build --tag %s --pull --file %s --progress=plain .", app.LocalDockerImage, app.Build.Dockerfile)
+	buildArgs := util.FlattenEnvMap(app.Build.DockerBuildArgs)
+	for i, arg := range buildArgs {
+		buildArgs[i] = strings.ReplaceAll(arg, "\"", "\\\"")
+	}
+
+	cmdStr := fmt.Sprintf("docker build --tag %s --pull --file %s --progress=plain", app.LocalDockerImage, app.Build.Dockerfile)
+
+	// Add build args if needed.
+	if len(buildArgs) > 0 {
+		buildArgsStr := strings.Join(buildArgs, "\" --build-arg=\"")
+		cmdStr += fmt.Sprintf("%s\"", buildArgsStr[1:])
+	}
+
+	cmdStr += " ."
 
 	cmd, err := util.NewCmdInfo(cmdStr, dockercontext, []string{"DOCKER_BUILDKIT=1"})
 	if err != nil {
@@ -176,7 +192,16 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 		apps = d.opts.TargetApps
 	}
 
+	appsMap := make(map[config.App]struct{})
 	for _, app := range apps {
+		appsMap[app] = struct{}{}
+	}
+
+	for _, app := range d.opts.SkipApps {
+		delete(appsMap, app)
+	}
+
+	for app := range appsMap {
 		// TODO: add build app function
 		switch app.Type() {
 		case config.AppTypeStatic:

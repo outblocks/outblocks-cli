@@ -41,18 +41,26 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				opts.TargetApps = append(opts.TargetApps, app)
 			}
 
-			for _, t := range skipApps {
-				tsplit := strings.SplitN(t, ".", 2)
-				if len(tsplit) != 2 {
-					return fmt.Errorf("wrong format for 'skip' %s: specify in a form of <app type>.<name>, e.g.: static.website", t)
-				}
+			if opts.SkipAllApps {
+				opts.SkipApps = e.cfg.Apps
+			} else {
+				for _, t := range skipApps {
+					tsplit := strings.SplitN(t, ".", 2)
+					if len(tsplit) != 2 {
+						return fmt.Errorf("wrong format for 'skip' %s: specify in a form of <app type>.<name>, e.g.: static.website", t)
+					}
 
-				app := e.cfg.AppMap[config.ComputeAppID(tsplit[0], tsplit[1])]
-				if app == nil {
-					return fmt.Errorf("app '%s' not found", t)
-				}
+					app := e.cfg.AppMap[config.ComputeAppID(tsplit[0], tsplit[1])]
+					if app == nil {
+						return fmt.Errorf("app '%s' not found", t)
+					}
 
-				opts.SkipApps = append(opts.SkipApps, app)
+					opts.SkipApps = append(opts.SkipApps, app)
+				}
+			}
+
+			if opts.Destroy {
+				opts.SkipBuild = true
 			}
 
 			return actions.NewDeploy(e.Log(), e.cfg, opts).Run(cmd.Context())
@@ -65,8 +73,9 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 	f.BoolVar(&opts.SkipBuild, "skip-build", false, "skip build command before deploy")
 	f.BoolVar(&opts.Lock, "lock", true, "lock statefile during deploy")
 	f.BoolVar(&opts.AutoApprove, "yes", false, "auto approve changes")
-	f.StringArrayVarP(&targetApps, "target", "t", nil, "target only specified apps, specify in a form of <app type>.<name>, e.g.: static.website")
-	f.StringArrayVarP(&skipApps, "skip", "s", nil, "skip specified apps, specify in a form of <app type>.<name>, e.g.: static.website")
+	f.StringArrayVarP(&targetApps, "target-apps", "t", nil, "target only specified apps, specify in a form of <app type>.<name>, e.g.: static.website")
+	f.StringArrayVarP(&skipApps, "skip-apps", "s", nil, "skip specified apps (if they exist), specify in a form of <app type>.<name>, e.g.: static.website")
+	f.BoolVar(&opts.SkipAllApps, "skip-all-apps", false, "skip all apps (if they exist)")
 
 	return cmd
 }

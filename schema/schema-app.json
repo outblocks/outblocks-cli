@@ -22,7 +22,7 @@
           ]
         },
         "env": {
-          "description": "Additional environment variables common for both deploy and run",
+          "description": "Environment variables common for all operations.",
           "type": "object",
           "additionalProperties": {
             "type": "string"
@@ -152,7 +152,7 @@
           "type": "integer"
         },
         "env": {
-          "description": "Additional environment variables",
+          "description": "Additional environment variables.",
           "type": "object",
           "additionalProperties": {
             "type": "string"
@@ -189,7 +189,7 @@
           "type": "string"
         },
         "env": {
-          "description": "Additional environment variables",
+          "description": "Additional environment variables.",
           "type": "object",
           "additionalProperties": {
             "type": "string"
@@ -228,6 +228,13 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "env": {
+          "description": "Additional environment variables.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "command": {
           "description": "Command to be run to generate output files.",
           "type": "string"
@@ -243,6 +250,13 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "build_args": {
+          "description": "Docker build-args.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "context": {
           "description": "Docker context directory, relative to application dir.",
           "type": "string"

@@ -22,14 +22,8 @@ type LocalAppRunInfo struct {
 }
 
 func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
-	env := make([]string, 0, len(a.Env))
-
 	info := &LocalAppRunInfo{
 		LocalApp: a,
-	}
-
-	for k, v := range a.Env {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
 	var err error
@@ -37,7 +31,7 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 	info.CmdInfo, err = util.NewCmdInfo(
 		a.App.Properties["run"].(*config.AppRun).Command,
 		a.App.Dir,
-		env,
+		util.FlattenEnvMap(a.Env),
 	)
 	if err != nil {
 		return nil, err
