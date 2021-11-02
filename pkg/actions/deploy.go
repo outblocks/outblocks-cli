@@ -398,54 +398,7 @@ func calculatePlanMap(cfg *config.Project, targetApps, skipApps []config.App) ma
 		})
 	}
 
-	return filterPlanMap(planMap, targetApps, skipApps)
-}
-
-func filterPlanMap(planMap map[*plugins.Plugin]*planParams, targetApps, skipApps []config.App) map[*plugins.Plugin]*planParams {
-	if len(targetApps) == 0 && len(skipApps) == 0 {
-		return planMap
-	}
-
-	// Add target and skip app ids.
-	targetAppIDsMap := make(map[string]struct{}, len(targetApps))
-	skipAppIDsMap := make(map[string]struct{}, len(skipApps))
-
-	for _, app := range targetApps {
-		appID := app.ID()
-		targetAppIDsMap[appID] = struct{}{}
-	}
-
-	for _, app := range skipApps {
-		appID := app.ID()
-		skipAppIDsMap[appID] = struct{}{}
-	}
-
-	// Skip plan maps that do not include target apps or includes only skipped ones.
-	planMapTemp := make(map[*plugins.Plugin]*planParams)
-
-	for p, planParam := range planMap {
-		for _, app := range planParam.apps {
-			if _, ok := targetAppIDsMap[app.App.ID]; ok {
-				planParam.targetApps = append(planParam.targetApps, app.App.ID)
-			}
-
-			if _, ok := skipAppIDsMap[app.App.ID]; ok {
-				planParam.skipApps = append(planParam.skipApps, app.App.ID)
-			}
-		}
-
-		if len(skipApps) > 0 && len(planParam.apps) == len(planParam.skipApps) {
-			continue
-		}
-
-		if len(targetApps) > 0 && len(planParam.targetApps) == 0 {
-			continue
-		}
-
-		planMapTemp[p] = planParam
-	}
-
-	return planMapTemp
+	return planMap
 }
 
 func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, verify, destroy bool) (retMap map[*plugins.Plugin]*plugin_go.PlanResponse, appStates map[string]*types.AppState, dependencyStates map[string]*types.DependencyState, err error) {
