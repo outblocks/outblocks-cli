@@ -1,5 +1,18 @@
 # Outblocks CLI Changelog
 
+## [v0.1.32](https://github.com/outblocks/outblocks-cli/compare/v0.1.31...v0.1.32)
+
+> 2021-11-02
+
+### BUG FIXES
+
+[`a2df09e`](https://github.com/outblocks/outblocks-cli/commit/a2df09e158db08102cf66f4019d3e1fa54312ec1) plan apps
+
+### FEATURES
+
+[`c9fb7b9`](https://github.com/outblocks/outblocks-cli/commit/c9fb7b90fe03db30737b82303484e8e0be8b6ae8) remove filtering plan
+
+
 ## [v0.1.31](https://github.com/outblocks/outblocks-cli/compare/v0.1.30...v0.1.31)
 
 > 2021-11-02
