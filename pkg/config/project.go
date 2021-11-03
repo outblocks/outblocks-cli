@@ -50,23 +50,23 @@ type Defaults struct {
 
 type Project struct {
 	Name         string                 `json:"name,omitempty"`
+	Dir          string                 `json:"-"`
 	State        *State                 `json:"state,omitempty"`
+	Apps         []App                  `json:"-"`
 	Dependencies map[string]*Dependency `json:"dependencies,omitempty"`
 	Plugins      []*Plugin              `json:"plugins,omitempty"`
 	DNS          []*DNS                 `json:"dns,omitempty"`
 	Defaults     *Defaults              `json:"defaults,omitempty"`
 
-	Apps          []App                  `json:"-"`
-	AppMap        map[string]App         `json:"-"`
-	DependencyMap map[string]*Dependency `json:"-"`
-	Dir           string                 `json:"-"`
-
-	env           string
-	loadedPlugins []*plugins.Plugin
-	yamlPath      string
-	yamlData      []byte
-	lock          *lockfile.Lockfile
-	vars          map[string]interface{}
+	appsIDMap        map[string]App
+	dependencyIDMap  map[string]*Dependency
+	env              string
+	loadedPlugins    []*plugins.Plugin
+	loadedPluginsMap map[string]*plugins.Plugin
+	yamlPath         string
+	yamlData         []byte
+	lock             *lockfile.Lockfile
+	vars             map[string]interface{}
 }
 
 func (p *Project) ID() string {
@@ -241,33 +241,40 @@ func (p *Project) LoadFile(file string) error {
 }
 
 func (p *Project) RegisterApp(app App) bool {
-	if p.AppMap == nil {
-		p.AppMap = make(map[string]App)
+	if p.appsIDMap == nil {
+		p.appsIDMap = make(map[string]App)
 	}
 
 	id := app.ID()
-	if _, ok := p.AppMap[id]; ok {
+	if _, ok := p.appsIDMap[id]; ok {
 		return false
 	}
 
-	p.AppMap[id] = app
+	p.appsIDMap[id] = app
 	p.Apps = append(p.Apps, app)
 
 	return true
 }
 
-func (p *Project) FindDependency(n string) *Dependency {
-	for name, dep := range p.Dependencies {
-		if name == n {
-			return dep
-		}
-	}
+func (p *Project) DependencyByID(n string) *Dependency {
+	return p.dependencyIDMap[n]
+}
 
-	return nil
+func (p *Project) DependencyByName(n string) *Dependency {
+	return p.dependencyIDMap[ComputeDependencyID(n)]
+}
+
+func (p *Project) AppByID(n string) App {
+	return p.appsIDMap[n]
 }
 
 func (p *Project) SetLoadedPlugins(plugs []*plugins.Plugin) {
 	p.loadedPlugins = plugs
+	p.loadedPluginsMap = make(map[string]*plugins.Plugin)
+
+	for _, plug := range plugs {
+		p.loadedPluginsMap[plug.Name] = plug
+	}
 }
 
 func (p *Project) LoadedPlugins() []*plugins.Plugin {
@@ -295,13 +302,7 @@ func (p *Project) FindDNSPlugin(url string) *plugins.Plugin {
 }
 
 func (p *Project) FindLoadedPlugin(name string) *plugins.Plugin {
-	for _, plug := range p.loadedPlugins {
-		if plug.Name == name {
-			return plug
-		}
-	}
-
-	return nil
+	return p.loadedPluginsMap[name]
 }
 
 func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *plugins.Loader) error {
@@ -369,7 +370,7 @@ func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *pl
 		}
 	}
 
-	p.loadedPlugins = plugs
+	p.SetLoadedPlugins(plugs)
 
 	return nil
 }

@@ -56,3 +56,13 @@ func FlattenEnvMap(m map[string]string) []string {
 
 	return out
 }
+
+func StringArrayToSet(in []string) map[string]bool {
+	outMap := make(map[string]bool, len(in))
+
+	for _, i := range in {
+		outMap[i] = true
+	}
+
+	return outMap
+}

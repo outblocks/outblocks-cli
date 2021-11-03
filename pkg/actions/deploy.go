@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
 
 	dockerclient "github.com/docker/docker/client"
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -48,7 +50,7 @@ type DeployOptions struct {
 	SkipBuild            bool
 	Lock                 bool
 	AutoApprove          bool
-	TargetApps, SkipApps []config.App
+	TargetApps, SkipApps []string
 	SkipAllApps          bool
 }
 
@@ -86,7 +88,12 @@ func (d *Deploy) Run(ctx context.Context) error {
 	stateBeforeStr, _ := json.Marshal(stateRes.State)
 
 	// Plan and apply.
-	planMap := calculatePlanMap(d.cfg, d.opts.TargetApps, d.opts.SkipApps)
+	apps, deps, skipAppIDs := filterApps(d.cfg, stateRes.State, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
+
+	planMap, err := calculatePlanMap(d.cfg, apps, deps, d.opts.TargetApps, skipAppIDs)
+	if err != nil {
+		return err
+	}
 
 	// Start plugins.
 	for plug := range planMap {
@@ -106,7 +113,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 		return err
 	}
 
-	deployChanges, dnsChanges := computeChange(d.cfg.AppMap, d.cfg.DependencyMap, stateRes.State, planRetMap)
+	deployChanges, dnsChanges := computeChange(d.cfg, stateRes.State, planRetMap)
 
 	_ = spinner.Stop()
 
@@ -333,15 +340,96 @@ func getState(ctx context.Context, cfg *config.Project, lock bool) (*plugin_go.G
 	return ret, nil
 }
 
-func calculatePlanMap(cfg *config.Project, targetApps, skipApps []config.App) map[*plugins.Plugin]*planParams {
-	planMap := make(map[*plugins.Plugin]*planParams)
+func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps bool) (apps []*types.App, deps []*types.Dependency, retSkipAppIDs []string) {
+	if skipAllApps {
+		retSkipAppIDs := make([]string, 0, len(state.Apps))
+		apps = make([]*types.App, 0, len(state.Apps))
+
+		for _, app := range state.Apps {
+			apps = append(apps, app)
+			retSkipAppIDs = append(retSkipAppIDs, app.ID)
+		}
+
+		deps = make([]*types.Dependency, 0, len(state.Dependencies))
+		for _, dep := range state.Dependencies {
+			deps = append(deps, dep)
+		}
+
+		return apps, deps, retSkipAppIDs
+	}
+
+	// In non target and non skip mode, use config apps and deps.
+	if len(skipAppIDs) == 0 && len(targetAppIDs) == 0 {
+		apps = make([]*types.App, 0, len(cfg.Apps))
+		for _, app := range cfg.Apps {
+			apps = append(apps, app.PluginType())
+		}
+
+		deps = make([]*types.Dependency, 0, len(cfg.Dependencies))
+		for _, dep := range cfg.Dependencies {
+			deps = append(deps, dep.PluginType())
+		}
+
+		return apps, deps, nil
+	}
+
+	appsMap := make(map[string]*types.App, len(state.Apps))
+	dependenciesMap := make(map[string]*types.Dependency, len(state.Dependencies))
+	targetAppIDsMap := util.StringArrayToSet(targetAppIDs)
+	skipAppIDsMap := util.StringArrayToSet(skipAppIDs)
+
+	for key, app := range state.Apps {
+		appsMap[key] = app
+	}
+
+	for key, dep := range state.Dependencies {
+		dependenciesMap[key] = dep
+	}
 
 	for _, app := range cfg.Apps {
-		dnsPlugin := app.DNSPlugin()
-		deployPlugin := app.DeployPlugin()
-		appType := app.PluginType()
+		if len(targetAppIDsMap) > 0 && !targetAppIDsMap[app.ID()] {
+			continue
+		}
 
-		includeDNS := dnsPlugin != nil && dnsPlugin == deployPlugin
+		if !skipAppIDsMap[app.ID()] {
+			continue
+		}
+
+		appType := app.PluginType()
+		appType.Properties = plugin_util.MergeMaps(cfg.Defaults.Deploy.Other, appType.Properties, app.DeployInfo().Other)
+		appType.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, appType.Env, app.DeployInfo().Env)
+
+		appsMap[app.ID()] = appType
+	}
+
+	for _, dep := range cfg.Dependencies {
+		dependenciesMap[dep.ID()] = dep.PluginType()
+	}
+
+	// Flatten maps to list.
+	apps = make([]*types.App, 0, len(appsMap))
+	for _, app := range appsMap {
+		apps = append(apps, app)
+	}
+
+	deps = make([]*types.Dependency, 0, len(dependenciesMap))
+	for _, dep := range dependenciesMap {
+		deps = append(deps, dep)
+	}
+
+	return apps, deps, skipAppIDs
+}
+
+func calculatePlanMap(cfg *config.Project, apps []*types.App, deps []*types.Dependency, targetAppIDs, skipAppIDs []string) (map[*plugins.Plugin]*planParams, error) {
+	planMap := make(map[*plugins.Plugin]*planParams)
+
+	for _, app := range apps {
+		includeDNS := app.DNSPlugin != "" && app.DNSPlugin == app.DeployPlugin
+
+		deployPlugin := cfg.FindLoadedPlugin(app.DeployPlugin)
+		if deployPlugin == nil {
+			return nil, fmt.Errorf("missing deploy plugin: %s used for app: %s", app.DeployPlugin, app.Name)
+		}
 
 		if _, ok := planMap[deployPlugin]; !ok {
 			planMap[deployPlugin] = &planParams{
@@ -349,21 +437,23 @@ func calculatePlanMap(cfg *config.Project, targetApps, skipApps []config.App) ma
 			}
 		}
 
-		appType.Properties = plugin_util.MergeMaps(cfg.Defaults.Deploy.Other, appType.Properties, app.DeployInfo().Other)
-		appType.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, appType.Env, app.DeployInfo().Env)
-
 		appReq := &types.AppPlan{
 			IsDeploy: true,
 			IsDNS:    includeDNS,
-			App:      appType,
+			App:      app,
 		}
 
 		planMap[deployPlugin].apps = append(planMap[deployPlugin].apps, appReq)
 		planMap[deployPlugin].firstPass = !includeDNS // if dns is handled by different plugin, plan this as a first pass
 
 		// Add DNS plugin if not already included (handled by same plugin).
-		if includeDNS || dnsPlugin == nil {
+		if includeDNS || app.DNSPlugin == "" {
 			continue
+		}
+
+		dnsPlugin := cfg.FindLoadedPlugin(app.DNSPlugin)
+		if dnsPlugin == nil {
+			return nil, fmt.Errorf("missing dns plugin: %s used for app: %s", app.DNSPlugin, app.Name)
 		}
 
 		if _, ok := planMap[dnsPlugin]; !ok {
@@ -375,57 +465,49 @@ func calculatePlanMap(cfg *config.Project, targetApps, skipApps []config.App) ma
 		appReq = &types.AppPlan{
 			IsDeploy: false,
 			IsDNS:    true,
-			App:      appType,
+			App:      app,
 		}
 
 		planMap[dnsPlugin].apps = append(planMap[dnsPlugin].apps, appReq)
 	}
 
 	// Process dependencies.
-	for _, dep := range cfg.Dependencies {
-		t := dep.PluginType()
+	for _, dep := range deps {
+		deployPlugin := cfg.FindLoadedPlugin(dep.DeployPlugin)
+		if deployPlugin == nil {
+			return nil, fmt.Errorf("missing deploy plugin: %s used for dependency: %s", dep.DeployPlugin, dep.Name)
+		}
 
-		p := dep.DeployPlugin()
-		if _, ok := planMap[p]; !ok {
-			planMap[p] = &planParams{
-				args: p.CommandArgs(deployCommand),
+		if _, ok := planMap[deployPlugin]; !ok {
+			planMap[deployPlugin] = &planParams{
+				args: deployPlugin.CommandArgs(deployCommand),
 			}
 		}
 
-		planMap[p].deps = append(planMap[p].deps, &types.DependencyPlan{
-			Dependency: t,
+		planMap[deployPlugin].deps = append(planMap[deployPlugin].deps, &types.DependencyPlan{
+			Dependency: dep,
 		})
 	}
 
-	return addPlanTargetAndSkipApps(planMap, targetApps, skipApps)
+	return addPlanTargetAndSkipApps(planMap, targetAppIDs, skipAppIDs), nil
 }
 
-func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetApps, skipApps []config.App) map[*plugins.Plugin]*planParams {
-	if len(targetApps) == 0 && len(skipApps) == 0 {
+func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetAppIDs, skipAppIDs []string) map[*plugins.Plugin]*planParams {
+	if len(targetAppIDs) == 0 && len(skipAppIDs) == 0 {
 		return planMap
 	}
 
 	// Add target and skip app ids.
-	targetAppIDsMap := make(map[string]struct{}, len(targetApps))
-	skipAppIDsMap := make(map[string]struct{}, len(skipApps))
-
-	for _, app := range targetApps {
-		appID := app.ID()
-		targetAppIDsMap[appID] = struct{}{}
-	}
-
-	for _, app := range skipApps {
-		appID := app.ID()
-		skipAppIDsMap[appID] = struct{}{}
-	}
+	targetIDsMap := util.StringArrayToSet(targetAppIDs)
+	skipIDsMap := util.StringArrayToSet(skipAppIDs)
 
 	for _, planParam := range planMap {
 		for _, app := range planParam.apps {
-			if _, ok := targetAppIDsMap[app.App.ID]; ok {
+			if _, ok := targetIDsMap[app.App.ID]; ok {
 				planParam.targetApps = append(planParam.targetApps, app.App.ID)
 			}
 
-			if _, ok := skipAppIDsMap[app.App.ID]; ok {
+			if _, ok := skipIDsMap[app.App.ID]; ok {
 				planParam.skipApps = append(planParam.skipApps, app.App.ID)
 			}
 		}

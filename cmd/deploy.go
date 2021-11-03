@@ -30,32 +30,20 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 			for _, t := range targetApps {
 				tsplit := strings.SplitN(t, ".", 2)
 				if len(tsplit) != 2 {
-					return fmt.Errorf("wrong format for 'target' %s: specify in a form of <app type>.<name>, e.g.: static.website", t)
+					return fmt.Errorf("wrong format for target '%s': specify in a form of <app type>.<name>, e.g.: static.website", t)
 				}
 
-				app := e.cfg.AppMap[config.ComputeAppID(tsplit[0], tsplit[1])]
-				if app == nil {
-					return fmt.Errorf("target app '%s' not found", t)
-				}
-
-				opts.TargetApps = append(opts.TargetApps, app)
+				opts.TargetApps = append(opts.TargetApps, config.ComputeAppID(tsplit[0], tsplit[1]))
 			}
 
-			if opts.SkipAllApps {
-				opts.SkipApps = e.cfg.Apps
-			} else {
+			if !opts.SkipAllApps {
 				for _, t := range skipApps {
 					tsplit := strings.SplitN(t, ".", 2)
 					if len(tsplit) != 2 {
-						return fmt.Errorf("wrong format for 'skip' %s: specify in a form of <app type>.<name>, e.g.: static.website", t)
+						return fmt.Errorf("wrong format for skip '%s': specify in a form of <app type>.<name>, e.g.: static.website", t)
 					}
 
-					app := e.cfg.AppMap[config.ComputeAppID(tsplit[0], tsplit[1])]
-					if app == nil {
-						return fmt.Errorf("app '%s' not found", t)
-					}
-
-					opts.SkipApps = append(opts.SkipApps, app)
+					opts.SkipApps = append(opts.SkipApps, config.ComputeAppID(tsplit[0], tsplit[1]))
 				}
 			}
 

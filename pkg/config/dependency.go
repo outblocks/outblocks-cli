@@ -38,11 +38,18 @@ func (d *Dependency) Validate() error {
 }
 
 func (d *Dependency) PluginType() *types.Dependency {
+	var deployPluginName string
+
+	if d.DeployPlugin() != nil {
+		deployPluginName = d.DeployPlugin().Name
+	}
+
 	return &types.Dependency{
-		ID:         d.ID(),
-		Name:       d.Name,
-		Type:       d.Type,
-		Properties: d.Other,
+		ID:           d.ID(),
+		DeployPlugin: deployPluginName,
+		Name:         d.Name,
+		Type:         d.Type,
+		Properties:   d.Other,
 	}
 }
 
@@ -121,8 +128,12 @@ func (d *Dependency) RunPlugin() *plugins.Plugin {
 	return d.runPlugin
 }
 
+func ComputeDependencyID(name string) string {
+	return fmt.Sprintf("dep_%s", name)
+}
+
 func (d *Dependency) ID() string {
-	return fmt.Sprintf("dep_%s", d.Name)
+	return ComputeDependencyID(d.Name)
 }
 
 func (d *Dependency) SupportsLocal() bool {

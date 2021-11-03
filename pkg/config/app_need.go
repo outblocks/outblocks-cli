@@ -14,7 +14,7 @@ type AppNeed struct {
 }
 
 func (n *AppNeed) Normalize(name string, cfg *Project, data []byte) error {
-	dep := cfg.FindDependency(name)
+	dep := cfg.DependencyByName(name)
 	if dep == nil {
 		return fileutil.YAMLError(fmt.Sprintf("$.needs.%s", name), "object not found in project dependencies", data)
 	}

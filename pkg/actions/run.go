@@ -419,7 +419,7 @@ func formatRunOutput(log logger.Logger, cfg *config.Project, r *plugin_go.RunOut
 
 	switch r.Source {
 	case plugin_go.RunOutpoutSourceApp:
-		app := cfg.AppMap[r.ID]
+		app := cfg.AppByID(r.ID)
 		prefix = fmt.Sprintf("APP:%s:%s:", app.Type(), app.Name())
 
 	case plugin_go.RunOutpoutSourceDependency:

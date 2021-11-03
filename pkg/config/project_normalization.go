@@ -13,12 +13,16 @@ func (p *Project) Normalize() error {
 		p.Name = filepath.Base(p.Dir)
 	}
 
+	p.dependencyIDMap = make(map[string]*Dependency, len(p.Dependencies))
+
 	err := func() error {
 		for key, dep := range p.Dependencies {
 			dep.Name = key
 			if err := dep.Normalize(key, p); err != nil {
 				return err
 			}
+
+			p.dependencyIDMap[dep.ID()] = dep
 		}
 
 		for i, plugin := range p.Plugins {
@@ -74,13 +78,6 @@ func (p *Project) Normalize() error {
 
 		return nil
 	}()
-
-	// Create dependency map.
-	p.DependencyMap = make(map[string]*Dependency, len(p.Dependencies))
-
-	for _, dep := range p.Dependencies {
-		p.DependencyMap[dep.ID()] = dep
-	}
 
 	return err
 }

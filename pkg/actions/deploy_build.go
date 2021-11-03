@@ -188,20 +188,26 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 
 	apps := d.cfg.Apps
-	if len(d.opts.TargetApps) > 0 {
-		apps = d.opts.TargetApps
-	}
+	targetAppIDsMap := util.StringArrayToSet(d.opts.TargetApps)
+	skipAppIDsMap := util.StringArrayToSet(d.opts.SkipApps)
 
-	appsMap := make(map[config.App]struct{})
+	var appsTemp []config.App
+
 	for _, app := range apps {
-		appsMap[app] = struct{}{}
+		if len(targetAppIDsMap) > 0 && !targetAppIDsMap[app.ID()] {
+			continue
+		}
+
+		if !skipAppIDsMap[app.ID()] {
+			continue
+		}
+
+		appsTemp = append(appsTemp, app)
 	}
 
-	for _, app := range d.opts.SkipApps {
-		delete(appsMap, app)
-	}
+	apps = appsTemp
 
-	for app := range appsMap {
+	for _, app := range apps {
 		// TODO: add build app function
 		switch app.Type() {
 		case config.AppTypeStatic:

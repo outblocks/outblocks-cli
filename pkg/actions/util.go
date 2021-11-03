@@ -58,12 +58,12 @@ func (i *changeID) Type() string {
 	panic("unknown type")
 }
 
-func newChangeFromPlanAction(act *types.PlanAction, appMap map[string]config.App, depMap map[string]*config.Dependency, state *types.StateData, plugin *plugins.Plugin) *change {
+func newChangeFromPlanAction(cfg *config.Project, act *types.PlanAction, state *types.StateData, plugin *plugins.Plugin) *change {
 	switch act.Source {
 	case types.SourceApp:
 		var app *types.App
 
-		if a, ok := appMap[act.Namespace]; ok {
+		if a := cfg.AppByID(act.Namespace); a != nil {
 			app = a.PluginType()
 		}
 
@@ -79,7 +79,7 @@ func newChangeFromPlanAction(act *types.PlanAction, appMap map[string]config.App
 	case types.SourceDependency:
 		var dep *types.Dependency
 
-		if d, ok := depMap[act.Namespace]; ok {
+		if d := cfg.DependencyByID(act.Namespace); d != nil {
 			dep = d.PluginType()
 		}
 
@@ -100,14 +100,14 @@ func newChangeFromPlanAction(act *types.PlanAction, appMap map[string]config.App
 	}
 }
 
-func computeChangeInfo(appMap map[string]config.App, depMap map[string]*config.Dependency, state *types.StateData, plugin *plugins.Plugin, actions []*types.PlanAction) (changes []*change) {
+func computeChangeInfo(cfg *config.Project, state *types.StateData, plugin *plugins.Plugin, actions []*types.PlanAction) (changes []*change) {
 	changesMap := make(map[string]*change)
 
 	for _, act := range actions {
 		chg := changesMap[act.Namespace]
 
 		if chg == nil {
-			chg = newChangeFromPlanAction(act, appMap, depMap, state, plugin)
+			chg = newChangeFromPlanAction(cfg, act, state, plugin)
 			chg.info = make(map[changeID][]string)
 			changesMap[act.Namespace] = chg
 			changes = append(changes, chg)
@@ -124,14 +124,14 @@ func computeChangeInfo(appMap map[string]config.App, depMap map[string]*config.D
 	return changes
 }
 
-func computeChange(appMap map[string]config.App, depMap map[string]*config.Dependency, state *types.StateData, planMap map[*plugins.Plugin]*plugin_go.PlanResponse) (deploy, dns []*change) {
+func computeChange(cfg *config.Project, state *types.StateData, planMap map[*plugins.Plugin]*plugin_go.PlanResponse) (deploy, dns []*change) {
 	for plugin, p := range planMap {
 		if p.DeployPlan != nil {
-			deploy = computeChangeInfo(appMap, depMap, state, plugin, p.DeployPlan.Actions)
+			deploy = computeChangeInfo(cfg, state, plugin, p.DeployPlan.Actions)
 		}
 
 		if p.DNSPlan != nil {
-			dns = computeChangeInfo(appMap, depMap, state, plugin, p.DeployPlan.Actions)
+			dns = computeChangeInfo(cfg, state, plugin, p.DeployPlan.Actions)
 		}
 	}
 

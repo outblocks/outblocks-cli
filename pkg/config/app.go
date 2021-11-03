@@ -240,8 +240,20 @@ func (a *BasicApp) PluginType() *types.App {
 		appURL = a.url.String()
 	}
 
+	var dnsPluginName, deployPluginName string
+
+	if a.DeployPlugin() != nil {
+		deployPluginName = a.DeployPlugin().Name
+	}
+
+	if a.DNSPlugin() != nil {
+		dnsPluginName = a.DNSPlugin().Name
+	}
+
 	return &types.App{
 		ID:           a.ID(),
+		DeployPlugin: deployPluginName,
+		DNSPlugin:    dnsPluginName,
 		Env:          a.Env(),
 		Dir:          a.Dir(),
 		Name:         a.AppName,
