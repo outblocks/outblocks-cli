@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.36](https://github.com/outblocks/outblocks-cli/compare/v0.1.35...v0.1.36)
+
+> 2021-11-04
+
+### BUG FIXES
+
+[`07af93f`](https://github.com/outblocks/outblocks-cli/commit/07af93fcda5ab7edb01d35309bd18a213cad7ee2) force unlock
+
+
 ## [v0.1.35](https://github.com/outblocks/outblocks-cli/compare/v0.1.34...v0.1.35)
 
 > 2021-11-03
