@@ -182,9 +182,8 @@ type dnsSetup struct {
 func (d *Deploy) prepareAppDNSMap(appStates map[string]*types.AppState) (map[string]*types.DNSState, error) {
 	dnsMap := make(map[string]*types.DNSState)
 
-	for _, app := range d.cfg.Apps {
-		appState, ok := appStates[app.ID()]
-		if !ok || appState.DNS == nil || !appState.DNS.Manual || (appState.DNS.CNAME == "" && appState.DNS.IP == "") {
+	for _, appState := range appStates {
+		if appState.DNS == nil || !appState.DNS.Manual || (appState.DNS.CNAME == "" && appState.DNS.IP == "") {
 			continue
 		}
 
