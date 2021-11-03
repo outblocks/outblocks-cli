@@ -17,6 +17,7 @@ import (
 const (
 	cmdSkipLoadConfigAnnotation  = "cmd_skip_load_config"
 	cmdSkipCheckConfigAnnotation = "cmd_skip_check_config"
+	cmdSkipLoadAppsAnnotation    = "cmd_skip_load_apps"
 	cmdSkipLoadPluginsAnnotation = "cmd_skip_load_plugins"
 	cmdGroupAnnotation           = "cmd_group"
 	cmdGroupDelimiter            = "-"

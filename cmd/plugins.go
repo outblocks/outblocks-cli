@@ -13,7 +13,8 @@ func (e *Executor) newPluginsCmd() *cobra.Command {
 		Short:   "Plugin management",
 		Long:    `Plugin management - list, update, add or delete.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation: cmdGroupMain,
+			cmdGroupAnnotation:          cmdGroupMain,
+			cmdSkipLoadConfigAnnotation: "1",
 		},
 	}
 
@@ -22,7 +23,9 @@ func (e *Executor) newPluginsCmd() *cobra.Command {
 		Short: "List plugins",
 		Long:  `List installed plugins.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation: cmdGroupMain,
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdSkipLoadAppsAnnotation:    "1",
+			cmdSkipCheckConfigAnnotation: "1",
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -40,6 +43,7 @@ func (e *Executor) newPluginsCmd() *cobra.Command {
 		Long:  `Update installed plugins to matching versions from config.`,
 		Annotations: map[string]string{
 			cmdGroupAnnotation:           cmdGroupMain,
+			cmdSkipLoadAppsAnnotation:    "1",
 			cmdSkipCheckConfigAnnotation: "1",
 		},
 		SilenceUsage: true,

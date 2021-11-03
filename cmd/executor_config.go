@@ -11,7 +11,7 @@ import (
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
-func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals map[string]interface{}, skipLoadPlugins, skipCheck bool) error {
+func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals map[string]interface{}, skipLoadApps, skipLoadPlugins, skipCheck bool) error {
 	cfg, err := config.LoadProjectConfig(cfgPath, vals, &config.ProjectOptions{
 		Env: e.opts.env,
 	})
@@ -19,8 +19,10 @@ func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals m
 		return err
 	}
 
-	if err := cfg.LoadApps(); err != nil {
-		return err
+	if !skipLoadApps {
+		if err := cfg.LoadApps(); err != nil {
+			return err
+		}
 	}
 
 	if err := cfg.Normalize(); err != nil {

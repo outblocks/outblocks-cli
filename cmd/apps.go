@@ -16,7 +16,8 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		Short:   "App management",
 		Long:    `Applications management - list, add or delete.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation: cmdGroupMain,
+			cmdGroupAnnotation:          cmdGroupMain,
+			cmdSkipLoadConfigAnnotation: "1",
 		},
 	}
 

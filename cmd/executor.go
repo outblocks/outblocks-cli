@@ -62,7 +62,7 @@ func setupEnvVars(env *cli.Environment) {
 }
 
 func (e *Executor) commandPreRun(ctx context.Context) error {
-	var skipLoadConfig, skipLoadPlugins, skipCheckConfig bool
+	var skipLoadConfig, skipLoadApps, skipLoadPlugins, skipCheckConfig bool
 
 	// Parse critical root flags.
 	e.rootCmd.PersistentFlags().ParseErrorsWhitelist.UnknownFlags = true
@@ -77,6 +77,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 
 	if cmd != nil {
 		skipLoadConfig = cmd.Annotations[cmdSkipLoadConfigAnnotation] == "1"
+		skipLoadApps = cmd.Annotations[cmdSkipLoadAppsAnnotation] == "1"
 		skipLoadPlugins = cmd.Annotations[cmdSkipLoadPluginsAnnotation] == "1"
 		skipCheckConfig = cmd.Annotations[cmdSkipCheckConfigAnnotation] == "1"
 
@@ -105,7 +106,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	vals := map[string]interface{}{"var": v}
 
 	// Load config file.
-	if err := e.loadProjectConfig(ctx, cfgPath, vals, skipLoadPlugins, skipCheckConfig); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+	if err := e.loadProjectConfig(ctx, cfgPath, vals, skipLoadApps, skipLoadPlugins, skipCheckConfig); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
 		return err
 	}
 
