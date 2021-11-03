@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.34](https://github.com/outblocks/outblocks-cli/compare/v0.1.33...v0.1.34)
+
+> 2021-11-03
+
+### BUG FIXES
+
+[`3ecac6e`](https://github.com/outblocks/outblocks-cli/commit/3ecac6ec25b53438d832515ae7f6d037cab18385) skip loading parts where not needed
+
+
 ## [v0.1.33](https://github.com/outblocks/outblocks-cli/compare/v0.1.32...v0.1.33)
 
 > 2021-11-03
