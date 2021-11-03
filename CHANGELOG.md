@@ -1,5 +1,17 @@
 # Outblocks CLI Changelog
 
+## [v0.1.35](https://github.com/outblocks/outblocks-cli/compare/v0.1.34...v0.1.35)
+
+> 2021-11-03
+
+### FEATURES
+
+[`590abd7`](https://github.com/outblocks/outblocks-cli/commit/590abd7340c78da01ab429015f666bc9c414aeee) appstate dns
+[`34b565b`](https://github.com/outblocks/outblocks-cli/commit/34b565ba08efe2c4987826d86daa26f7981280c9) raw state, relative dir
+[`965bd21`](https://github.com/outblocks/outblocks-cli/commit/965bd2130b542e98a78660945d5b6e962a92310e) attempt at proper skip/target apps
+[`286215a`](https://github.com/outblocks/outblocks-cli/commit/286215a33fa51413e067034a8d1640a84a38e638) changed sdk and state apps/deps
+
+
 ## [v0.1.34](https://github.com/outblocks/outblocks-cli/compare/v0.1.33...v0.1.34)
 
 > 2021-11-03
