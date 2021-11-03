@@ -62,7 +62,7 @@ func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Dep
 	}
 }
 
-func (d *Deploy) Run(ctx context.Context) error {
+func (d *Deploy) Run(ctx context.Context) error { // nolint: gocyclo
 	verify := d.opts.Verify
 
 	// Build apps.
@@ -74,21 +74,21 @@ func (d *Deploy) Run(ctx context.Context) error {
 	}
 
 	// Get state.
-	stateRes, err := getState(ctx, d.cfg, d.opts.Lock)
+	state, stateRes, err := getState(ctx, d.cfg, d.opts.Lock)
 	if err != nil {
 		return err
 	}
 
-	if stateRes.Source.Created {
+	if stateRes.Source != nil && stateRes.Source.Created {
 		d.log.Infof("New state created: '%s'\n", stateRes.Source.Name)
 
 		verify = true
 	}
 
-	stateBeforeStr, _ := json.Marshal(stateRes.State)
+	stateBeforeStr, _ := json.Marshal(state)
 
 	// Plan and apply.
-	apps, deps, skipAppIDs := filterApps(d.cfg, stateRes.State, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
+	apps, deps, skipAppIDs := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
 
 	planMap, err := calculatePlanMap(d.cfg, apps, deps, d.opts.TargetApps, skipAppIDs)
 	if err != nil {
@@ -105,7 +105,8 @@ func (d *Deploy) Run(ctx context.Context) error {
 
 	spinner, _ := d.log.Spinner().WithRemoveWhenDone(true).Start("Planning...")
 
-	planRetMap, appStates, dependencyStates, err := plan(ctx, stateRes.State, planMap, verify, d.opts.Destroy)
+	// Proceed with plan.
+	planRetMap, appStates, dependencyStates, err := plan(ctx, state, planMap, verify, d.opts.Destroy)
 	if err != nil {
 		_ = spinner.Stop()
 		_ = releaseLock(d.cfg, stateRes.LockInfo)
@@ -113,27 +114,41 @@ func (d *Deploy) Run(ctx context.Context) error {
 		return err
 	}
 
-	deployChanges, dnsChanges := computeChange(d.cfg, stateRes.State, planRetMap)
+	deployChanges, dnsChanges := computeChange(d.cfg, state, planRetMap)
 
 	_ = spinner.Stop()
 
-	stateAfterStr, _ := json.Marshal(stateRes.State)
 	empty, canceled := planPrompt(d.log, deployChanges, dnsChanges, d.opts.AutoApprove)
 
 	shouldApply := !canceled && !empty
-	shouldSave := !canceled && (!empty || !bytes.Equal(stateBeforeStr, stateAfterStr))
 
 	start := time.Now()
 
 	var saveErr error
 
+	// Apply if needed.
 	if shouldApply {
 		callback := applyProgress(d.log, deployChanges, dnsChanges)
-		appStates, dependencyStates, err = apply(ctx, stateRes.State, planMap, d.opts.Destroy, callback)
+		appStates, dependencyStates, err = apply(ctx, state, planMap, d.opts.Destroy, callback)
 	}
 
+	// Save current apps/dependencies.
+	state.Apps = make(map[string]*types.App)
+	state.Dependencies = make(map[string]*types.Dependency)
+
+	for _, app := range apps {
+		state.Apps[app.ID] = app
+	}
+
+	for _, dep := range deps {
+		state.Dependencies[dep.ID] = dep
+	}
+
+	stateAfterStr, _ := json.Marshal(state)
+	shouldSave := !canceled && (!empty || !bytes.Equal(stateBeforeStr, stateAfterStr))
+
 	if shouldSave {
-		_, saveErr = saveState(d.cfg, stateRes.State)
+		_, saveErr = saveState(d.cfg, state)
 	}
 
 	// Release lock if needed.
@@ -314,18 +329,18 @@ func saveState(cfg *config.Project, data *types.StateData) (*plugin_go.SaveState
 	return plug.Client().SaveState(ctx, data, state.Type, state.Other)
 }
 
-func getState(ctx context.Context, cfg *config.Project, lock bool) (*plugin_go.GetStateResponse, error) {
+func getState(ctx context.Context, cfg *config.Project, lock bool) (stateData *types.StateData, stateRes *plugin_go.GetStateResponse, err error) {
 	state := cfg.State
 	plug := state.Plugin()
 
 	if state.IsLocal() {
-		data, err := state.LoadLocal()
+		stateData, err = state.LoadLocal()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
-		return &plugin_go.GetStateResponse{
-			State: data,
+		return stateData, &plugin_go.GetStateResponse{
+			Source: &types.StateSource{},
 		}, nil
 	}
 
@@ -334,10 +349,13 @@ func getState(ctx context.Context, cfg *config.Project, lock bool) (*plugin_go.G
 		Data:   cfg.YAMLData(),
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return ret, nil
+	stateData = &types.StateData{}
+	err = json.Unmarshal(ret.State, &stateData)
+
+	return stateData, ret, err
 }
 
 func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps bool) (apps []*types.App, deps []*types.Dependency, retSkipAppIDs []string) {
@@ -577,7 +595,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 
 	var mu sync.Mutex
 
-	processResponse := func(plug *plugins.Plugin, params *planParams, ret *plugin_go.ApplyDoneResponse) {
+	processResponse := func(plug *plugins.Plugin, ret *plugin_go.ApplyDoneResponse) {
 		if ret == nil {
 			return
 		}
@@ -596,14 +614,6 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 			dependencyStates[k] = v
 		}
 
-		for _, app := range params.apps {
-			state.Apps[app.App.ID] = app.App
-		}
-
-		for _, dep := range params.deps {
-			state.Dependencies[dep.Dependency.ID] = dep.Dependency
-		}
-
 		mu.Unlock()
 	}
 
@@ -615,7 +625,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 
 		g.Go(func() error {
 			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.targetApps, params.skipApps, params.args, destroy, callback)
-			processResponse(plug, params, ret)
+			processResponse(plug, ret)
 
 			return err
 		})
@@ -636,7 +646,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 
 		g.Go(func() error {
 			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.targetApps, params.skipApps, params.args, destroy, callback)
-			processResponse(plug, params, ret)
+			processResponse(plug, ret)
 
 			return err
 		})

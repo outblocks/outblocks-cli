@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
@@ -33,7 +34,12 @@ func (c *Client) GetState(ctx context.Context, typ string, props map[string]inte
 }
 
 func (c *Client) SaveState(ctx context.Context, state *types.StateData, typ string, props map[string]interface{}) (ret *plugin_go.SaveStateResponse, err error) {
-	err = c.lazySendReceive(ctx, &plugin_go.SaveStateRequest{State: state, StateType: typ, Properties: props}, func(res plugin_go.Response) error {
+	stateData, err := json.Marshal(state)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.lazySendReceive(ctx, &plugin_go.SaveStateRequest{State: stateData, StateType: typ, Properties: props}, func(res plugin_go.Response) error {
 		switch r := res.(type) {
 		case *plugin_go.SaveStateResponse:
 			ret = r

@@ -97,6 +97,13 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 		}
 	}
 
+	if !fileutil.IsRelativeSubdir(cfg.Dir, a.AppDir) {
+		return a.YAMLError("$.dir", "main config dir must be a parent of App.Dir")
+	}
+
+	a.AppDir, _ = filepath.Rel(cfg.Dir, a.AppDir)
+	a.AppDir = "./" + a.AppDir
+
 	if a.AppDeploy == nil {
 		a.AppDeploy = &AppDeploy{}
 	}
