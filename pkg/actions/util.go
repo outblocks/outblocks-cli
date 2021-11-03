@@ -22,8 +22,8 @@ type changeID struct {
 }
 
 type change struct {
-	app    config.App
-	dep    *config.Dependency
+	app    *types.App
+	dep    *types.Dependency
 	plugin *plugins.Plugin
 	obj    string
 	info   map[changeID][]string
@@ -31,7 +31,7 @@ type change struct {
 
 func (i *change) Name() string {
 	if i.app != nil {
-		return fmt.Sprintf("%s App '%s'", strings.Title(i.app.Type()), i.app.Name())
+		return fmt.Sprintf("%s App '%s'", strings.Title(i.app.Type), i.app.Name)
 	}
 
 	if i.dep != nil {
@@ -58,28 +58,56 @@ func (i *changeID) Type() string {
 	panic("unknown type")
 }
 
-func computeChangeInfo(appMap map[string]config.App, depMap map[string]*config.Dependency, plugin *plugins.Plugin, actions []*types.PlanAction) (changes []*change) {
+func newChangeFromPlanAction(act *types.PlanAction, appMap map[string]config.App, depMap map[string]*config.Dependency, state *types.StateData, plugin *plugins.Plugin) *change {
+	switch act.Source {
+	case types.SourceApp:
+		var app *types.App
+
+		if a, ok := appMap[act.Namespace]; ok {
+			app = a.PluginType()
+		}
+
+		if app == nil {
+			app = state.Apps[act.Namespace]
+		}
+
+		if app != nil {
+			return &change{
+				app: app,
+			}
+		}
+	case types.SourceDependency:
+		var dep *types.Dependency
+
+		if d, ok := depMap[act.Namespace]; ok {
+			dep = d.PluginType()
+		}
+
+		if dep == nil {
+			dep = state.Dependencies[act.Namespace]
+		}
+
+		if dep != nil {
+			return &change{
+				dep: dep,
+			}
+		}
+	}
+
+	return &change{
+		plugin: plugin,
+		obj:    act.Namespace,
+	}
+}
+
+func computeChangeInfo(appMap map[string]config.App, depMap map[string]*config.Dependency, state *types.StateData, plugin *plugins.Plugin, actions []*types.PlanAction) (changes []*change) {
 	changesMap := make(map[string]*change)
 
 	for _, act := range actions {
 		chg := changesMap[act.Namespace]
 
 		if chg == nil {
-			if app, ok := appMap[act.Namespace]; ok && act.Source == types.SourceApp {
-				chg = &change{
-					app: app,
-				}
-			} else if dep, ok := depMap[act.Namespace]; ok && act.Source == types.SourceDependency {
-				chg = &change{
-					dep: dep,
-				}
-			} else {
-				chg = &change{
-					plugin: plugin,
-					obj:    act.Namespace,
-				}
-			}
-
+			chg = newChangeFromPlanAction(act, appMap, depMap, state, plugin)
 			chg.info = make(map[changeID][]string)
 			changesMap[act.Namespace] = chg
 			changes = append(changes, chg)
@@ -96,14 +124,14 @@ func computeChangeInfo(appMap map[string]config.App, depMap map[string]*config.D
 	return changes
 }
 
-func computeChange(appMap map[string]config.App, depMap map[string]*config.Dependency, planMap map[*plugins.Plugin]*plugin_go.PlanResponse) (deploy, dns []*change) {
+func computeChange(appMap map[string]config.App, depMap map[string]*config.Dependency, state *types.StateData, planMap map[*plugins.Plugin]*plugin_go.PlanResponse) (deploy, dns []*change) {
 	for plugin, p := range planMap {
 		if p.DeployPlan != nil {
-			deploy = computeChangeInfo(appMap, depMap, plugin, p.DeployPlan.Actions)
+			deploy = computeChangeInfo(appMap, depMap, state, plugin, p.DeployPlan.Actions)
 		}
 
 		if p.DNSPlan != nil {
-			dns = computeChangeInfo(appMap, depMap, plugin, p.DeployPlan.Actions)
+			dns = computeChangeInfo(appMap, depMap, state, plugin, p.DeployPlan.Actions)
 		}
 	}
 

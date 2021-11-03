@@ -31,7 +31,7 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 	info.CmdInfo, err = util.NewCmdInfo(
 		a.App.Properties["run"].(*config.AppRun).Command,
 		a.App.Dir,
-		util.FlattenEnvMap(a.Env),
+		util.FlattenEnvMap(a.App.Env),
 	)
 	if err != nil {
 		return nil, err

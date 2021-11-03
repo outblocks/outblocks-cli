@@ -106,7 +106,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 		return err
 	}
 
-	deployChanges, dnsChanges := computeChange(d.cfg.AppMap, d.cfg.DependencyMap, planRetMap)
+	deployChanges, dnsChanges := computeChange(d.cfg.AppMap, d.cfg.DependencyMap, stateRes.State, planRetMap)
 
 	_ = spinner.Stop()
 
@@ -340,7 +340,6 @@ func calculatePlanMap(cfg *config.Project, targetApps, skipApps []config.App) ma
 		dnsPlugin := app.DNSPlugin()
 		deployPlugin := app.DeployPlugin()
 		appType := app.PluginType()
-		deployProps := plugin_util.MergeMaps(cfg.Defaults.Deploy.Other, app.DeployInfo().Other)
 
 		includeDNS := dnsPlugin != nil && dnsPlugin == deployPlugin
 
@@ -350,12 +349,13 @@ func calculatePlanMap(cfg *config.Project, targetApps, skipApps []config.App) ma
 			}
 		}
 
+		appType.Properties = plugin_util.MergeMaps(cfg.Defaults.Deploy.Other, appType.Properties, app.DeployInfo().Other)
+		appType.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, appType.Env, app.DeployInfo().Env)
+
 		appReq := &types.AppPlan{
-			IsDeploy:   true,
-			IsDNS:      includeDNS,
-			App:        appType,
-			Env:        plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, app.Env(), app.DeployInfo().Env),
-			Properties: deployProps,
+			IsDeploy: true,
+			IsDNS:    includeDNS,
+			App:      appType,
 		}
 
 		planMap[deployPlugin].apps = append(planMap[deployPlugin].apps, appReq)
@@ -373,10 +373,9 @@ func calculatePlanMap(cfg *config.Project, targetApps, skipApps []config.App) ma
 		}
 
 		appReq = &types.AppPlan{
-			IsDeploy:   false,
-			IsDNS:      true,
-			App:        appType,
-			Properties: deployProps,
+			IsDeploy: false,
+			IsDNS:    true,
+			App:      appType,
 		}
 
 		planMap[dnsPlugin].apps = append(planMap[dnsPlugin].apps, appReq)
@@ -484,6 +483,8 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, destroy bool, callback func(*types.ApplyAction)) (appStates map[string]*types.AppState, dependencyStates map[string]*types.DependencyState, err error) {
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 	retMap := make(map[*plugins.Plugin]*plugin_go.ApplyDoneResponse, len(planMap))
+	state.Apps = make(map[string]*types.App)
+	state.Dependencies = make(map[string]*types.Dependency)
 
 	if state.PluginsMap == nil {
 		state.PluginsMap = make(map[string]types.PluginStateMap)
@@ -491,6 +492,38 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 
 	appStates = make(map[string]*types.AppState)
 	dependencyStates = make(map[string]*types.DependencyState)
+
+	var mu sync.Mutex
+
+	processResponse := func(plug *plugins.Plugin, params *planParams, ret *plugin_go.ApplyDoneResponse) {
+		if ret == nil {
+			return
+		}
+
+		mu.Lock()
+
+		retMap[plug] = ret
+		state.PluginsMap[plug.Name] = ret.PluginMap
+
+		// Merge state with new changes.
+		for k, v := range ret.AppStates {
+			appStates[k] = v
+		}
+
+		for k, v := range ret.DependencyStates {
+			dependencyStates[k] = v
+		}
+
+		for _, app := range params.apps {
+			state.Apps[app.App.ID] = app.App
+		}
+
+		for _, dep := range params.deps {
+			state.Dependencies[dep.Dependency.ID] = dep.Dependency
+		}
+
+		mu.Unlock()
+	}
 
 	// Apply first pass plan (deployments without DNS).
 	for plug, params := range planMap {
@@ -500,28 +533,13 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 
 		g.Go(func() error {
 			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.targetApps, params.skipApps, params.args, destroy, callback)
-			if ret != nil {
-				retMap[plug] = ret
-				state.PluginsMap[plug.Name] = ret.PluginMap
-			}
+			processResponse(plug, params, ret)
 
 			return err
 		})
 	}
 
 	err = g.Wait()
-
-	// Merge state with new changes.
-	for _, ret := range retMap {
-		for k, v := range ret.AppStates {
-			appStates[k] = v
-		}
-
-		for k, v := range ret.DependencyStates {
-			dependencyStates[k] = v
-		}
-	}
-
 	if err != nil {
 		return nil, nil, err
 	}
@@ -536,27 +554,13 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 
 		g.Go(func() error {
 			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.targetApps, params.skipApps, params.args, destroy, callback)
-			if ret != nil {
-				retMap[plug] = ret
-				state.PluginsMap[plug.Name] = ret.PluginMap
-			}
+			processResponse(plug, params, ret)
 
 			return err
 		})
 	}
 
 	err = g.Wait()
-
-	// Merge state with new changes.
-	for _, ret := range retMap {
-		for k, v := range ret.AppStates {
-			appStates[k] = v
-		}
-
-		for k, v := range ret.DependencyStates {
-			dependencyStates[k] = v
-		}
-	}
 
 	return appStates, dependencyStates, err
 }

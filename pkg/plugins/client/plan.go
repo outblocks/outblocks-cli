@@ -10,15 +10,17 @@ import (
 
 func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*types.AppPlan, deps []*types.DependencyPlan, targetApps, skipApps []string, args map[string]interface{}, verify, destroy bool) (ret *plugin_go.PlanResponse, err error) {
 	err = c.lazySendReceive(ctx, &plugin_go.PlanRequest{
-		Apps:         apps,
-		Dependencies: deps,
-		TargetApps:   targetApps,
-		SkipApps:     skipApps,
-		Args:         args,
+		DeployBaseRequest: plugin_go.DeployBaseRequest{
+			Apps:         apps,
+			Dependencies: deps,
+			TargetApps:   targetApps,
+			SkipApps:     skipApps,
+			Args:         args,
 
-		PluginMap: state.PluginsMap[c.name],
-		Verify:    verify,
-		Destroy:   destroy,
+			StateMap: state.PluginsMap[c.name],
+			Destroy:  destroy,
+		},
+		Verify: verify,
 	},
 		func(res plugin_go.Response) error {
 			switch r := res.(type) {

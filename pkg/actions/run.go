@@ -159,14 +159,15 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		}
 
 		appType := app.PluginType()
+		appType.Env = plugin_util.MergeStringMaps(appType.Env, runInfo.Env)
+		appType.Properties = plugin_util.MergeMaps(cfg.Defaults.Run.Other, appType.Properties, runInfo.Other)
+
 		appRun := &types.AppRun{
-			App:        appType,
-			URL:        d.localURL(app.URL(), appPort, app.PathRedirect()),
-			IP:         loopbackIP,
-			Port:       appPort,
-			Command:    runInfo.Command,
-			Env:        plugin_util.MergeStringMaps(app.Env(), runInfo.Env),
-			Properties: plugin_util.MergeMaps(cfg.Defaults.Run.Other, runInfo.Other),
+			App:     appType,
+			URL:     d.localURL(app.URL(), appPort, app.PathRedirect()),
+			IP:      loopbackIP,
+			Port:    appPort,
+			Command: runInfo.Command,
 		}
 
 		info.apps = append(info.apps, appRun)
@@ -201,11 +202,12 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 			port++
 		}
 
+		depType.Properties = plugin_util.MergeMaps(cfg.Defaults.Run.Other, depType.Properties)
+
 		depRun := &types.DependencyRun{
 			Dependency: depType,
 			IP:         loopbackIP,
 			Port:       depPort,
-			Properties: plugin_util.MergeMaps(cfg.Defaults.Run.Other, dep.Run.Other),
 		}
 
 		info.deps = append(info.deps, depRun)
@@ -254,10 +256,10 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 	// Fill envs per app/dep.
 	for _, app := range info.apps {
-		app.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, app.Env, env)
+		app.App.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, app.App.Env, env)
 
-		app.Env["URL"] = app.URL
-		app.Env["PORT"] = strconv.Itoa(app.Port)
+		app.App.Env["URL"] = app.URL
+		app.App.Env["PORT"] = strconv.Itoa(app.Port)
 	}
 
 	for _, dep := range info.deps {

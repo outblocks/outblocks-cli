@@ -242,6 +242,7 @@ func (a *BasicApp) PluginType() *types.App {
 
 	return &types.App{
 		ID:           a.ID(),
+		Env:          a.Env(),
 		Dir:          a.Dir(),
 		Name:         a.AppName,
 		Type:         a.Type(),
