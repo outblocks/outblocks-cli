@@ -72,6 +72,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 		return err
 	}
 
+	helpFlag := e.rootCmd.PersistentFlags().Lookup("help")
 	e.opts.env = e.v.GetString("env")
 	cmd, _, _ := e.rootCmd.Find(os.Args[1:])
 
@@ -100,6 +101,10 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 
 	v, err := e.opts.valueOpts.MergeValues(ctx, filepath.Dir(cfgPath), getter.All())
 	if err != nil {
+		if helpFlag.Changed {
+			return nil
+		}
+
 		return fmt.Errorf("cannot load values files: %w", err)
 	}
 

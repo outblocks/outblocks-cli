@@ -61,8 +61,8 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 	f.BoolVar(&opts.SkipBuild, "skip-build", false, "skip build command before deploy")
 	f.BoolVar(&opts.Lock, "lock", true, "lock statefile during deploy")
 	f.BoolVar(&opts.AutoApprove, "yes", false, "auto approve changes")
-	f.StringArrayVarP(&targetApps, "target-apps", "t", nil, "target only specified apps, specify in a form of <app type>.<name>, e.g.: static.website")
-	f.StringArrayVarP(&skipApps, "skip-apps", "s", nil, "skip specified apps (if they exist), specify in a form of <app type>.<name>, e.g.: static.website")
+	f.StringArrayVarP(&targetApps, "target-apps", "t", nil, "target only specified apps, can specify multiple or separate values with comma in a form of <app type>.<name>, e.g.: static.website,service.api")
+	f.StringArrayVarP(&skipApps, "skip-apps", "s", nil, "skip specified apps (if they exist), can specify multiple or separate values with comma in a form of <app type>.<name>, e.g.: static.website,service.api")
 	f.BoolVar(&opts.SkipAllApps, "skip-all-apps", false, "skip all apps (if they exist)")
 
 	return cmd
