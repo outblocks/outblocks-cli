@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.39](https://github.com/outblocks/outblocks-cli/compare/v0.1.38...v0.1.39)
+
+> 2021-11-04
+
+### FEATURES
+
+[`43598f2`](https://github.com/outblocks/outblocks-cli/commit/43598f25411600e8f32c65bda898ba10b29ef351) filtering improvements
+
+
 ## [v0.1.38](https://github.com/outblocks/outblocks-cli/compare/v0.1.37...v0.1.38)
 
 > 2021-11-04
