@@ -249,8 +249,8 @@ func (e *Executor) rootLongHelp() string {
 }
 
 func addValueOptionsFlags(f *pflag.FlagSet, v *values.Options) {
-	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{defaultValuesYAML}, "specify values in a YAML file or a URL (can specify multiple)")
-	f.StringArrayVar(&v.Values, "set", []string{}, "set values, can specify multiple or separate values with commas: key1=val1,key2=val2")
+	f.StringSliceVarP(&v.ValueFiles, "values", "f", []string{defaultValuesYAML}, "specify values in a YAML file or a URL (can specify multiple or separate values with commas)")
+	f.StringSliceVar(&v.Values, "set", []string{}, "set values, can specify multiple or separate values with commas: key1=val1,key2=val2")
 }
 
 func (e *Executor) newRoot() *cobra.Command {

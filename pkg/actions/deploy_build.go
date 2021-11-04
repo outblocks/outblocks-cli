@@ -198,7 +198,7 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 			continue
 		}
 
-		if !skipAppIDsMap[app.ID()] {
+		if skipAppIDsMap[app.ID()] {
 			continue
 		}
 
