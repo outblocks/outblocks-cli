@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.38](https://github.com/outblocks/outblocks-cli/compare/v0.1.37...v0.1.38)
+
+> 2021-11-04
+
+### BUG FIXES
+
+[`a22e4e6`](https://github.com/outblocks/outblocks-cli/commit/a22e4e6171f3f61b614a2776d03a32a2ae691ee6) no status after canceled
+
+
 ## [v0.1.37](https://github.com/outblocks/outblocks-cli/compare/v0.1.36...v0.1.37)
 
 > 2021-11-04
