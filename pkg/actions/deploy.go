@@ -166,9 +166,11 @@ func (d *Deploy) Run(ctx context.Context) error { // nolint: gocyclo
 		d.log.Printf("All changes applied in %s.\n", time.Since(start).Truncate(timeTruncate))
 	}
 
-	err = d.showStateStatus(appStates, dependencyStates)
-	if err != nil {
-		return err
+	if !canceled {
+		err = d.showStateStatus(appStates, dependencyStates)
+		if err != nil {
+			return err
+		}
 	}
 
 	return saveErr
