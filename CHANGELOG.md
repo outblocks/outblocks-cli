@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.41](https://github.com/outblocks/outblocks-cli/compare/v0.1.40...v0.1.41)
+
+> 2021-11-05
+
+### FEATURES
+
+[`70be6ee`](https://github.com/outblocks/outblocks-cli/commit/70be6ee04ea7e1b9b184eda8d6b92c0681fee5f2) lock wait and plugin stream changes
+
+
 ## [v0.1.40](https://github.com/outblocks/outblocks-cli/compare/v0.1.39...v0.1.40)
 
 > 2021-11-05
