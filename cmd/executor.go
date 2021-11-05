@@ -97,6 +97,11 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 		return fmt.Errorf("cannot find current directory: %w", err)
 	}
 
+	pwd, err = filepath.EvalSymlinks(pwd)
+	if err != nil {
+		return fmt.Errorf("cannot evaluate current directory: %w", err)
+	}
+
 	cfgPath := fileutil.FindYAMLGoingUp(pwd, config.ProjectYAMLName)
 
 	v, err := e.opts.valueOpts.MergeValues(ctx, filepath.Dir(cfgPath), getter.All())

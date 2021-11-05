@@ -18,13 +18,16 @@ type SenderStream struct {
 	log  logger.Logger
 	conn net.Conn
 	r    *bufio.Reader
+
+	closeCh chan struct{}
 }
 
 func NewSenderStream(log logger.Logger, c net.Conn) *SenderStream {
 	return &SenderStream{
-		log:  log,
-		conn: c,
-		r:    bufio.NewReader(c),
+		log:     log,
+		conn:    c,
+		r:       bufio.NewReader(c),
+		closeCh: make(chan struct{}),
 	}
 }
 
@@ -54,11 +57,18 @@ func (s *SenderStream) DrainAndClose() error {
 		}
 	}
 
-	return s.conn.Close()
+	return s.Close()
 }
 
 func (s *SenderStream) Close() error {
-	return s.conn.Close()
+	err := s.conn.Close()
+	close(s.closeCh)
+
+	return err
+}
+
+func (s *SenderStream) Wait() chan struct{} {
+	return s.closeCh
 }
 
 func writeRequest(conn net.Conn, req plugin_go.Request) error {

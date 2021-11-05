@@ -10,7 +10,7 @@ import (
 func (c *Client) Start(ctx context.Context) error {
 	var err error
 
-	c.startOnce.Do(func() {
+	c.once.start.Do(func() {
 		err = c.lazySendReceive(ctx, &plugin_go.StartRequest{Properties: c.props}, func(res plugin_go.Response) error {
 			switch r := res.(type) {
 			case *plugin_go.EmptyResponse:

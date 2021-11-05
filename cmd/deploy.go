@@ -60,6 +60,7 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 	f.BoolVar(&opts.Destroy, "destroy", false, "destroy all existing resources")
 	f.BoolVar(&opts.SkipBuild, "skip-build", false, "skip build command before deploy")
 	f.BoolVar(&opts.Lock, "lock", true, "lock statefile during deploy")
+	f.DurationVar(&opts.LockWait, "lock-wait", 0, "wait for lock if it is already acquired")
 	f.BoolVar(&opts.AutoApprove, "yes", false, "auto approve changes")
 	f.StringSliceVarP(&targetApps, "target-apps", "t", nil, "target only specified apps, can specify multiple or separate values with comma in a form of <app type>.<name>, e.g.: static.website,service.api")
 	f.StringSliceVarP(&skipApps, "skip-apps", "s", nil, "skip specified apps (if they exist), can specify multiple or separate values with comma in a form of <app type>.<name>, e.g.: static.website,service.api")

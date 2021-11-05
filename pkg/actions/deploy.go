@@ -49,6 +49,7 @@ type DeployOptions struct {
 	Destroy              bool
 	SkipBuild            bool
 	Lock                 bool
+	LockWait             time.Duration
 	AutoApprove          bool
 	TargetApps, SkipApps []string
 	SkipAllApps          bool
@@ -60,6 +61,46 @@ func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Dep
 		cfg:  cfg,
 		opts: opts,
 	}
+}
+
+func (d *Deploy) Run(ctx context.Context) error {
+	verify := d.opts.Verify
+
+	// Build apps.
+	if !d.opts.SkipBuild && !d.opts.SkipAllApps {
+		err := d.buildApps(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Get state.
+	state, stateRes, err := getState(ctx, d.cfg, d.opts.Lock, d.opts.LockWait)
+	if err != nil {
+		return err
+	}
+
+	if stateRes.Source != nil && stateRes.Source.Created {
+		d.log.Infof("New state created: '%s'\n", stateRes.Source.Name)
+
+		verify = true
+	}
+
+	appStates, dependencyStates, canceled, err := d.planAndApply(ctx, verify, state, stateRes)
+
+	// Release lock if needed.
+	releaseErr := releaseLock(d.cfg, stateRes.LockInfo)
+
+	switch {
+	case err != nil:
+		return err
+	case releaseErr != nil:
+		return releaseErr
+	case canceled:
+		return nil
+	}
+
+	return d.showStateStatus(appStates, dependencyStates)
 }
 
 func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, stateRes *plugin_go.GetStateResponse) (appStates map[string]*types.AppState, dependencyStates map[string]*types.DependencyState, canceled bool, err error) {
@@ -112,7 +153,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	// Apply if needed.
 	if shouldApply {
 		callback := applyProgress(d.log, deployChanges, dnsChanges)
-		appStates, dependencyStates, err = apply(ctx, state, planMap, d.opts.Destroy, callback)
+		appStates, dependencyStates, err = apply(context.Background(), state, planMap, d.opts.Destroy, callback)
 	}
 
 	// Save current apps/dependencies.
@@ -143,46 +184,6 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	}
 
 	return appStates, dependencyStates, canceled, err
-}
-
-func (d *Deploy) Run(ctx context.Context) error {
-	verify := d.opts.Verify
-
-	// Build apps.
-	if !d.opts.SkipBuild && !d.opts.SkipAllApps {
-		err := d.buildApps(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Get state.
-	state, stateRes, err := getState(ctx, d.cfg, d.opts.Lock)
-	if err != nil {
-		return err
-	}
-
-	if stateRes.Source != nil && stateRes.Source.Created {
-		d.log.Infof("New state created: '%s'\n", stateRes.Source.Name)
-
-		verify = true
-	}
-
-	appStates, dependencyStates, canceled, err := d.planAndApply(ctx, verify, state, stateRes)
-
-	// Release lock if needed.
-	releaseErr := releaseLock(d.cfg, stateRes.LockInfo)
-
-	switch {
-	case err != nil:
-		return err
-	case releaseErr != nil:
-		return releaseErr
-	case canceled:
-		return nil
-	}
-
-	return d.showStateStatus(appStates, dependencyStates)
 }
 
 type dnsSetup struct {
@@ -339,7 +340,7 @@ func saveState(cfg *config.Project, data *types.StateData) (*plugin_go.SaveState
 	return plug.Client().SaveState(ctx, data, state.Type, state.Other)
 }
 
-func getState(ctx context.Context, cfg *config.Project, lock bool) (stateData *types.StateData, stateRes *plugin_go.GetStateResponse, err error) {
+func getState(ctx context.Context, cfg *config.Project, lock bool, lockWait time.Duration) (stateData *types.StateData, stateRes *plugin_go.GetStateResponse, err error) {
 	state := cfg.State
 	plug := state.Plugin()
 
@@ -354,7 +355,7 @@ func getState(ctx context.Context, cfg *config.Project, lock bool) (stateData *t
 		}, nil
 	}
 
-	ret, err := plug.Client().GetState(ctx, state.Type, state.Other, lock, client.YAMLContext{
+	ret, err := plug.Client().GetState(ctx, state.Type, state.Other, lock, lockWait, client.YAMLContext{
 		Prefix: "$.state",
 		Data:   cfg.YAMLData(),
 	})

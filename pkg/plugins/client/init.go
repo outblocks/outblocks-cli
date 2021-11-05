@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"io"
 
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 )
@@ -25,23 +24,19 @@ func (c *Client) ProjectInit(ctx context.Context, name string, deployPlugins, ru
 
 	for {
 		res, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-
 		if err != nil {
 			_ = stream.Close()
+
 			return nil, NewPluginError(c, "init error", err)
 		}
 
 		switch r := res.(type) {
 		case *plugin_go.ProjectInitResponse:
-			return r, nil
+			return r, stream.Close()
 		case *plugin_go.EmptyResponse:
 		default:
+			_ = stream.Close()
 			return nil, NewPluginError(c, "unexpected response to init request", err)
 		}
 	}
-
-	return nil, stream.DrainAndClose()
 }

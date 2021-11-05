@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -24,12 +25,13 @@ func (c *Client) Run(ctx context.Context, req *plugin_go.RunRequest,
 
 	for {
 		res, err := stream.Recv()
-		if err == io.EOF {
-			break
-		}
-
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
 			_ = stream.Close()
+
 			return ret, NewPluginError(c, "run error", err)
 		}
 
@@ -68,7 +70,9 @@ func (c *Client) Run(ctx context.Context, req *plugin_go.RunRequest,
 		default:
 			close(outCh)
 
-			return ret, NewPluginError(c, "unexpected response to run request", err)
+			_ = stream.Close()
+
+			return nil, NewPluginError(c, "unexpected response to run request", err)
 		}
 	}
 

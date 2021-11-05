@@ -26,7 +26,10 @@ type Client struct {
 	props       map[string]interface{}
 	yamlContext YAMLContext
 
-	initOnce, startOnce sync.Once
+	once struct {
+		init, start sync.Once
+	}
+	mu sync.Mutex
 }
 
 const (
@@ -45,6 +48,9 @@ func NewClient(log logger.Logger, name string, cmd *exec.Cmd, props map[string]i
 }
 
 func (c *Client) lazyInit(_ context.Context) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	stdoutPipe, err := c.cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -206,7 +212,7 @@ func (c *Client) handleOneWay(callback func(res plugin_go.Response) error, strea
 func (c *Client) lazyStartBiDi(ctx context.Context, req plugin_go.Request) (*SenderStream, error) {
 	var err error
 
-	c.initOnce.Do(func() {
+	c.once.init.Do(func() {
 		err = c.lazyInit(ctx)
 	})
 
@@ -240,10 +246,21 @@ func (c *Client) startBiDi(ctx context.Context, req plugin_go.Request) (*SenderS
 		return nil, err
 	}
 
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = c.Stop()
+		case <-stream.Wait():
+		}
+	}()
+
 	return stream, nil
 }
 
 func (c *Client) Stop() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if c.cmd == nil || c.cmd.Process == nil {
 		return nil
 	}

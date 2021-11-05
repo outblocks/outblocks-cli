@@ -4,13 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
-func (c *Client) GetState(ctx context.Context, typ string, props map[string]interface{}, lock bool, yamlContext YAMLContext) (ret *plugin_go.GetStateResponse, err error) {
-	err = c.lazySendReceive(ctx, &plugin_go.GetStateRequest{StateType: typ, Properties: props, Lock: lock}, func(res plugin_go.Response) error {
+func (c *Client) GetState(ctx context.Context, typ string, props map[string]interface{}, lock bool, lockWait time.Duration, yamlContext YAMLContext) (ret *plugin_go.GetStateResponse, err error) {
+	err = c.lazySendReceive(ctx, &plugin_go.GetStateRequest{
+		StateType:  typ,
+		Properties: props,
+		Lock:       lock,
+		LockWait:   lockWait,
+	}, func(res plugin_go.Response) error {
 		switch r := res.(type) {
 		case *plugin_go.GetStateResponse:
 			ret = r
