@@ -365,6 +365,10 @@ func getState(ctx context.Context, cfg *config.Project, lock bool) (stateData *t
 	stateData = &types.StateData{}
 	err = json.Unmarshal(ret.State, &stateData)
 
+	if stateData == nil {
+		stateData = &types.StateData{}
+	}
+
 	return stateData, ret, err
 }
 func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps bool) (apps []*types.App, retSkipAppIDs []string, err error) {
