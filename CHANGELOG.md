@@ -1,5 +1,18 @@
 # Outblocks CLI Changelog
 
+## [v0.1.43](https://github.com/outblocks/outblocks-cli/compare/v0.1.42...v0.1.43)
+
+> 2021-11-07
+
+### BUG FIXES
+
+[`d021dfd`](https://github.com/outblocks/outblocks-cli/commit/d021dfd829a8bbce3b86980d5030b319326dcfcb) lint
+
+### FEATURES
+
+[`12a2d21`](https://github.com/outblocks/outblocks-cli/commit/12a2d21d73b6d023bb44fc973a95715b93bb577a) simplify resource skipping
+
+
 ## [v0.1.42](https://github.com/outblocks/outblocks-cli/compare/v0.1.41...v0.1.42)
 
 > 2021-11-06
