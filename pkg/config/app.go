@@ -77,6 +77,7 @@ type AppDeploy struct {
 
 func (a *BasicApp) Validate() error {
 	return validation.ValidateStruct(a,
+		validation.Field(&a.AppName, validation.Required, validation.Match(ValidNameRegex)),
 		validation.Field(&a.AppURL, validation.Match(ValidURLRegex)),
 	)
 }
@@ -106,10 +107,6 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 
 	if a.AppDeploy == nil {
 		a.AppDeploy = &AppDeploy{}
-	}
-
-	if a.AppName == "" {
-		a.AppName = filepath.Base(a.AppDir)
 	}
 
 	if a.AppPathRedirect == "" {

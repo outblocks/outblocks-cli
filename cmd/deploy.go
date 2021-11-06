@@ -27,6 +27,14 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
+			if len(opts.TargetApps) > 0 && len(opts.SkipApps) > 0 {
+				return fmt.Errorf("target-apps and skip-apps arguments are mutually exclusive modes")
+			}
+
+			if opts.SkipAllApps && opts.Destroy {
+				return fmt.Errorf("skip-all-apps and destroy areare mutually exclusive modes")
+			}
+
 			for _, t := range targetApps {
 				tsplit := strings.SplitN(t, ".", 2)
 				if len(tsplit) != 2 {

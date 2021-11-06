@@ -18,7 +18,6 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 	"github.com/outblocks/outblocks-plugin-go/types"
-	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/outblocks/outblocks-plugin-go/util/errgroup"
 	"github.com/pterm/pterm"
 )
@@ -86,7 +85,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 		verify = true
 	}
 
-	appStates, dependencyStates, canceled, err := d.planAndApply(ctx, verify, state, stateRes)
+	canceled, err := d.planAndApply(ctx, verify, state, stateRes)
 
 	// Release lock if needed.
 	releaseErr := releaseLock(d.cfg, stateRes.LockInfo)
@@ -100,42 +99,45 @@ func (d *Deploy) Run(ctx context.Context) error {
 		return nil
 	}
 
-	return d.showStateStatus(appStates, dependencyStates)
+	return d.showStateStatus(state.Apps, state.Dependencies)
 }
 
-func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, stateRes *plugin_go.GetStateResponse) (appStates map[string]*types.AppState, dependencyStates map[string]*types.DependencyState, canceled bool, err error) {
+func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, stateRes *plugin_go.GetStateResponse) (canceled bool, err error) {
 	stateBeforeStr, _ := json.Marshal(state)
 
 	// Plan and apply.
-	apps, skipAppIDs, err := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
+	apps, skipAppIDs, destroy, err := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps, d.opts.Destroy)
 	if err != nil {
-		return nil, nil, false, err
+		return false, err
 	}
 
 	deps := filterDependencies(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
 
 	planMap, err := calculatePlanMap(d.cfg, apps, deps, d.opts.TargetApps, skipAppIDs)
 	if err != nil {
-		return nil, nil, false, err
+		return false, err
 	}
 
 	// Start plugins.
 	for plug := range planMap {
 		err = plug.Client().Start(ctx)
 		if err != nil {
-			return nil, nil, false, err
+			return false, err
 		}
 	}
 
 	spinner, _ := d.log.Spinner().WithRemoveWhenDone(true).Start("Planning...")
 
-	// Proceed with plan.
-	planRetMap, appStates, dependencyStates, err := plan(ctx, state, planMap, verify, d.opts.Destroy)
+	// Proceed with plan - reset state apps and deps.
+	state.Apps = make(map[string]*types.AppState)
+	state.Dependencies = make(map[string]*types.DependencyState)
+
+	planRetMap, err := plan(ctx, state, planMap, verify, destroy)
 	if err != nil {
 		_ = spinner.Stop()
 		_ = releaseLock(d.cfg, stateRes.LockInfo)
 
-		return nil, nil, false, err
+		return false, err
 	}
 
 	deployChanges, dnsChanges := computeChange(d.cfg, state, planRetMap)
@@ -153,21 +155,27 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	// Apply if needed.
 	if shouldApply {
 		callback := applyProgress(d.log, deployChanges, dnsChanges)
-		appStates, dependencyStates, err = apply(context.Background(), state, planMap, d.opts.Destroy, callback)
+		err = apply(context.Background(), state, planMap, destroy, callback)
 	}
 
-	// Save current apps/dependencies.
-	state.Apps = make(map[string]*types.App)
-	state.Dependencies = make(map[string]*types.Dependency)
-
+	// Merge state with current apps/deps if needed (they might not have a state defined).
 	for _, app := range apps {
-		state.Apps[app.ID] = app
+		if _, ok := state.Apps[app.ID]; ok {
+			continue
+		}
+
+		state.Apps[app.ID] = types.NewAppState(&app.App)
 	}
 
 	for _, dep := range deps {
-		state.Dependencies[dep.ID] = dep
+		if _, ok := state.Dependencies[dep.ID]; ok {
+			continue
+		}
+
+		state.Dependencies[dep.ID] = types.NewDependencyState(&dep.Dependency)
 	}
 
+	// Proceed with saving.
 	stateAfterStr, _ := json.Marshal(state)
 	shouldSave := !canceled && (!empty || !bytes.Equal(stateBeforeStr, stateAfterStr))
 
@@ -183,7 +191,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 		err = saveErr
 	}
 
-	return appStates, dependencyStates, canceled, err
+	return canceled, err
 }
 
 type dnsSetup struct {
@@ -323,6 +331,10 @@ func (d *Deploy) showStateStatus(appStates map[string]*types.AppState, dependenc
 		_ = d.log.Table().WithHasHeader().WithData(pterm.TableData(data)).Render()
 	}
 
+	if len(unreadyApps) > 0 {
+		return fmt.Errorf("not all apps are ready")
+	}
+
 	return nil
 }
 
@@ -372,122 +384,8 @@ func getState(ctx context.Context, cfg *config.Project, lock bool, lockWait time
 
 	return stateData, ret, err
 }
-func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps bool) (apps []*types.App, retSkipAppIDs []string, err error) {
-	if skipAllApps {
-		retSkipAppIDs := make([]string, 0, len(state.Apps))
-		apps = make([]*types.App, 0, len(state.Apps))
 
-		for _, app := range state.Apps {
-			apps = append(apps, app)
-			retSkipAppIDs = append(retSkipAppIDs, app.ID)
-		}
-
-		return apps, retSkipAppIDs, nil
-	}
-
-	// In non target and non skip mode, use config apps and deps.
-	if len(skipAppIDs) == 0 && len(targetAppIDs) == 0 {
-		apps = make([]*types.App, 0, len(cfg.Apps))
-		for _, app := range cfg.Apps {
-			apps = append(apps, app.PluginType())
-		}
-
-		return apps, nil, nil
-	}
-
-	appsMap := make(map[string]*types.App, len(state.Apps))
-	targetAppIDsMap := util.StringArrayToSet(targetAppIDs)
-	skipAppIDsMap := util.StringArrayToSet(skipAppIDs)
-
-	// Use state apps as base unless skip mode is enabled and they are not to be skipped.
-	for key, app := range state.Apps {
-		if len(skipAppIDsMap) > 0 && !skipAppIDsMap[key] {
-			continue
-		}
-
-		appsMap[key] = app
-	}
-
-	// Overwrite definition of non-skipped or target apps from project definition.
-	for _, app := range cfg.Apps {
-		if len(targetAppIDsMap) > 0 && !targetAppIDsMap[app.ID()] {
-			continue
-		}
-
-		if skipAppIDsMap[app.ID()] {
-			continue
-		}
-
-		appType := app.PluginType()
-		appType.Properties = plugin_util.MergeMaps(cfg.Defaults.Deploy.Other, appType.Properties, app.DeployInfo().Other)
-		appType.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, appType.Env, app.DeployInfo().Env)
-
-		appsMap[app.ID()] = appType
-	}
-
-	// If there are any left target/skip apps without definition, that's an error.
-	for app := range targetAppIDsMap {
-		if appsMap[app] == nil {
-			return nil, nil, fmt.Errorf("unknown target app specified: app with ID '%s' is missing definition", app)
-		}
-	}
-
-	for app := range skipAppIDsMap {
-		if appsMap[app] == nil {
-			return nil, nil, fmt.Errorf("unknown skip app specified: app with ID '%s' is missing definition", app)
-		}
-	}
-
-	// Flatten maps to list.
-	apps = make([]*types.App, 0, len(appsMap))
-	for _, app := range appsMap {
-		apps = append(apps, app)
-	}
-
-	return apps, skipAppIDs, err
-}
-
-func filterDependencies(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps bool) (deps []*types.Dependency) {
-	if skipAllApps {
-		deps = make([]*types.Dependency, 0, len(state.Dependencies))
-		for _, dep := range state.Dependencies {
-			deps = append(deps, dep)
-		}
-
-		return deps
-	}
-
-	// In non target and non skip mode, use config apps and deps.
-	if len(skipAppIDs) == 0 && len(targetAppIDs) == 0 {
-		deps = make([]*types.Dependency, 0, len(cfg.Dependencies))
-		for _, dep := range cfg.Dependencies {
-			deps = append(deps, dep.PluginType())
-		}
-
-		return deps
-	}
-
-	dependenciesMap := make(map[string]*types.Dependency, len(state.Dependencies))
-
-	// Always merge with dependencies from state.
-	for key, dep := range state.Dependencies {
-		dependenciesMap[key] = dep
-	}
-
-	for _, dep := range cfg.Dependencies {
-		dependenciesMap[dep.ID()] = dep.PluginType()
-	}
-
-	// Flatten maps to list.
-	deps = make([]*types.Dependency, 0, len(dependenciesMap))
-	for _, dep := range dependenciesMap {
-		deps = append(deps, dep)
-	}
-
-	return deps
-}
-
-func calculatePlanMap(cfg *config.Project, apps []*types.App, deps []*types.Dependency, targetAppIDs, skipAppIDs []string) (map[*plugins.Plugin]*planParams, error) {
+func calculatePlanMap(cfg *config.Project, apps []*types.AppState, deps []*types.DependencyState, targetAppIDs, skipAppIDs []string) (map[*plugins.Plugin]*planParams, error) {
 	planMap := make(map[*plugins.Plugin]*planParams)
 
 	for _, app := range apps {
@@ -505,9 +403,9 @@ func calculatePlanMap(cfg *config.Project, apps []*types.App, deps []*types.Depe
 		}
 
 		appReq := &types.AppPlan{
+			App:      app,
 			IsDeploy: true,
 			IsDNS:    includeDNS,
-			App:      app,
 		}
 
 		planMap[deployPlugin].apps = append(planMap[deployPlugin].apps, appReq)
@@ -530,9 +428,9 @@ func calculatePlanMap(cfg *config.Project, apps []*types.App, deps []*types.Depe
 		}
 
 		appReq = &types.AppPlan{
+			App:      app,
 			IsDeploy: false,
 			IsDNS:    true,
-			App:      app,
 		}
 
 		planMap[dnsPlugin].apps = append(planMap[dnsPlugin].apps, appReq)
@@ -583,13 +481,11 @@ func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetApp
 	return planMap
 }
 
-func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, verify, destroy bool) (retMap map[*plugins.Plugin]*plugin_go.PlanResponse, appStates map[string]*types.AppState, dependencyStates map[string]*types.DependencyState, err error) {
+func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, verify, destroy bool) (retMap map[*plugins.Plugin]*plugin_go.PlanResponse, err error) {
 	if state.PluginsMap == nil {
 		state.PluginsMap = make(map[string]types.PluginStateMap)
 	}
 
-	appStates = make(map[string]*types.AppState)
-	dependencyStates = make(map[string]*types.DependencyState)
 	retMap = make(map[*plugins.Plugin]*plugin_go.PlanResponse, len(planMap))
 
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
@@ -618,29 +514,28 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 		state.PluginsMap[p.Name] = ret.PluginMap
 
 		for k, v := range ret.AppStates {
-			appStates[k] = v
+			// TODO: validate app state returned
+			state.Apps[k] = v
 		}
 
 		for k, v := range ret.DependencyStates {
-			dependencyStates[k] = v
+			state.Dependencies[k] = v
 		}
 	}
 
-	return retMap, appStates, dependencyStates, err
+	return retMap, err
 }
 
-func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, destroy bool, callback func(*types.ApplyAction)) (appStates map[string]*types.AppState, dependencyStates map[string]*types.DependencyState, err error) {
+func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, destroy bool, callback func(*types.ApplyAction)) error {
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 	retMap := make(map[*plugins.Plugin]*plugin_go.ApplyDoneResponse, len(planMap))
-	state.Apps = make(map[string]*types.App)
-	state.Dependencies = make(map[string]*types.Dependency)
 
 	if state.PluginsMap == nil {
 		state.PluginsMap = make(map[string]types.PluginStateMap)
 	}
 
-	appStates = make(map[string]*types.AppState)
-	dependencyStates = make(map[string]*types.DependencyState)
+	appStates := state.Apps
+	dependencyStates := state.Dependencies
 
 	var mu sync.Mutex
 
@@ -680,9 +575,9 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		})
 	}
 
-	err = g.Wait()
+	err := g.Wait()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	// Apply second pass plan (DNS and deployments with DNS).
@@ -703,5 +598,5 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 
 	err = g.Wait()
 
-	return appStates, dependencyStates, err
+	return err
 }

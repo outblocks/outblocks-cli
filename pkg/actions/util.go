@@ -67,8 +67,8 @@ func newChangeFromPlanAction(cfg *config.Project, act *types.PlanAction, state *
 			app = a.PluginType()
 		}
 
-		if app == nil {
-			app = state.Apps[act.Namespace]
+		if app == nil && state.Apps[act.Namespace] != nil {
+			app = &state.Apps[act.Namespace].App
 		}
 
 		if app != nil {
@@ -83,8 +83,8 @@ func newChangeFromPlanAction(cfg *config.Project, act *types.PlanAction, state *
 			dep = d.PluginType()
 		}
 
-		if dep == nil {
-			dep = state.Dependencies[act.Namespace]
+		if dep == nil && state.Dependencies[act.Namespace] != nil {
+			dep = &state.Dependencies[act.Namespace].Dependency
 		}
 
 		if dep != nil {

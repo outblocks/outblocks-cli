@@ -1,10 +1,12 @@
 package logger
 
 import (
+	"os"
 	"sync"
 	"time"
 
 	"github.com/pterm/pterm"
+	"golang.org/x/term"
 )
 
 type ProgressbarPrinter struct {
@@ -138,6 +140,10 @@ func (p *ProgressbarPrinter) Start() (*ProgressbarPrinter, error) {
 	pp := &ProgressbarPrinter{
 		ProgressbarPrinter: started,
 		m:                  &sync.Mutex{},
+	}
+
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return pp, nil
 	}
 
 	go func() {
