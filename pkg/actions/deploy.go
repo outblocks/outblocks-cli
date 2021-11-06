@@ -469,7 +469,6 @@ func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetApp
 		for _, app := range planParam.apps {
 			if skipAppIDsMap[app.App.ID] || (len(targetAppIDsMap) > 0 && !targetAppIDsMap[app.App.ID]) {
 				app.Skip = true
-
 			}
 		}
 	}
