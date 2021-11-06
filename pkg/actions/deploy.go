@@ -25,11 +25,10 @@ import (
 const deployCommand = "deploy"
 
 type planParams struct {
-	apps                 []*types.AppPlan
-	deps                 []*types.DependencyPlan
-	targetApps, skipApps []string
-	args                 map[string]interface{}
-	firstPass            bool
+	apps      []*types.AppPlan
+	deps      []*types.DependencyPlan
+	args      map[string]interface{}
+	firstPass bool
 }
 
 type Deploy struct {
@@ -468,12 +467,9 @@ func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetApp
 
 	for _, planParam := range planMap {
 		for _, app := range planParam.apps {
-			if targetAppIDsMap[app.App.ID] {
-				planParam.targetApps = append(planParam.targetApps, app.App.ID)
-			}
+			if skipAppIDsMap[app.App.ID] || (len(targetAppIDsMap) > 0 && !targetAppIDsMap[app.App.ID]) {
+				app.Skip = true
 
-			if skipAppIDsMap[app.App.ID] {
-				planParam.skipApps = append(planParam.skipApps, app.App.ID)
 			}
 		}
 	}
@@ -496,7 +492,7 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 		params := params
 
 		g.Go(func() error {
-			ret, err := plug.Client().Plan(ctx, state, params.apps, params.deps, params.targetApps, params.skipApps, params.args, verify, destroy)
+			ret, err := plug.Client().Plan(ctx, state, params.apps, params.deps, params.args, verify, destroy)
 			if err != nil {
 				return err
 			}
@@ -568,7 +564,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		}
 
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.targetApps, params.skipApps, params.args, destroy, callback)
+			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.args, destroy, callback)
 			processResponse(plug, ret)
 
 			return err
@@ -589,7 +585,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		}
 
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.targetApps, params.skipApps, params.args, destroy, callback)
+			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.args, destroy, callback)
 			processResponse(plug, ret)
 
 			return err

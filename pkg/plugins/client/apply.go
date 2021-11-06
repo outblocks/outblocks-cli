@@ -7,13 +7,11 @@ import (
 	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
-func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*types.AppPlan, deps []*types.DependencyPlan, targetApps, skipApps []string, args map[string]interface{}, destroy bool, callback func(*types.ApplyAction)) (ret *plugin_go.ApplyDoneResponse, err error) {
+func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*types.AppPlan, deps []*types.DependencyPlan, args map[string]interface{}, destroy bool, callback func(*types.ApplyAction)) (ret *plugin_go.ApplyDoneResponse, err error) {
 	stream, err := c.lazyStartBiDi(ctx, &plugin_go.ApplyRequest{
 		DeployBaseRequest: plugin_go.DeployBaseRequest{
 			Apps:         apps,
 			Dependencies: deps,
-			TargetApps:   targetApps,
-			SkipApps:     skipApps,
 			Args:         args,
 
 			StateMap: state.PluginsMap[c.name],
