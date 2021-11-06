@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.42](https://github.com/outblocks/outblocks-cli/compare/v0.1.41...v0.1.42)
+
+> 2021-11-06
+
+### FEATURES
+
+[`a1c7173`](https://github.com/outblocks/outblocks-cli/commit/a1c71736797e9e22157c6ea9a3e6c8b449ed45c8) adapt for sdk changes, deploy filtering
+
+
 ## [v0.1.41](https://github.com/outblocks/outblocks-cli/compare/v0.1.40...v0.1.41)
 
 > 2021-11-05
