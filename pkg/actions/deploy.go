@@ -182,7 +182,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 		_, saveErr = saveState(d.cfg, state)
 	}
 
-	if shouldApply {
+	if shouldApply && err == nil {
 		d.log.Printf("All changes applied in %s.\n", time.Since(start).Truncate(timeTruncate))
 	}
 
@@ -298,13 +298,19 @@ func (d *Deploy) showStateStatus(appStates map[string]*types.AppState, dependenc
 
 	// Dependency Status.
 	if len(dependencyStates) > 0 {
-		d.log.Section().Println("Dependency Status")
+		first := true
 
 		for _, depState := range dependencyStates {
 			dep := depState.Dependency
 
 			if depState.DNS == nil {
 				continue
+			}
+
+			if first {
+				d.log.Section().Println("Dependency Status")
+
+				first = false
 			}
 
 			d.log.Printf("%s %s %s (%s)\n", pterm.Green(depState.DNS.ConnectionInfo), pterm.Gray("==>"), appNameStyle.Sprint(dep.Name), dep.Type)

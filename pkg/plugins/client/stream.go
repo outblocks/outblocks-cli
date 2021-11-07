@@ -52,8 +52,13 @@ func (s *SenderStream) Recv() (plugin_go.Response, error) {
 func (s *SenderStream) DrainAndClose() error {
 	for {
 		_, err := s.Recv()
-		if err != nil {
+		if errors.Is(err, io.EOF) {
 			break
+		}
+
+		if err != nil {
+			_ = s.Close()
+			return err
 		}
 	}
 

@@ -15,7 +15,7 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.6.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20211106234251-c71bad7aa25c
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20211107023632-799e09af4647
 	github.com/pterm/pterm v0.12.33
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
@@ -97,4 +97,4 @@ replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.2021080
 
 // replace github.com/goccy/go-yaml => ../go-yaml
 
-// replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go
+replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go
