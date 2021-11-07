@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.44](https://github.com/outblocks/outblocks-cli/compare/v0.1.43...v0.1.44)
+
+> 2021-11-07
+
+### FEATURES
+
+[`6aaf69b`](https://github.com/outblocks/outblocks-cli/commit/6aaf69b61b962557463e130c2fb3719bab60f16a) dep status, error propagation
+
+
 ## [v0.1.43](https://github.com/outblocks/outblocks-cli/compare/v0.1.42...v0.1.43)
 
 > 2021-11-07
