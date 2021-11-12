@@ -2,10 +2,11 @@ package logger
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
 
+	"github.com/gookit/color"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/pterm/pterm"
 )
 
@@ -20,10 +21,10 @@ const (
 
 type Log struct {
 	logLevel                        LogLevel
-	debug, info, warn, err, success *pterm.PrefixPrinter
-	spinner                         *pterm.SpinnerPrinter
-	table                           *pterm.TablePrinter
-	section                         *pterm.SectionPrinter
+	debug, info, warn, err, success *PrefixPrinter
+	spinner                         *SpinnerPrinter
+	table                           *TablePrinter
+	section                         *SectionPrinter
 	progress                        *ProgressbarPrinter
 }
 
@@ -49,6 +50,7 @@ func NewLogger() Logger {
 	spinner.SuccessPrinter = success
 	spinner.WarningPrinter = warn
 	spinner.FailPrinter = err
+	spinner.RemoveWhenDone = true
 
 	table := pterm.DefaultTable
 	section := pterm.DefaultSection
@@ -56,44 +58,56 @@ func NewLogger() Logger {
 
 	l := &Log{
 		logLevel: LogLevelDebug,
-		debug:    debug,
-		info:     &pterm.Info,
-		warn:     warn,
-		err:      err,
-		success:  success,
+		debug:    &PrefixPrinter{PrefixPrinter: debug},
+		info:     &PrefixPrinter{PrefixPrinter: &pterm.Info},
+		warn:     &PrefixPrinter{PrefixPrinter: warn},
+		err:      &PrefixPrinter{PrefixPrinter: err},
+		success:  &PrefixPrinter{PrefixPrinter: success},
 
-		spinner:  &spinner,
-		table:    &table,
-		section:  &section,
+		spinner:  &SpinnerPrinter{SpinnerPrinter: spinner},
+		table:    &TablePrinter{TablePrinter: &table},
+		section:  &SectionPrinter{SectionPrinter: section},
 		progress: &progress,
 	}
 
 	return l
 }
 
+func printer(a ...interface{}) {
+	if util.IsTermDumb() {
+		if !pterm.Output {
+			return
+		}
+
+		color.Print(color.Sprint(pterm.Sprint(a...)))
+
+		return
+	}
+
+	pterm.Print(a...)
+}
+func (l *Log) Print(a ...interface{}) {
+	printer(a...)
+}
+
 func (l *Log) Printf(format string, a ...interface{}) {
-	pterm.Printf(format, a...)
+	l.Print(pterm.Sprintf(format, a...))
 }
 
 func (l *Log) Println(a ...interface{}) {
-	pterm.Println(a...)
+	l.Print(pterm.Sprintln(a...))
 }
 
 func (l *Log) Printo(a ...interface{}) {
+	if util.IsTermDumb() {
+		l.Println(a...)
+
+		return
+	}
+
 	pterm.Printo(a...)
 }
 
-func (l *Log) StderrPrintf(format string, a ...interface{}) {
-	pterm.Fprint(os.Stderr, pterm.Sprintf(format, a...))
-}
-
-func (l *Log) StderrPrintln(a ...interface{}) {
-	pterm.Fprintln(os.Stderr, a...)
-}
-
-func (l *Log) StderrPrinto(a ...interface{}) {
-	pterm.Fprinto(os.Stderr, a...)
-}
 func (l *Log) Debugf(format string, a ...interface{}) {
 	if l.logLevel > LogLevelDebug {
 		return
@@ -189,18 +203,18 @@ func (l *Log) Level() LogLevel {
 	return l.logLevel
 }
 
-func (l *Log) Spinner() pterm.SpinnerPrinter {
-	return *l.spinner
+func (l *Log) Spinner() Spinner {
+	return l.spinner
 }
 
-func (l *Log) ProgressBar() ProgressbarPrinter {
-	return *l.progress
+func (l *Log) ProgressBar() Progressbar {
+	return l.progress
 }
 
-func (l *Log) Table() pterm.TablePrinter {
-	return *l.table
+func (l *Log) Table() Table {
+	return l.table
 }
 
-func (l *Log) Section() *pterm.SectionPrinter {
+func (l *Log) Section() Section {
 	return l.section
 }

@@ -286,7 +286,7 @@ func (d *Run) newHTTPServer(routing map[*url.URL]*url.URL) *http.Server {
 }
 
 func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunResult, []*run.LocalRunResult, error) {
-	spinner, _ := d.log.Spinner().WithRemoveWhenDone(true).Start("Starting apps and dependencies...")
+	spinner, _ := d.log.Spinner().Start("Starting apps and dependencies...")
 
 	var (
 		pluginRets []*run.PluginRunResult
@@ -297,7 +297,7 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 	if len(runInfo.pluginDepsMap) > 0 {
 		pluginRet, err := run.ThroughPlugin(ctx, runInfo.pluginDepsMap)
 		if err != nil {
-			_ = spinner.Stop()
+			spinner.Stop()
 			return nil, nil, err
 		}
 
@@ -315,7 +315,7 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 		localRet, err := run.Local(ctx, nil, runInfo.localDeps)
 
 		if err != nil {
-			_ = spinner.Stop()
+			spinner.Stop()
 			return nil, nil, err
 		}
 
@@ -332,7 +332,7 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 	if len(runInfo.pluginAppsMap) > 0 {
 		pluginRet, err := run.ThroughPlugin(ctx, runInfo.pluginAppsMap)
 		if err != nil {
-			_ = spinner.Stop()
+			spinner.Stop()
 			return nil, nil, err
 		}
 
@@ -350,7 +350,7 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 		localRet, err := run.Local(ctx, runInfo.localApps, nil)
 
 		if err != nil {
-			_ = spinner.Stop()
+			spinner.Stop()
 			return nil, nil, err
 		}
 
@@ -363,7 +363,7 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 		}()
 	}
 
-	_ = spinner.Stop()
+	spinner.Stop()
 
 	return pluginRets, localRets, nil
 }
@@ -407,7 +407,7 @@ func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 	}
 
 	err := g.Wait()
-	_, _ = prog.Stop()
+	prog.Stop()
 
 	return err
 }

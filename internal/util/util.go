@@ -3,8 +3,11 @@ package util
 import (
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"regexp"
+
+	"golang.org/x/term"
 )
 
 func InterfaceSlice(slice interface{}) []interface{} {
@@ -65,4 +68,24 @@ func StringArrayToSet(in []string) map[string]bool {
 	}
 
 	return outMap
+}
+
+func IsInteractive() bool {
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return false
+	}
+
+	if os.Getenv("CI") == "true" {
+		return false
+	}
+
+	return true
+}
+
+func IsTermDumb() bool {
+	if os.Getenv("CI") == "true" || os.Getenv("TERM") == "dumb" {
+		return true
+	}
+
+	return true
 }

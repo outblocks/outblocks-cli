@@ -12,10 +12,11 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/goccy/go-yaml v1.8.9
 	github.com/google/go-github/v35 v35.3.0
+	github.com/gookit/color v1.4.2
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.6.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20211107023632-799e09af4647
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20211112163452-b28f04e185aa
 	github.com/pterm/pterm v0.12.33
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
@@ -45,7 +46,6 @@ require (
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/gookit/color v1.4.2 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect

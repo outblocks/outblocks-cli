@@ -1,14 +1,15 @@
 package logger
 
-import "github.com/pterm/pterm"
+import (
+	"time"
+
+	"github.com/pterm/pterm"
+)
 
 type Logger interface {
 	Printf(format string, a ...interface{})
 	Println(a ...interface{})
 	Printo(a ...interface{})
-	StderrPrintf(format string, a ...interface{})
-	StderrPrintln(a ...interface{})
-	StderrPrinto(a ...interface{})
 
 	Debugf(format string, a ...interface{})
 	Debugln(a ...interface{})
@@ -25,8 +26,47 @@ type Logger interface {
 	SetLevel(logLevel LogLevel)
 	SetLevelString(logLevel string) error
 
-	Spinner() pterm.SpinnerPrinter
-	Table() pterm.TablePrinter
-	Section() *pterm.SectionPrinter
-	ProgressBar() ProgressbarPrinter
+	Spinner() Spinner
+	Table() Table
+	Section() Section
+	ProgressBar() Progressbar
+}
+
+type Spinner interface {
+	Start(text ...interface{}) (Spinner, error)
+	Stop()
+}
+
+type Table interface {
+	WithHasHeader(b ...bool) Table
+	WithData(data [][]string) Table
+	Srender() (string, error)
+	Render() error
+}
+
+type Section interface {
+	Printf(format string, a ...interface{})
+	Println(a ...interface{})
+}
+
+type Progressbar interface {
+	WithTitle(name string) Progressbar
+	WithTotal(total int) Progressbar
+	WithCurrent(current int) Progressbar
+	WithBarCharacter(char string) Progressbar
+	WithLastCharacter(char string) Progressbar
+	WithElapsedTimeRoundingFactor(duration time.Duration) Progressbar
+	WithShowElapsedTime(b ...bool) Progressbar
+	WithShowCount(b ...bool) Progressbar
+	WithShowTitle(b ...bool) Progressbar
+	WithShowPercentage(b ...bool) Progressbar
+	WithTitleStyle(style *pterm.Style) Progressbar
+	WithBarStyle(style *pterm.Style) Progressbar
+	WithRemoveWhenDone(b ...bool) Progressbar
+
+	Increment()
+	Add(count int)
+	UpdateTitle(title string)
+	Start() (Progressbar, error)
+	Stop()
 }

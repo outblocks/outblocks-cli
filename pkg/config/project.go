@@ -343,7 +343,7 @@ func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *pl
 			plug.SetLoaded(plugin)
 
 			if err != nil {
-				_, _ = prog.Stop()
+				prog.Stop()
 
 				return fmt.Errorf("unable to load '%s' plugin: %w", plug.Name, err)
 			}

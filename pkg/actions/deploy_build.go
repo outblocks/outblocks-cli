@@ -257,7 +257,7 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 
 	err := g.Wait()
 
-	_, _ = prog.Stop()
+	prog.Stop()
 
 	return err
 }

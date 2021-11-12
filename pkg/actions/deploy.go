@@ -125,7 +125,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 		}
 	}
 
-	spinner, _ := d.log.Spinner().WithRemoveWhenDone(true).Start("Planning...")
+	spinner, _ := d.log.Spinner().Start("Planning...")
 
 	// Proceed with plan - reset state apps and deps.
 	state.Apps = make(map[string]*types.AppState)
@@ -133,7 +133,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 
 	planRetMap, err := plan(ctx, state, planMap, verify, destroy)
 	if err != nil {
-		_ = spinner.Stop()
+		spinner.Stop()
 		_ = releaseLock(d.cfg, stateRes.LockInfo)
 
 		return false, err
@@ -141,7 +141,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 
 	deployChanges, dnsChanges := computeChange(d.cfg, state, planRetMap)
 
-	_ = spinner.Stop()
+	spinner.Stop()
 
 	empty, canceled := planPrompt(d.log, deployChanges, dnsChanges, d.opts.AutoApprove)
 
