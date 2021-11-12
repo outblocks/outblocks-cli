@@ -134,6 +134,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	planRetMap, err := plan(ctx, state, planMap, verify, destroy)
 	if err != nil {
 		spinner.Stop()
+
 		_ = releaseLock(d.cfg, stateRes.LockInfo)
 
 		return false, err

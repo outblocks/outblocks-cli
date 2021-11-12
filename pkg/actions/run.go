@@ -407,6 +407,7 @@ func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 	}
 
 	err := g.Wait()
+
 	prog.Stop()
 
 	return err
