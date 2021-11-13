@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.45](https://github.com/outblocks/outblocks-cli/compare/v0.1.44...v0.1.45)
+
+> 2021-11-12
+
+### FEATURES
+
+[`3285a91`](https://github.com/outblocks/outblocks-cli/commit/3285a91b149503162ca321078f1e4c0fb731e367) support for dumb terminals, proper interface for logger
+
+
 ## [v0.1.44](https://github.com/outblocks/outblocks-cli/compare/v0.1.43...v0.1.44)
 
 > 2021-11-07
