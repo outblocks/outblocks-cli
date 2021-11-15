@@ -1,8 +1,17 @@
 # Outblocks CLI Changelog
 
+## [v0.1.46](https://github.com/outblocks/outblocks-cli/compare/v0.1.45...v0.1.46)
+
+> 2021-11-15
+
+### FEATURES
+
+[`84ad644`](https://github.com/outblocks/outblocks-cli/commit/84ad6440f6fae8f6c7f1c09ae09a20b2d9122793) initial critical support, build vars
+
+
 ## [v0.1.45](https://github.com/outblocks/outblocks-cli/compare/v0.1.44...v0.1.45)
 
-> 2021-11-12
+> 2021-11-13
 
 ### FEATURES
 
