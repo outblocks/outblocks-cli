@@ -31,8 +31,8 @@ type App interface {
 	Check(cfg *Project) error
 	Type() string
 	PluginType() *types.App
-	RunInfo() *AppRun
-	DeployInfo() *AppDeploy
+	RunInfo() *types.AppRunInfo
+	DeployInfo() *types.AppDeployInfo
 	SupportsLocal() bool
 	YAMLError(path, msg string) error
 
@@ -45,11 +45,11 @@ type BasicApp struct {
 	AppName         string                 `json:"name"`
 	AppType         string                 `json:"type"`
 	AppURL          string                 `json:"url"`
-	AppPathRedirect string                 `json:"pathRedirect"`
+	AppPathRedirect string                 `json:"path_redirect"`
 	AppEnv          map[string]string      `json:"env"`
 	AppDir          string                 `json:"dir"`
-	AppRun          *AppRun                `json:"run"`
-	AppDeploy       *AppDeploy             `json:"deploy"`
+	AppRun          *types.AppRunInfo      `json:"run"`
+	AppDeploy       *types.AppDeployInfo   `json:"deploy"`
 	Needs           map[string]*AppNeed    `json:"needs"`
 	Other           map[string]interface{} `yaml:"-,remain"`
 
@@ -61,18 +61,11 @@ type BasicApp struct {
 	runPlugin    *plugins.Plugin
 }
 
-type AppRun struct {
-	Plugin  string                 `json:"plugin,omitempty"`
-	Command string                 `json:"command,omitempty"`
-	Port    int                    `json:"port,omitempty"`
-	Env     map[string]string      `json:"env,omitempty"`
-	Other   map[string]interface{} `yaml:"-,remain"`
-}
-
-type AppDeploy struct {
-	Plugin string                 `json:"plugin,omitempty"`
-	Env    map[string]string      `json:"env,omitempty"`
-	Other  map[string]interface{} `yaml:"-,remain"`
+func NewBasicApp() *BasicApp {
+	return &BasicApp{
+		AppRun:    &types.AppRunInfo{},
+		AppDeploy: &types.AppDeployInfo{},
+	}
 }
 
 func (a *BasicApp) Validate() error {
@@ -86,7 +79,7 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 	var err error
 
 	if a.AppRun == nil {
-		a.AppRun = &AppRun{}
+		a.AppRun = &types.AppRunInfo{}
 	}
 
 	if a.AppDir == "" {
@@ -94,7 +87,7 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 	} else {
 		a.AppDir, err = filepath.Abs(a.AppDir)
 		if err != nil {
-			return a.YAMLError("$.dir", "App.Dir is invalid")
+			return a.YAMLError("$.dir", "dir is invalid")
 		}
 	}
 
@@ -106,7 +99,7 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 	a.AppDir = "./" + a.AppDir
 
 	if a.AppDeploy == nil {
-		a.AppDeploy = &AppDeploy{}
+		a.AppDeploy = &types.AppDeployInfo{}
 	}
 
 	if a.AppPathRedirect == "" {
@@ -126,7 +119,7 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 
 		a.url, err = url.Parse(a.AppURL)
 		if err != nil {
-			return a.YAMLError("$.url", "App.URL is invalid")
+			return a.YAMLError("$.url", "url is invalid")
 		}
 
 		if a.url.Path == "" {
@@ -244,7 +237,7 @@ func (a *BasicApp) PluginType() *types.App {
 		appURL = a.url.String()
 	}
 
-	var dnsPluginName, deployPluginName string
+	var dnsPluginName, deployPluginName, runPluginName string
 
 	if a.DeployPlugin() != nil {
 		deployPluginName = a.DeployPlugin().Name
@@ -254,16 +247,23 @@ func (a *BasicApp) PluginType() *types.App {
 		dnsPluginName = a.DNSPlugin().Name
 	}
 
+	if a.RunPlugin() != nil {
+		runPluginName = a.RunPlugin().Name
+	}
+
 	return &types.App{
 		ID:           a.ID(),
-		DeployPlugin: deployPluginName,
-		DNSPlugin:    dnsPluginName,
-		Env:          a.Env(),
-		Dir:          a.Dir(),
 		Name:         a.AppName,
 		Type:         a.Type(),
+		Dir:          a.Dir(),
 		URL:          appURL,
 		PathRedirect: a.AppPathRedirect,
+		Env:          a.Env(),
+		DeployPlugin: deployPluginName,
+		DNSPlugin:    dnsPluginName,
+		RunPlugin:    runPluginName,
+		Run:          a.AppRun,
+		Deploy:       a.AppDeploy,
 		Needs:        needs,
 		Properties:   a.Other,
 	}
@@ -301,11 +301,11 @@ func (a *BasicApp) SupportsLocal() bool {
 	return false
 }
 
-func (a *BasicApp) RunInfo() *AppRun {
+func (a *BasicApp) RunInfo() *types.AppRunInfo {
 	return a.AppRun
 }
 
-func (a *BasicApp) DeployInfo() *AppDeploy {
+func (a *BasicApp) DeployInfo() *types.AppDeployInfo {
 	return a.AppDeploy
 }
 

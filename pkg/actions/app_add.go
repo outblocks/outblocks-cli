@@ -394,7 +394,7 @@ func (d *AppAdd) prompt() (interface{}, error) {
 		return d.promptStatic()
 	case config.AppTypeService:
 		return d.promptService()
-		// TODO: add adding app function
+		// TODO: add adding function app
 	default:
 		return nil, fmt.Errorf("unsupported app type (WIP)")
 	}
@@ -518,10 +518,10 @@ func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
 				AppType: config.AppTypeStatic,
 				AppURL:  d.opts.URL,
 				AppDir:  d.opts.Dir,
-				AppDeploy: &config.AppDeploy{
+				AppDeploy: &types.AppDeployInfo{
 					Plugin: d.opts.DeployPlugin,
 				},
-				AppRun: &config.AppRun{
+				AppRun: &types.AppRunInfo{
 					Plugin:  d.opts.RunPlugin,
 					Command: d.opts.RunCommand,
 				},
@@ -545,7 +545,7 @@ func (d *AppAdd) promptService() (*serviceAppInfo, error) { // nolint: unparam
 				AppType: config.AppTypeService,
 				AppURL:  d.opts.URL,
 				AppDir:  d.opts.Dir,
-				AppRun: &config.AppRun{
+				AppRun: &types.AppRunInfo{
 					Command: d.opts.RunCommand,
 				},
 			},

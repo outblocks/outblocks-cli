@@ -87,5 +87,5 @@ func IsTermDumb() bool {
 		return true
 	}
 
-	return true
+	return false
 }

@@ -13,6 +13,7 @@ import (
 	dockerclient "github.com/docker/docker/client"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
+	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/outblocks/outblocks-plugin-go/util/errgroup"
 	"github.com/pterm/pterm"
@@ -112,8 +113,15 @@ func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *util.CmdInfo, app 
 	return nil
 }
 
-func (d *Deploy) buildStaticApp(ctx context.Context, app *config.StaticApp) error {
+func (d *Deploy) buildStaticApp(ctx context.Context, app *config.StaticApp, eval *util.VarEvaluator) error {
+	var err error
+
 	env := plugin_util.MergeStringMaps(app.Env(), app.Build.Env)
+
+	env, err = eval.ExpandStringMap(env)
+	if err != nil {
+		return err
+	}
 
 	cmd, err := util.NewCmdInfo(app.Build.Command, app.Dir(), util.FlattenEnvMap(env))
 	if err != nil {
@@ -123,7 +131,7 @@ func (d *Deploy) buildStaticApp(ctx context.Context, app *config.StaticApp) erro
 	return d.runAppBuildCommand(ctx, cmd, &app.BasicApp)
 }
 
-func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp) error {
+func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, eval *util.VarEvaluator) error {
 	dockercontext := filepath.Join(app.Dir(), app.Build.DockerContext)
 	dockercontext, ok := plugin_util.CheckDir(dockercontext)
 
@@ -142,7 +150,12 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp) er
 		return err
 	}
 
-	buildArgs := util.FlattenEnvMap(app.Build.DockerBuildArgs)
+	buildArgsMap, err := eval.ExpandStringMap(app.Build.DockerBuildArgs)
+	if err != nil {
+		return err
+	}
+
+	buildArgs := util.FlattenEnvMap(buildArgsMap)
 	for i, arg := range buildArgs {
 		buildArgs[i] = strings.ReplaceAll(arg, "\"", "\\\"")
 	}
@@ -183,6 +196,20 @@ type appBuilder struct {
 }
 
 func (d *Deploy) buildApps(ctx context.Context) error {
+	appTypeMap := make(map[string]*types.App)
+
+	if len(d.opts.TargetApps) != 0 || len(d.opts.SkipApps) != 0 {
+		// Get state apps as well.
+		state, _, err := getState(ctx, d.cfg, false, 0)
+		if err != nil {
+			return err
+		}
+
+		for _, app := range state.Apps {
+			appTypeMap[app.ID] = &app.App
+		}
+	}
+
 	var builders []*appBuilder
 
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
@@ -194,6 +221,8 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 	var appsTemp []config.App
 
 	for _, app := range apps {
+		appTypeMap[app.ID()] = app.PluginType()
+
 		if len(targetAppIDsMap) > 0 && !targetAppIDsMap[app.ID()] {
 			continue
 		}
@@ -207,7 +236,17 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 
 	apps = appsTemp
 
+	// Flatten appTypeMap.
+	appTypes := make([]*types.App, 0, len(appTypeMap))
+	for _, app := range appTypeMap {
+		appTypes = append(appTypes, app)
+	}
+
+	appVars := types.AppVarsFromApps(appTypes)
+
 	for _, app := range apps {
+		eval := util.NewVarEvaluator(types.VarsForApp(appVars, app.PluginType(), nil))
+
 		// TODO: add build app function
 		switch app.Type() {
 		case config.AppTypeStatic:
@@ -219,7 +258,7 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 
 			builders = append(builders, &appBuilder{
 				app:   a,
-				build: func() error { return d.buildStaticApp(ctx, a) },
+				build: func() error { return d.buildStaticApp(ctx, a, eval) },
 			})
 
 		case config.AppTypeService:
@@ -227,7 +266,7 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 
 			builders = append(builders, &appBuilder{
 				app:   a,
-				build: func() error { return d.buildServiceApp(ctx, a) },
+				build: func() error { return d.buildServiceApp(ctx, a, eval) },
 			})
 		}
 	}

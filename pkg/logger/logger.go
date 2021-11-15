@@ -64,7 +64,7 @@ func NewLogger() Logger {
 		err:      &PrefixPrinter{PrefixPrinter: err},
 		success:  &PrefixPrinter{PrefixPrinter: success},
 
-		spinner:  &SpinnerPrinter{SpinnerPrinter: spinner},
+		spinner:  &SpinnerPrinter{SpinnerPrinter: &spinner},
 		table:    &TablePrinter{TablePrinter: &table},
 		section:  &SectionPrinter{SectionPrinter: section},
 		progress: &progress,

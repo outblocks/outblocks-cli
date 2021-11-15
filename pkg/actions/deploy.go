@@ -49,6 +49,7 @@ type DeployOptions struct {
 	Lock                 bool
 	LockWait             time.Duration
 	AutoApprove          bool
+	ForceApprove         bool
 	TargetApps, SkipApps []string
 	SkipAllApps          bool
 }
@@ -144,7 +145,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 
 	spinner.Stop()
 
-	empty, canceled := planPrompt(d.log, deployChanges, dnsChanges, d.opts.AutoApprove)
+	empty, canceled := planPrompt(d.log, deployChanges, dnsChanges, d.opts.AutoApprove, d.opts.ForceApprove)
 
 	shouldApply := !canceled && !empty
 

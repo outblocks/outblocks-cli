@@ -20,10 +20,7 @@ type ServiceApp struct {
 
 func LoadServiceAppData(path string, data []byte) (App, error) {
 	out := &ServiceApp{
-		BasicApp: BasicApp{
-			AppRun:    &AppRun{},
-			AppDeploy: &AppDeploy{},
-		},
+		BasicApp: *NewBasicApp(),
 		ServiceAppProperties: types.ServiceAppProperties{
 			Build: &types.ServiceAppBuild{
 				Dockerfile: "Dockerfile",

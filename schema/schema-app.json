@@ -36,7 +36,7 @@
           "description": "External URL of the app.",
           "type": "string"
         },
-        "pathRedirect": {
+        "path_redirect": {
           "description": "Path redirect rewrites URL to specified path. URL path from 'url' field will be stripped and replaced with value below.",
           "type": "string"
         },

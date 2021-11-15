@@ -6,7 +6,7 @@ import (
 )
 
 type SpinnerPrinter struct {
-	pterm.SpinnerPrinter
+	*pterm.SpinnerPrinter
 }
 
 func (s *SpinnerPrinter) Start(text ...interface{}) (Spinner, error) {
@@ -26,7 +26,7 @@ func (s *SpinnerPrinter) Start(text ...interface{}) (Spinner, error) {
 	started, err := s.SpinnerPrinter.Start(text...)
 
 	return &SpinnerPrinter{
-		SpinnerPrinter: *started,
+		SpinnerPrinter: started,
 	}, err
 }
 

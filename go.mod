@@ -16,7 +16,7 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.6.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20211112163452-b28f04e185aa
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20211115132657-c42fed05643f
 	github.com/pterm/pterm v0.12.33
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5

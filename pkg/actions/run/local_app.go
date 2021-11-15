@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/outblocks/outblocks-cli/internal/util"
-	"github.com/outblocks/outblocks-cli/pkg/config"
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 	"github.com/outblocks/outblocks-plugin-go/types"
 )
@@ -29,7 +28,7 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 	var err error
 
 	info.CmdInfo, err = util.NewCmdInfo(
-		a.App.Properties["run"].(*config.AppRun).Command,
+		a.App.Properties["run"].(*types.AppRun).Command,
 		a.App.Dir,
 		util.FlattenEnvMap(a.App.Env),
 	)

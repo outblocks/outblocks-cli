@@ -33,10 +33,7 @@ type StaticApp struct {
 
 func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
 	out := &StaticApp{
-		BasicApp: BasicApp{
-			AppRun:    &AppRun{},
-			AppDeploy: &AppDeploy{},
-		},
+		BasicApp: *NewBasicApp(),
 		StaticAppProperties: types.StaticAppProperties{
 			Build: &types.StaticAppBuild{
 				Dir: DefaultStaticAppBuildDir,

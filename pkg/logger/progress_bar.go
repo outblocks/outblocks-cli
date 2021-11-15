@@ -134,6 +134,12 @@ func (p *ProgressbarPrinter) Start() (Progressbar, error) {
 	if util.IsTermDumb() {
 		p.ShowElapsedTime = false
 		p.RemoveWhenDone = false
+		printer(pterm.Sprintln(p.Title))
+
+		return &ProgressbarPrinter{
+			ProgressbarPrinter: p.ProgressbarPrinter,
+			m:                  &sync.Mutex{},
+		}, nil
 	}
 
 	started, err := p.ProgressbarPrinter.Start()
@@ -144,10 +150,6 @@ func (p *ProgressbarPrinter) Start() (Progressbar, error) {
 	pp := &ProgressbarPrinter{
 		ProgressbarPrinter: started,
 		m:                  &sync.Mutex{},
-	}
-
-	if util.IsTermDumb() {
-		return pp, nil
 	}
 
 	go func() {

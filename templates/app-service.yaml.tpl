@@ -16,7 +16,7 @@ type: {{.App.Type}}
 url: {{.App.AppURL}}
 # Path redirect rewrites URL to specified path. URL path from 'url' field will be stripped and replaced with value below.
 # '/' should be fine for most apps.
-pathRedirect: /
+path_redirect: /
 
 # Build defines how docker image will be built for this application.
 build:

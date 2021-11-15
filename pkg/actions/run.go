@@ -10,12 +10,12 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/actions/run"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"
 	"github.com/outblocks/outblocks-cli/pkg/config"
@@ -147,7 +147,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 	for _, app := range cfg.Apps {
 		if app.RunInfo().Command == "" {
-			return nil, app.YAMLError("$.run.command", "App.Run.Command is required to run app")
+			return nil, app.YAMLError("$.run.command", "run.command is required to run app")
 		}
 
 		runInfo := app.RunInfo()
@@ -224,49 +224,39 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 		if _, ok := info.pluginDepsMap[runPlugin]; !ok {
 			info.pluginDepsMap[runPlugin] = &plugin_go.RunRequest{
-				Args:  runPlugin.CommandArgs(runCommand),
-				Hosts: hosts,
+				Args: runPlugin.CommandArgs(runCommand),
 			}
 		}
 
 		info.pluginDepsMap[runPlugin].Dependencies = append(info.pluginDepsMap[runPlugin].Dependencies, depRun)
 	}
 
-	// Gather envs.
-	// TODO!: process envs similar as when deployment rather then have same for all, dont add anything automatically
-	env := make(map[string]string)
-
+	// Gather hosts.
 	for _, app := range info.apps {
-		prefix := app.App.EnvPrefix()
-
 		host, _ := urlutil.ExtractHostname(app.URL)
-		env[fmt.Sprintf("%sURL", prefix)] = app.URL
-
 		hosts[host] = app.IP
 	}
 
-	for _, dep := range info.deps {
-		// TODO: treat deps differently, only use these that were added as needs
-		// + add secrets from plugin.PrepareRunDependency()
-		prefix := dep.Dependency.EnvPrefix()
+	appVars := types.AppVarsFromAppRun(info.apps)
 
-		env[fmt.Sprintf("%sHOST", prefix)] = loopbackHost
-		env[fmt.Sprintf("%sPORT", prefix)] = strconv.Itoa(dep.Port)
-	}
+	// TODO: treat deps differently, run them first, inject secrets
+	// + add secrets from plugin.PrepareRunDependency()
 
 	// Fill envs per app/dep.
-	for _, app := range info.apps {
-		app.App.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, app.App.Env, env)
+	var err error
 
-		app.App.Env["URL"] = app.URL
-		app.App.Env["PORT"] = strconv.Itoa(app.Port)
+	for _, app := range info.apps {
+		eval := util.NewVarEvaluator(types.VarsForApp(appVars, app.App, nil))
+		app.App.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, app.App.Env)
+
+		app.App.Env, err = eval.ExpandStringMap(app.App.Env)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for _, dep := range info.deps {
-		dep.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, dep.Env, env)
-
-		dep.Env["IP"] = dep.IP
-		dep.Env["PORT"] = strconv.Itoa(dep.Port)
+		dep.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, dep.Env)
 	}
 
 	return info, nil
@@ -292,6 +282,8 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 		pluginRets []*run.PluginRunResult
 		localRets  []*run.LocalRunResult
 	)
+
+	// TODO: next - dependency env merging
 
 	// Process remote plugin dependencies.
 	if len(runInfo.pluginDepsMap) > 0 {

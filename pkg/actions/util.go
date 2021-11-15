@@ -22,11 +22,12 @@ type changeID struct {
 }
 
 type change struct {
-	app    *types.App
-	dep    *types.Dependency
-	plugin *plugins.Plugin
-	obj    string
-	info   map[changeID][]string
+	app         *types.App
+	dep         *types.Dependency
+	plugin      *plugins.Plugin
+	obj         string
+	criticalMap map[changeID]bool
+	infoMap     map[changeID][]string
 }
 
 func (i *change) Name() string {
@@ -108,7 +109,8 @@ func computeChangeInfo(cfg *config.Project, state *types.StateData, plugin *plug
 
 		if chg == nil {
 			chg = newChangeFromPlanAction(cfg, act, state, plugin)
-			chg.info = make(map[changeID][]string)
+			chg.infoMap = make(map[changeID][]string)
+			chg.criticalMap = make(map[changeID]bool)
 			changesMap[act.Namespace] = chg
 			changes = append(changes, chg)
 		}
@@ -118,7 +120,8 @@ func computeChangeInfo(cfg *config.Project, state *types.StateData, plugin *plug
 			objectType: act.ObjectType,
 		}
 
-		chg.info[key] = append(chg.info[key], act.ObjectName)
+		chg.criticalMap[key] = chg.criticalMap[key] || act.Critical
+		chg.infoMap[key] = append(chg.infoMap[key], act.ObjectName)
 	}
 
 	return changes
@@ -140,7 +143,7 @@ func computeChange(cfg *config.Project, state *types.StateData, planMap map[*plu
 
 func calculateTotal(chg []*change) (add, change, process, destroy int) {
 	for _, c := range chg {
-		for chID, objs := range c.info {
+		for chID, objs := range c.infoMap {
 			switch chID.planType {
 			case types.PlanCreate:
 				add += len(objs)
@@ -161,7 +164,7 @@ func calculateTotalSteps(chg []*change) int {
 	steps := 0
 
 	for _, c := range chg {
-		for changeID, v := range c.info {
+		for changeID, v := range c.infoMap {
 			if changeID.planType == types.PlanRecreate {
 				// Recreate steps are doubled.
 				steps += 2 * len(v)
@@ -174,7 +177,11 @@ func calculateTotalSteps(chg []*change) int {
 	return steps
 }
 
-func formatChangeInfo(chID changeID, objs []string) string {
+func formatChangeInfo(chID changeID, objs []string, critical bool) string {
+	if critical {
+		fmt.Println("CRITICAL", chID, objs)
+	}
+
 	if len(objs) == 1 {
 		return fmt.Sprintf("    %s %s '%s'\n", chID.Type(), chID.objectType, pterm.Normal(objs[0]))
 	}
@@ -186,9 +193,9 @@ func formatChangeInfo(chID changeID, objs []string) string {
 	return fmt.Sprintf("    %s %d of %s\n", chID.Type(), len(objs), chID.objectType)
 }
 
-func planChangeInfo(header string, changes []*change) (info string) {
+func planChangeInfo(header string, changes []*change) (info string, anyCritical bool) {
 	if len(changes) == 0 {
-		return ""
+		return "", false
 	}
 
 	headerStyle := pterm.NewStyle(pterm.FgWhite, pterm.Bold)
@@ -200,15 +207,17 @@ func planChangeInfo(header string, changes []*change) (info string) {
 	for _, chg := range changes {
 		info += fmt.Sprintf("  %s\n", pterm.Bold.Sprintf("\n  %s changes:", chg.Name()))
 
-		for k, i := range chg.info {
-			info += formatChangeInfo(k, i)
+		for k, i := range chg.infoMap {
+			critical := chg.criticalMap[k]
+			anyCritical = anyCritical || critical
+			info += formatChangeInfo(k, i, critical)
 		}
 	}
 
-	return info
+	return info, anyCritical
 }
 
-func planPrompt(log logger.Logger, deploy, dns []*change, approve bool) (empty, canceled bool) {
+func planPrompt(log logger.Logger, deploy, dns []*change, approve, force bool) (empty, canceled bool) {
 	sort.Slice(deploy, func(i, j int) bool {
 		if deploy[i].app == nil && deploy[j].app != nil {
 			return false
@@ -223,9 +232,10 @@ func planPrompt(log logger.Logger, deploy, dns []*change, approve bool) (empty, 
 
 	info := []string{"Outblocks will perform the following actions to your architecture:"}
 	empty = true
+	critical := false
 
 	// Deployment
-	deployInfo := planChangeInfo("Deployment:", deploy)
+	deployInfo, deployCritical := planChangeInfo("Deployment:", deploy)
 	if deployInfo != "" {
 		empty = false
 
@@ -233,7 +243,7 @@ func planPrompt(log logger.Logger, deploy, dns []*change, approve bool) (empty, 
 	}
 
 	// DNS
-	dnsInfo := planChangeInfo("DNS:", dns)
+	dnsInfo, dnsCritical := planChangeInfo("DNS:", dns)
 	if dnsInfo != "" {
 		empty = false
 
@@ -246,7 +256,12 @@ func planPrompt(log logger.Logger, deploy, dns []*change, approve bool) (empty, 
 		return true, false
 	}
 
-	if approve {
+	critical = deployCritical || dnsCritical
+
+	// TODO: next - critical support
+	_ = critical
+
+	if approve || force {
 		return false, false
 	}
 

@@ -36,6 +36,7 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
+			// TODO: list apps from state as well
 			return actions.NewAppList(e.Log(), e.cfg, listOpts).Run(cmd.Context())
 		},
 	}

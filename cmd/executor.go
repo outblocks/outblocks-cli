@@ -79,7 +79,6 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	if cmd != nil {
 		skipLoadConfig = cmd.Annotations[cmdSkipLoadConfigAnnotation] == "1"
 		skipLoadApps = cmd.Annotations[cmdSkipLoadAppsAnnotation] == "1"
-		skipLoadPlugins = cmd.Annotations[cmdSkipLoadPluginsAnnotation] == "1"
 		skipCheckConfig = cmd.Annotations[cmdSkipCheckConfigAnnotation] == "1"
 
 		if skipLoadConfig {
@@ -121,7 +120,13 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	}
 
 	// Augment/load new commands.
-	if skipLoadPlugins {
+	return e.addPluginsCommands(cmd)
+}
+
+func (e *Executor) addPluginsCommands(cmd *cobra.Command) error {
+	skipLoadPlugins := cmd.Annotations[cmdSkipLoadPluginsAnnotation] == "1"
+
+	if skipLoadPlugins || e.cfg == nil {
 		return nil
 	}
 
