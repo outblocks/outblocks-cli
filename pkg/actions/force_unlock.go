@@ -20,12 +20,12 @@ func NewForceUnlock(log logger.Logger, cfg *config.Project) *ForceUnlock {
 	}
 }
 
-func (f *ForceUnlock) Run(ctx context.Context, lockID string) error {
-	return releaseLock(f.cfg, lockID)
+func (f *ForceUnlock) Run(ctx context.Context, lockinfo string) error {
+	return releaseStateLock(f.cfg, lockinfo)
 }
 
-func releaseLock(cfg *config.Project, lockID string) error {
-	if lockID == "" {
+func releaseStateLock(cfg *config.Project, lockinfo string) error {
+	if lockinfo == "" {
 		return nil
 	}
 
@@ -38,5 +38,5 @@ func releaseLock(cfg *config.Project, lockID string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultTimeout)
 	defer cancel()
 
-	return state.Plugin().Client().ReleaseLock(ctx, state.Type, state.Other, lockID)
+	return state.Plugin().Client().ReleaseStateLock(ctx, state.Type, state.Other, lockinfo)
 }

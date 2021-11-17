@@ -1,9 +1,13 @@
 package logger
 
 import (
+	"math"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/gookit/color"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/pterm/pterm"
 )
@@ -105,18 +109,78 @@ func (p *ProgressbarPrinter) WithRemoveWhenDone(b ...bool) Progressbar {
 	}
 }
 
+func (p *ProgressbarPrinter) updateProgressRaw() {
+	if p.TitleStyle == nil {
+		p.TitleStyle = pterm.NewStyle()
+	}
+
+	if p.BarStyle == nil {
+		p.BarStyle = pterm.NewStyle()
+	}
+
+	if p.Total == 0 {
+		return
+	}
+
+	var before, after string
+
+	width := pterm.GetTerminalWidth()
+	currentPercentage := int(math.Round(float64(int64(p.Current)) / float64(int64(p.Total)) * 100))
+
+	decoratorCount := pterm.Gray("[") + pterm.LightWhite(p.Current) + pterm.Gray("/") + pterm.LightWhite(p.Total) + pterm.Gray("]")
+
+	decoratorCurrentPercentage := color.RGB(pterm.NewRGB(255, 0, 0).Fade(0, float32(p.Total), float32(p.Current), pterm.NewRGB(0, 255, 0)).GetValues()).
+		Sprint(strconv.Itoa(currentPercentage) + "%")
+
+	decoratorTitle := p.TitleStyle.Sprint(p.Title)
+
+	if p.ShowTitle {
+		before += decoratorTitle + " "
+	}
+
+	if p.ShowCount {
+		before += decoratorCount + " "
+	}
+
+	after += " "
+
+	if p.ShowPercentage {
+		after += decoratorCurrentPercentage + " "
+	}
+
+	barMaxLength := width - len(pterm.RemoveColorFromString(before)) - len(pterm.RemoveColorFromString(after)) - 1
+	barCurrentLength := (p.Current * barMaxLength) / p.Total
+	barFiller := strings.Repeat(p.BarFiller, barMaxLength-barCurrentLength)
+
+	bar := p.BarStyle.Sprint(strings.Repeat(p.BarCharacter, barCurrentLength)+p.LastCharacter) + barFiller
+	printer(pterm.Sprintln(before + bar + after))
+}
+
 // Increment current value by one.
 func (p *ProgressbarPrinter) Increment() {
-	p.m.Lock()
-	defer p.m.Unlock()
-
-	p.ProgressbarPrinter.Increment()
+	p.Add(1)
 }
 
 // Add to current value.
 func (p *ProgressbarPrinter) Add(count int) {
 	p.m.Lock()
 	defer p.m.Unlock()
+
+	if util.IsTermDumb() {
+		if p.Total == 0 {
+			return
+		}
+
+		p.Current += count
+
+		if p.Current >= p.Total {
+			return
+		}
+
+		p.updateProgressRaw()
+
+		return
+	}
 
 	p.ProgressbarPrinter.Add(count)
 }
@@ -126,20 +190,29 @@ func (p *ProgressbarPrinter) UpdateTitle(title string) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	p.ProgressbarPrinter.Title = title
-	p.ProgressbarPrinter.Add(0)
+	if util.IsTermDumb() {
+		p.Title = title
+		p.updateProgressRaw()
+
+		return
+	}
+
+	p.ProgressbarPrinter.UpdateTitle(title)
 }
 
 func (p *ProgressbarPrinter) Start() (Progressbar, error) {
 	if util.IsTermDumb() {
 		p.ShowElapsedTime = false
 		p.RemoveWhenDone = false
-		printer(pterm.Sprintln(p.Title))
 
-		return &ProgressbarPrinter{
+		pp := &ProgressbarPrinter{
 			ProgressbarPrinter: p.ProgressbarPrinter,
 			m:                  &sync.Mutex{},
-		}, nil
+		}
+
+		pp.updateProgressRaw()
+
+		return pp, nil
 	}
 
 	started, err := p.ProgressbarPrinter.Start()

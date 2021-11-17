@@ -237,26 +237,9 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		hosts[host] = app.IP
 	}
 
-	appVars := types.AppVarsFromAppRun(info.apps)
-
-	// TODO: treat deps differently, run them first, inject secrets
-	// + add secrets from plugin.PrepareRunDependency()
-
-	// Fill envs per app/dep.
-	var err error
-
+	// Fill envs per app.
 	for _, app := range info.apps {
-		eval := util.NewVarEvaluator(types.VarsForApp(appVars, app.App, nil))
 		app.App.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, app.App.Env)
-
-		app.App.Env, err = eval.ExpandStringMap(app.App.Env)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	for _, dep := range info.deps {
-		dep.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, dep.Env)
 	}
 
 	return info, nil
@@ -282,8 +265,6 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 		pluginRets []*run.PluginRunResult
 		localRets  []*run.LocalRunResult
 	)
-
-	// TODO: next - dependency env merging
 
 	// Process remote plugin dependencies.
 	if len(runInfo.pluginDepsMap) > 0 {
@@ -318,6 +299,30 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 
 			_ = localRet.Stop()
 		}()
+	}
+
+	// Process env vars.
+	depVars := make(map[string]map[string]string)
+
+	for _, ret := range pluginRets {
+		for _, i := range ret.Info {
+			for k, v := range i.Response.Vars {
+				depVars[d.cfg.DependencyByID(k).Name] = v
+			}
+		}
+	}
+
+	var err error
+
+	appVars := types.AppVarsFromAppRun(runInfo.apps)
+
+	for _, app := range runInfo.apps {
+		eval := util.NewVarEvaluator(types.VarsForApp(appVars, app.App, depVars))
+
+		app.App.Env, err = eval.ExpandStringMap(app.App.Env)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	// Process remote plugin apps.

@@ -15,8 +15,8 @@ func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*types
 			Dependencies: deps,
 			Args:         args,
 
-			StateMap: state.PluginsMap[c.name],
-			Destroy:  destroy,
+			PluginState: state.Plugins[c.name],
+			Destroy:     destroy,
 		},
 		Verify: verify,
 	},

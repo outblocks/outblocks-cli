@@ -178,19 +178,21 @@ func calculateTotalSteps(chg []*change) int {
 }
 
 func formatChangeInfo(chID changeID, objs []string, critical bool) string {
+	var suffix string
+
 	if critical {
-		fmt.Println("CRITICAL", chID, objs)
+		suffix = " " + pterm.Red("!!!")
 	}
 
 	if len(objs) == 1 {
-		return fmt.Sprintf("    %s %s '%s'\n", chID.Type(), chID.objectType, pterm.Normal(objs[0]))
+		return fmt.Sprintf("    %s %s '%s'%s\n", chID.Type(), chID.objectType, pterm.Normal(objs[0]), suffix)
 	}
 
 	if len(objs) <= 5 {
-		return fmt.Sprintf("    %s %d of %s ['%s']\n", chID.Type(), len(objs), chID.objectType, pterm.Normal(strings.Join(objs, "', '")))
+		return fmt.Sprintf("    %s %d of %s ['%s']%s\n", chID.Type(), len(objs), chID.objectType, pterm.Normal(strings.Join(objs, "', '")), suffix)
 	}
 
-	return fmt.Sprintf("    %s %d of %s\n", chID.Type(), len(objs), chID.objectType)
+	return fmt.Sprintf("    %s %d of %s%s\n", chID.Type(), len(objs), chID.objectType, suffix)
 }
 
 func planChangeInfo(header string, changes []*change) (info string, anyCritical bool) {
@@ -258,18 +260,19 @@ func planPrompt(log logger.Logger, deploy, dns []*change, approve, force bool) (
 
 	critical = deployCritical || dnsCritical
 
-	// TODO: next - critical support
-	_ = critical
+	log.Println(strings.Join(info, "\n\n"))
 
-	if approve || force {
+	if (!critical && approve) || force {
 		return false, false
 	}
-
-	log.Println(strings.Join(info, "\n\n"))
 
 	proceed := false
 	prompt := &survey.Confirm{
 		Message: "Do you want to perform these actions?",
+	}
+
+	if critical {
+		prompt.Message = "Some changes are potentially destructive. Are you really sure you want to perform these actions?"
 	}
 
 	_ = survey.AskOne(prompt, &proceed)

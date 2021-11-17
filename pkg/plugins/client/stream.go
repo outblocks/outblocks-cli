@@ -166,10 +166,11 @@ func (s *SenderStream) handleResponse(res *ResponseWithHeader) (handled bool, er
 		*plugin_go.ValidationErrorResponse,
 		*plugin_go.ApplyDoneResponse,
 		*plugin_go.ApplyResponse,
-		*plugin_go.LockErrorResponse,
 		*plugin_go.ProjectInitResponse,
 		*plugin_go.RunningResponse,
-		*plugin_go.RunOutputResponse:
+		*plugin_go.RunOutputResponse,
+		*plugin_go.LockErrorResponse,
+		*plugin_go.LocksAcquiredResponse:
 		return false, nil
 
 	case *plugin_go.PromptConfirmation:

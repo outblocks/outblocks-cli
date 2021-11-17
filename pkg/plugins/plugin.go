@@ -16,17 +16,18 @@ import (
 )
 
 type Plugin struct {
-	Name           string                    `json:"name"`
-	Author         string                    `json:"author"`
-	Usage          string                    `json:"usage"`
-	Description    string                    `json:"description"`
-	Cmd            map[string]string         `json:"cmd"`
-	Actions        []string                  `json:"actions"`
-	Hooks          []*PluginHooks            `json:"hooks"`
-	Supports       []string                  `json:"supports"`
-	StateTypes     []string                  `json:"state_types"`
-	SupportedTypes []*PluginType             `json:"supported_types"`
-	Commands       map[string]*PluginCommand `json:"commands"`
+	Name              string                    `json:"name"`
+	Author            string                    `json:"author"`
+	Usage             string                    `json:"usage"`
+	Description       string                    `json:"description"`
+	Cmd               map[string]string         `json:"cmd"`
+	Actions           []string                  `json:"actions"`
+	Hooks             []*PluginHooks            `json:"hooks"`
+	Supports          []string                  `json:"supports"`
+	StateTypes        []string                  `json:"state_types"`
+	StateMultiLocking bool                      `json:"state_multi_locking"`
+	SupportedTypes    []*PluginType             `json:"supported_types"`
+	Commands          map[string]*PluginCommand `json:"commands"`
 
 	Dir      string          `json:"-"`
 	Version  *semver.Version `json:"-"`
@@ -43,6 +44,7 @@ const (
 	ActionDeploy Action = iota
 	ActionRun
 	ActionDNS
+	ActionLocking
 )
 
 func (p *Plugin) Validate() error {

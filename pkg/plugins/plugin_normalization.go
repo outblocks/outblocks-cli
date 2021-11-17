@@ -9,9 +9,10 @@ import (
 
 var (
 	pluginTypes = map[string]Action{
-		"dns":    ActionDNS,
-		"deploy": ActionDeploy,
-		"run":    ActionRun,
+		"dns":     ActionDNS,
+		"deploy":  ActionDeploy,
+		"run":     ActionRun,
+		"locking": ActionLocking,
 	}
 )
 

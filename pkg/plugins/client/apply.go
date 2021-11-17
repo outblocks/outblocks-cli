@@ -14,8 +14,8 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*type
 			Dependencies: deps,
 			Args:         args,
 
-			StateMap: state.PluginsMap[c.name],
-			Destroy:  destroy,
+			PluginState: state.Plugins[c.name],
+			Destroy:     destroy,
 		},
 	})
 

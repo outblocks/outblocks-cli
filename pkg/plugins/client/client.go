@@ -169,6 +169,8 @@ func mapResponseType(header *plugin_go.ResponseHeader) plugin_go.Response {
 		return &plugin_go.RunningResponse{}
 	case plugin_go.ResponseTypeRunOutput:
 		return &plugin_go.RunOutputResponse{}
+	case plugin_go.ResponseTypeLocksAcquired:
+		return &plugin_go.LocksAcquiredResponse{}
 	default:
 		return nil
 	}

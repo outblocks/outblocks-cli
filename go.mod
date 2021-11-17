@@ -97,4 +97,4 @@ replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.2021080
 
 // replace github.com/goccy/go-yaml => ../go-yaml
 
-// replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go
+replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go

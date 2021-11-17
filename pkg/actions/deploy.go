@@ -88,7 +88,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 	canceled, err := d.planAndApply(ctx, verify, state, stateRes)
 
 	// Release lock if needed.
-	releaseErr := releaseLock(d.cfg, stateRes.LockInfo)
+	releaseErr := releaseStateLock(d.cfg, stateRes.LockInfo)
 
 	switch {
 	case err != nil:
@@ -136,7 +136,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	if err != nil {
 		spinner.Stop()
 
-		_ = releaseLock(d.cfg, stateRes.LockInfo)
+		_ = releaseStateLock(d.cfg, stateRes.LockInfo)
 
 		return false, err
 	}
@@ -484,14 +484,43 @@ func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetApp
 	return planMap
 }
 
+func mergeState(state *types.StateData, pluginName string, pluginState *types.PluginState, appStates map[string]*types.AppState, depStates map[string]*types.DependencyState) {
+	state.Plugins[pluginName] = pluginState
+
+	// Merge state with new changes.
+	for k, v := range appStates {
+		state.Apps[k] = v
+	}
+
+	for k, v := range depStates {
+		state.Dependencies[k] = v
+	}
+}
+
 func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, verify, destroy bool) (retMap map[*plugins.Plugin]*plugin_go.PlanResponse, err error) {
-	if state.PluginsMap == nil {
-		state.PluginsMap = make(map[string]types.PluginStateMap)
+	if state.Plugins == nil {
+		state.Plugins = make(map[string]*types.PluginState)
 	}
 
 	retMap = make(map[*plugins.Plugin]*plugin_go.PlanResponse, len(planMap))
-
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
+
+	var mu sync.Mutex
+
+	processResponse := func(plug *plugins.Plugin, ret *plugin_go.PlanResponse) {
+		if ret == nil {
+			return
+		}
+
+		mu.Lock()
+
+		retMap[plug] = ret
+
+		// Merge state with new changes.
+		mergeState(state, plug.Name, ret.PluginState, ret.AppStates, ret.DependencyStates)
+
+		mu.Unlock()
+	}
 
 	// Plan all plugins concurrently.
 	for plug, params := range planMap {
@@ -504,7 +533,7 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 				return err
 			}
 
-			retMap[plug] = ret
+			processResponse(plug, ret)
 
 			return nil
 		})
@@ -514,16 +543,7 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 
 	// Merge state with new changes.
 	for p, ret := range retMap {
-		state.PluginsMap[p.Name] = ret.PluginMap
-
-		for k, v := range ret.AppStates {
-			// TODO: validate app state returned
-			state.Apps[k] = v
-		}
-
-		for k, v := range ret.DependencyStates {
-			state.Dependencies[k] = v
-		}
+		mergeState(state, p.Name, ret.PluginState, ret.AppStates, ret.DependencyStates)
 	}
 
 	return retMap, err
@@ -531,14 +551,10 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 
 func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, destroy bool, callback func(*types.ApplyAction)) error {
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
-	retMap := make(map[*plugins.Plugin]*plugin_go.ApplyDoneResponse, len(planMap))
 
-	if state.PluginsMap == nil {
-		state.PluginsMap = make(map[string]types.PluginStateMap)
+	if state.Plugins == nil {
+		state.Plugins = make(map[string]*types.PluginState)
 	}
-
-	appStates := state.Apps
-	dependencyStates := state.Dependencies
 
 	var mu sync.Mutex
 
@@ -549,17 +565,8 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 
 		mu.Lock()
 
-		retMap[plug] = ret
-		state.PluginsMap[plug.Name] = ret.PluginMap
-
 		// Merge state with new changes.
-		for k, v := range ret.AppStates {
-			appStates[k] = v
-		}
-
-		for k, v := range ret.DependencyStates {
-			dependencyStates[k] = v
-		}
+		mergeState(state, plug.Name, ret.PluginState, ret.AppStates, ret.DependencyStates)
 
 		mu.Unlock()
 	}
@@ -584,8 +591,6 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 	}
 
 	// Apply second pass plan (DNS and deployments with DNS).
-	retMap = make(map[*plugins.Plugin]*plugin_go.ApplyDoneResponse, len(planMap))
-
 	for plug, params := range planMap {
 		if params.firstPass {
 			continue
