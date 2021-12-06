@@ -1,5 +1,15 @@
 # Outblocks CLI Changelog
 
+## [v0.1.47](https://github.com/outblocks/outblocks-cli/compare/v0.1.46...v0.1.47)
+
+> 2021-12-06
+
+### FEATURES
+
+[`e120dc0`](https://github.com/outblocks/outblocks-cli/commit/e120dc0dd17e4134e28d6482ea8c2ada7e2f0d2d) new protocol, run deps improvements, plugin cache dir
+[`86d9caa`](https://github.com/outblocks/outblocks-cli/commit/86d9caa0ad47a36cf0622ce2053cc7f6da712fb7) locking, critical support
+
+
 ## [v0.1.46](https://github.com/outblocks/outblocks-cli/compare/v0.1.45...v0.1.46)
 
 > 2021-11-15
