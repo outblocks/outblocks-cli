@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	plugin_go "github.com/outblocks/outblocks-plugin-go"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 )
 
 type LocalRunResult struct {
 	Apps     map[string]*LocalAppRunInfo
 	Deps     map[string]*LocalDependencyRunInfo
-	OutputCh chan *plugin_go.RunOutputResponse
+	OutputCh chan *apiv1.RunOutputResponse
 }
 
 func (l *LocalRunResult) Stop() error {
@@ -61,7 +61,7 @@ func Local(ctx context.Context, localApps []*LocalApp, localDeps []*LocalDepende
 	ret := &LocalRunResult{
 		Apps:     make(map[string]*LocalAppRunInfo),
 		Deps:     make(map[string]*LocalDependencyRunInfo),
-		OutputCh: make(chan *plugin_go.RunOutputResponse),
+		OutputCh: make(chan *apiv1.RunOutputResponse),
 	}
 
 	for _, app := range localApps {
@@ -70,7 +70,7 @@ func Local(ctx context.Context, localApps []*LocalApp, localDeps []*LocalDepende
 			return nil, err
 		}
 
-		ret.Apps[app.App.ID] = info
+		ret.Apps[app.App.Id] = info
 	}
 
 	// for _, dep := range localDeps {

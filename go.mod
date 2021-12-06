@@ -16,7 +16,7 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.6.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20211115132657-c42fed05643f
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20211124232451-2f90864671ce
 	github.com/pterm/pterm v0.12.33
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
@@ -24,6 +24,8 @@ require (
 	github.com/txn2/txeh v1.3.0
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
+	google.golang.org/grpc v1.42.0
+	google.golang.org/protobuf v1.27.1
 )
 
 require (
@@ -87,8 +89,6 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20210828152312-66f60bf46e71 // indirect
-	google.golang.org/grpc v1.40.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.63.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
@@ -97,4 +97,4 @@ replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.2021080
 
 // replace github.com/goccy/go-yaml => ../go-yaml
 
-replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go
+// replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go

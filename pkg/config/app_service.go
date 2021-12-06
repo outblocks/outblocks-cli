@@ -5,6 +5,7 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/validator"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
@@ -41,18 +42,19 @@ func LoadServiceAppData(path string, data []byte) (App, error) {
 }
 
 func (s *ServiceApp) SupportsLocal() bool {
-	return false
+	return true
 }
 
-func (s *ServiceApp) PluginType() *types.App {
-	base := s.BasicApp.PluginType()
+func (s *ServiceApp) Proto() *apiv1.App {
+	base := s.BasicApp.Proto()
 
 	props, err := s.ServiceAppProperties.Encode()
 	if err != nil {
 		panic(err)
 	}
 
-	base.Properties = plugin_util.MergeMaps(base.Properties, props)
+	mergedProps := plugin_util.MergeMaps(base.Properties.AsMap(), props)
+	base.Properties = plugin_util.MustNewStruct(mergedProps)
 
 	return base
 }

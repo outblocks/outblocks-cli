@@ -21,7 +21,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
-	plugin_go "github.com/outblocks/outblocks-plugin-go"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/outblocks/outblocks-plugin-go/util/errgroup"
@@ -49,13 +49,13 @@ type RunOptions struct {
 }
 
 type runInfo struct {
-	apps []*types.AppRun
-	deps []*types.DependencyRun
+	apps []*apiv1.AppRun
+	deps []*apiv1.DependencyRun
 
 	localApps     []*run.LocalApp
 	localDeps     []*run.LocalDependency
-	pluginAppsMap map[*plugins.Plugin]*plugin_go.RunRequest
-	pluginDepsMap map[*plugins.Plugin]*plugin_go.RunRequest
+	pluginAppsMap map[*plugins.Plugin]*apiv1.RunRequest
+	pluginDepsMap map[*plugins.Plugin]*apiv1.RunRequest
 }
 
 const (
@@ -133,8 +133,8 @@ func (d *Run) loopbackHost() string {
 
 func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 	info := &runInfo{
-		pluginAppsMap: make(map[*plugins.Plugin]*plugin_go.RunRequest),
-		pluginDepsMap: make(map[*plugins.Plugin]*plugin_go.RunRequest),
+		pluginAppsMap: make(map[*plugins.Plugin]*apiv1.RunRequest),
+		pluginDepsMap: make(map[*plugins.Plugin]*apiv1.RunRequest),
 	}
 
 	loopbackHost := d.loopbackHost()
@@ -152,22 +152,22 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 		runInfo := app.RunInfo()
 
-		appPort := runInfo.Port
+		appPort := int(runInfo.Port)
 		if appPort == 0 {
 			appPort = port
 			port++
 		}
 
-		appType := app.PluginType()
+		appType := app.Proto()
+		mergedProps := plugin_util.MergeMaps(cfg.Defaults.Run.Other, appType.Properties.AsMap(), runInfo.Other)
 		appType.Env = plugin_util.MergeStringMaps(appType.Env, runInfo.Env)
-		appType.Properties = plugin_util.MergeMaps(cfg.Defaults.Run.Other, appType.Properties, runInfo.Other)
+		appType.Properties = plugin_util.MustNewStruct(mergedProps)
 
-		appRun := &types.AppRun{
-			App:     appType,
-			URL:     d.localURL(app.URL(), appPort, app.PathRedirect()),
-			IP:      loopbackIP,
-			Port:    appPort,
-			Command: runInfo.Command,
+		appRun := &apiv1.AppRun{
+			App:  appType,
+			Url:  d.localURL(app.URL(), appPort, app.PathRedirect()),
+			Ip:   loopbackIP,
+			Port: int32(appPort),
 		}
 
 		info.apps = append(info.apps, appRun)
@@ -183,8 +183,8 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		runPlugin := app.RunPlugin()
 
 		if _, ok := info.pluginAppsMap[runPlugin]; !ok {
-			info.pluginAppsMap[runPlugin] = &plugin_go.RunRequest{
-				Args:  runPlugin.CommandArgs(runCommand),
+			info.pluginAppsMap[runPlugin] = &apiv1.RunRequest{
+				Args:  plugin_util.MustNewStruct(runPlugin.CommandArgs(runCommand)),
 				Hosts: hosts,
 			}
 		}
@@ -194,7 +194,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 	// Dependencies.
 	for _, dep := range cfg.Dependencies {
-		depType := dep.PluginType()
+		depType := dep.Proto()
 		depPort := dep.Run.Port
 
 		if depPort == 0 {
@@ -202,12 +202,13 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 			port++
 		}
 
-		depType.Properties = plugin_util.MergeMaps(cfg.Defaults.Run.Other, depType.Properties)
+		mergedProps := plugin_util.MergeMaps(cfg.Defaults.Run.Other, depType.Properties.AsMap())
+		depType.Properties = plugin_util.MustNewStruct(mergedProps)
 
-		depRun := &types.DependencyRun{
+		depRun := &apiv1.DependencyRun{
 			Dependency: depType,
-			IP:         loopbackIP,
-			Port:       depPort,
+			Ip:         loopbackIP,
+			Port:       int32(depPort),
 		}
 
 		info.deps = append(info.deps, depRun)
@@ -223,8 +224,8 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		runPlugin := dep.RunPlugin()
 
 		if _, ok := info.pluginDepsMap[runPlugin]; !ok {
-			info.pluginDepsMap[runPlugin] = &plugin_go.RunRequest{
-				Args: runPlugin.CommandArgs(runCommand),
+			info.pluginDepsMap[runPlugin] = &apiv1.RunRequest{
+				Args: plugin_util.MustNewStruct(runPlugin.CommandArgs(runCommand)),
 			}
 		}
 
@@ -233,8 +234,8 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 	// Gather hosts.
 	for _, app := range info.apps {
-		host, _ := urlutil.ExtractHostname(app.URL)
-		hosts[host] = app.IP
+		host, _ := urlutil.ExtractHostname(app.Url)
+		hosts[host] = app.Ip
 	}
 
 	// Fill envs per app.
@@ -307,7 +308,7 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 	for _, ret := range pluginRets {
 		for _, i := range ret.Info {
 			for k, v := range i.Response.Vars {
-				depVars[d.cfg.DependencyByID(k).Name] = v
+				depVars[d.cfg.DependencyByID(k).Name] = v.Vars
 			}
 		}
 	}
@@ -377,7 +378,7 @@ func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 	for _, app := range runInfo.apps {
 		app := app
 
-		req, err := http.NewRequestWithContext(ctx, "HEAD", fmt.Sprintf("http://%s:%d/", app.IP, app.Port), nil)
+		req, err := http.NewRequestWithContext(ctx, "HEAD", fmt.Sprintf("http://%s:%d/", app.Ip, app.Port), nil)
 		if err != nil {
 			return err
 		}
@@ -410,21 +411,24 @@ func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 	return err
 }
 
-func formatRunOutput(log logger.Logger, cfg *config.Project, r *plugin_go.RunOutputResponse) {
+func formatRunOutput(log logger.Logger, cfg *config.Project, r *apiv1.RunOutputResponse) {
 	var prefix string
 
 	msg := plugin_util.StripAnsiControl(r.Message)
 
 	switch r.Source {
-	case plugin_go.RunOutpoutSourceApp:
-		app := cfg.AppByID(r.ID)
+	case apiv1.RunOutputResponse_SOURCE_APP:
+		app := cfg.AppByID(r.Id)
 		prefix = fmt.Sprintf("APP:%s:%s:", app.Type(), app.Name())
 
-	case plugin_go.RunOutpoutSourceDependency:
+	case apiv1.RunOutputResponse_SOURCE_DEPENDENCY:
 		prefix = fmt.Sprintf("DEP:%s", r.Name)
+
+	case apiv1.RunOutputResponse_SOURCE_UNSPECIFIED:
+		prefix = fmt.Sprintf("UNKNOWN:%s", r.Name)
 	}
 
-	if r.IsStderr {
+	if r.Stream == apiv1.RunOutputResponse_STREAM_STDERR {
 		log.Printf("%s %s\n", pterm.FgRed.Sprintf(prefix), msg)
 	} else {
 		log.Printf("%s %s\n", pterm.FgGreen.Sprintf(prefix), msg)
@@ -439,11 +443,11 @@ func (d *Run) addAllHosts(runInfo *runInfo) (map[*url.URL]*url.URL, error) {
 	routing := make(map[*url.URL]*url.URL)
 
 	for _, s := range runInfo.apps {
-		u, _ := url.Parse(s.URL)
+		u, _ := url.Parse(s.Url)
 		hosts[u.Hostname()] = struct{}{}
 
 		uLocal := *u
-		uLocal.Host = fmt.Sprintf("%s:%d", s.IP, s.Port)
+		uLocal.Host = fmt.Sprintf("%s:%d", s.Ip, s.Port)
 		uLocal.Path = s.App.PathRedirect
 
 		routing[u] = &uLocal
@@ -576,10 +580,10 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 
 	// Show apps status.
 	d.log.Println()
-	d.log.Println("All apps are UP.")
+	d.log.Successln("All apps are UP.")
 
 	for _, a := range runInfo.apps {
-		d.log.Printf("%s App '%s' listening at %s\n", strings.Title(a.App.Type), a.App.Name, a.URL)
+		d.log.Printf("%s App '%s' listening at %s\n", strings.Title(a.App.Type), a.App.Name, a.Url)
 	}
 
 	d.log.Println()

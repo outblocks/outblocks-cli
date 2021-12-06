@@ -11,19 +11,19 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
-	plugin_go "github.com/outblocks/outblocks-plugin-go"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	"github.com/pterm/pterm"
 )
 
 type changeID struct {
-	planType   types.PlanType
+	planType   apiv1.PlanType
 	objectType string
 }
 
 type change struct {
-	app         *types.App
-	dep         *types.Dependency
+	app         *apiv1.App
+	dep         *apiv1.Dependency
 	plugin      *plugins.Plugin
 	obj         string
 	criticalMap map[changeID]bool
@@ -44,32 +44,33 @@ func (i *change) Name() string {
 
 func (i *changeID) Type() string {
 	switch i.planType {
-	case types.PlanCreate:
+	case apiv1.PlanType_PLAN_TYPE_CREATE:
 		return pterm.Green("+ add")
-	case types.PlanRecreate:
+	case apiv1.PlanType_PLAN_TYPE_RECREATE:
 		return pterm.Red("~ recreate")
-	case types.PlanUpdate:
+	case apiv1.PlanType_PLAN_TYPE_UPDATE:
 		return pterm.Yellow("~ update")
-	case types.PlanProcess:
+	case apiv1.PlanType_PLAN_TYPE_PROCESS:
 		return pterm.Blue("~ process")
-	case types.PlanDelete:
+	case apiv1.PlanType_PLAN_TYPE_DELETE:
 		return pterm.Red("- delete")
+	case apiv1.PlanType_PLAN_TYPE_UNSPECIFIED:
 	}
 
 	panic("unknown type")
 }
 
-func newChangeFromPlanAction(cfg *config.Project, act *types.PlanAction, state *types.StateData, plugin *plugins.Plugin) *change {
+func newChangeFromPlanAction(cfg *config.Project, act *apiv1.PlanAction, state *types.StateData, plugin *plugins.Plugin) *change {
 	switch act.Source {
 	case types.SourceApp:
-		var app *types.App
+		var app *apiv1.App
 
 		if a := cfg.AppByID(act.Namespace); a != nil {
-			app = a.PluginType()
+			app = a.Proto()
 		}
 
 		if app == nil && state.Apps[act.Namespace] != nil {
-			app = &state.Apps[act.Namespace].App
+			app = state.Apps[act.Namespace].App
 		}
 
 		if app != nil {
@@ -78,14 +79,14 @@ func newChangeFromPlanAction(cfg *config.Project, act *types.PlanAction, state *
 			}
 		}
 	case types.SourceDependency:
-		var dep *types.Dependency
+		var dep *apiv1.Dependency
 
 		if d := cfg.DependencyByID(act.Namespace); d != nil {
-			dep = d.PluginType()
+			dep = d.Proto()
 		}
 
 		if dep == nil && state.Dependencies[act.Namespace] != nil {
-			dep = &state.Dependencies[act.Namespace].Dependency
+			dep = state.Dependencies[act.Namespace].Dependency
 		}
 
 		if dep != nil {
@@ -101,7 +102,7 @@ func newChangeFromPlanAction(cfg *config.Project, act *types.PlanAction, state *
 	}
 }
 
-func computeChangeInfo(cfg *config.Project, state *types.StateData, plugin *plugins.Plugin, actions []*types.PlanAction) (changes []*change) {
+func computeChangeInfo(cfg *config.Project, state *types.StateData, plugin *plugins.Plugin, actions []*apiv1.PlanAction) (changes []*change) {
 	changesMap := make(map[string]*change)
 
 	for _, act := range actions {
@@ -127,14 +128,14 @@ func computeChangeInfo(cfg *config.Project, state *types.StateData, plugin *plug
 	return changes
 }
 
-func computeChange(cfg *config.Project, state *types.StateData, planMap map[*plugins.Plugin]*plugin_go.PlanResponse) (deploy, dns []*change) {
+func computeChange(cfg *config.Project, state *types.StateData, planMap map[*plugins.Plugin]*apiv1.PlanResponse) (deploy, dns []*change) {
 	for plugin, p := range planMap {
-		if p.DeployPlan != nil {
-			deploy = computeChangeInfo(cfg, state, plugin, p.DeployPlan.Actions)
+		if p.Deploy != nil {
+			deploy = computeChangeInfo(cfg, state, plugin, p.Deploy.Actions)
 		}
 
-		if p.DNSPlan != nil {
-			dns = computeChangeInfo(cfg, state, plugin, p.DeployPlan.Actions)
+		if p.Dns != nil {
+			dns = computeChangeInfo(cfg, state, plugin, p.Deploy.Actions)
 		}
 	}
 
@@ -145,14 +146,16 @@ func calculateTotal(chg []*change) (add, change, process, destroy int) {
 	for _, c := range chg {
 		for chID, objs := range c.infoMap {
 			switch chID.planType {
-			case types.PlanCreate:
+			case apiv1.PlanType_PLAN_TYPE_CREATE:
 				add += len(objs)
-			case types.PlanRecreate, types.PlanUpdate:
+			case apiv1.PlanType_PLAN_TYPE_RECREATE, apiv1.PlanType_PLAN_TYPE_UPDATE:
 				change += len(objs)
-			case types.PlanDelete:
+			case apiv1.PlanType_PLAN_TYPE_DELETE:
 				destroy += len(objs)
-			case types.PlanProcess:
+			case apiv1.PlanType_PLAN_TYPE_PROCESS:
 				process += len(objs)
+			case apiv1.PlanType_PLAN_TYPE_UNSPECIFIED:
+				panic("unknown plan type")
 			}
 		}
 	}
@@ -165,7 +168,7 @@ func calculateTotalSteps(chg []*change) int {
 
 	for _, c := range chg {
 		for changeID, v := range c.infoMap {
-			if changeID.planType == types.PlanRecreate {
+			if changeID.planType == apiv1.PlanType_PLAN_TYPE_RECREATE {
 				// Recreate steps are doubled.
 				steps += 2 * len(v)
 			} else {
@@ -232,7 +235,7 @@ func planPrompt(log logger.Logger, deploy, dns []*change, approve, force bool) (
 		return deploy[i].Name() < deploy[j].Name()
 	})
 
-	info := []string{"Outblocks will perform the following actions to your architecture:"}
+	info := []string{"Outblocks will perform the following changes to your stack:"}
 	empty = true
 	critical := false
 
@@ -290,11 +293,11 @@ type applyTargetKey struct {
 }
 
 type applyTarget struct {
-	act           *types.ApplyAction
+	act           *apiv1.ApplyAction
 	start, notify time.Time
 }
 
-func newApplyTarget(act *types.ApplyAction) *applyTarget {
+func newApplyTarget(act *apiv1.ApplyAction) *applyTarget {
 	t := time.Now()
 
 	return &applyTarget{
@@ -304,24 +307,25 @@ func newApplyTarget(act *types.ApplyAction) *applyTarget {
 	}
 }
 
-func applyActionType(act *types.ApplyAction) string {
+func applyActionType(act *apiv1.ApplyAction) string {
 	switch act.Type {
-	case types.PlanCreate:
+	case apiv1.PlanType_PLAN_TYPE_CREATE:
 		return "creating"
-	case types.PlanDelete:
+	case apiv1.PlanType_PLAN_TYPE_DELETE:
 		return "deleting"
-	case types.PlanUpdate:
+	case apiv1.PlanType_PLAN_TYPE_UPDATE:
 		return "updating"
-	case types.PlanRecreate:
+	case apiv1.PlanType_PLAN_TYPE_RECREATE:
 		return "recreating"
-	case types.PlanProcess:
+	case apiv1.PlanType_PLAN_TYPE_PROCESS:
 		return "processing"
+	case apiv1.PlanType_PLAN_TYPE_UNSPECIFIED:
 	}
 
 	return "unknown"
 }
 
-func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(*types.ApplyAction) {
+func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(*apiv1.ApplyAction) {
 	changes := append(deployChanges, dnsChanges...) // nolint: gocritic
 	total := calculateTotalSteps(changes)
 
@@ -356,8 +360,8 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 
 	timeInfo := pterm.NewStyle(pterm.FgWhite, pterm.Reset)
 
-	return func(act *types.ApplyAction) {
-		key := applyTargetKey{ns: act.Namespace, typ: act.ObjectType, obj: act.ObjectID}
+	return func(act *apiv1.ApplyAction) {
+		key := applyTargetKey{ns: act.Namespace, typ: act.ObjectType, obj: act.ObjectId}
 
 		if act.Progress == 0 {
 			m.Lock()
@@ -385,7 +389,7 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 
 		log.Successln(success)
 
-		if act.Progress == act.Total || act.Type == types.PlanRecreate {
+		if act.Progress == act.Total || act.Type == apiv1.PlanType_PLAN_TYPE_RECREATE {
 			p.Increment()
 		}
 	}

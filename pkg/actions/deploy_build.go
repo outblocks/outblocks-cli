@@ -13,6 +13,7 @@ import (
 	dockerclient "github.com/docker/docker/client"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/outblocks/outblocks-plugin-go/util/errgroup"
@@ -196,7 +197,7 @@ type appBuilder struct {
 }
 
 func (d *Deploy) buildApps(ctx context.Context) error {
-	appTypeMap := make(map[string]*types.App)
+	appTypeMap := make(map[string]*apiv1.App)
 
 	if len(d.opts.TargetApps) != 0 || len(d.opts.SkipApps) != 0 {
 		// Get state apps as well.
@@ -205,8 +206,8 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 			return err
 		}
 
-		for _, app := range state.Apps {
-			appTypeMap[app.ID] = &app.App
+		for _, appState := range state.Apps {
+			appTypeMap[appState.App.Id] = appState.App
 		}
 	}
 
@@ -221,7 +222,7 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 	var appsTemp []config.App
 
 	for _, app := range apps {
-		appTypeMap[app.ID()] = app.PluginType()
+		appTypeMap[app.ID()] = app.Proto()
 
 		if len(targetAppIDsMap) > 0 && !targetAppIDsMap[app.ID()] {
 			continue
@@ -237,7 +238,7 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 	apps = appsTemp
 
 	// Flatten appTypeMap.
-	appTypes := make([]*types.App, 0, len(appTypeMap))
+	appTypes := make([]*apiv1.App, 0, len(appTypeMap))
 	for _, app := range appTypeMap {
 		appTypes = append(appTypes, app)
 	}
@@ -245,7 +246,7 @@ func (d *Deploy) buildApps(ctx context.Context) error {
 	appVars := types.AppVarsFromApps(appTypes)
 
 	for _, app := range apps {
-		eval := util.NewVarEvaluator(types.VarsForApp(appVars, app.PluginType(), nil))
+		eval := util.NewVarEvaluator(types.VarsForApp(appVars, app.Proto(), nil))
 
 		// TODO: add build app function
 		switch app.Type() {

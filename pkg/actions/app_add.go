@@ -364,7 +364,7 @@ func (d *AppAdd) prompt() (interface{}, error) {
 	if os.IsNotExist(err) {
 		err = plugin_util.MkdirAll(d.opts.OutputDir, 0755)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to create dir %s: %w", d.opts.OutputDir, err)
 		}
 	}
 
@@ -518,10 +518,10 @@ func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
 				AppType: config.AppTypeStatic,
 				AppURL:  d.opts.URL,
 				AppDir:  d.opts.Dir,
-				AppDeploy: &types.AppDeployInfo{
+				AppDeploy: &config.AppDeployInfo{
 					Plugin: d.opts.DeployPlugin,
 				},
-				AppRun: &types.AppRunInfo{
+				AppRun: &config.AppRunInfo{
 					Plugin:  d.opts.RunPlugin,
 					Command: d.opts.RunCommand,
 				},
@@ -545,7 +545,7 @@ func (d *AppAdd) promptService() (*serviceAppInfo, error) { // nolint: unparam
 				AppType: config.AppTypeService,
 				AppURL:  d.opts.URL,
 				AppDir:  d.opts.Dir,
-				AppRun: &types.AppRunInfo{
+				AppRun: &config.AppRunInfo{
 					Command: d.opts.RunCommand,
 				},
 			},

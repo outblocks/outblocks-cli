@@ -5,7 +5,6 @@ import (
 
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/validator"
-	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
 const (
@@ -19,8 +18,8 @@ type FunctionApp struct {
 func LoadFunctionAppData(path string, data []byte) (App, error) {
 	out := &FunctionApp{
 		BasicApp: BasicApp{
-			AppRun:    &types.AppRunInfo{},
-			AppDeploy: &types.AppDeployInfo{},
+			AppRun:    &AppRunInfo{},
+			AppDeploy: &AppDeployInfo{},
 		},
 	}
 

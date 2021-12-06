@@ -6,12 +6,11 @@ import (
 	"sync"
 
 	"github.com/outblocks/outblocks-cli/internal/util"
-	plugin_go "github.com/outblocks/outblocks-plugin-go"
-	"github.com/outblocks/outblocks-plugin-go/types"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 )
 
 type LocalApp struct {
-	*types.AppRun
+	*apiv1.AppRun
 }
 
 type LocalAppRunInfo struct {
@@ -28,7 +27,7 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 	var err error
 
 	info.CmdInfo, err = util.NewCmdInfo(
-		a.App.Properties["run"].(*types.AppRun).Command,
+		a.App.Run.Command,
 		a.App.Dir,
 		util.FlattenEnvMap(a.App.Env),
 	)
@@ -39,7 +38,7 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 	return info, nil
 }
 
-func (a *LocalAppRunInfo) Run(outputCh chan<- *plugin_go.RunOutputResponse) error {
+func (a *LocalAppRunInfo) Run(outputCh chan<- *apiv1.RunOutputResponse) error {
 	err := a.CmdInfo.Run()
 	if err != nil {
 		return err
@@ -50,9 +49,10 @@ func (a *LocalAppRunInfo) Run(outputCh chan<- *plugin_go.RunOutputResponse) erro
 	go func() {
 		s := bufio.NewScanner(a.Stdout())
 		for s.Scan() {
-			out := &plugin_go.RunOutputResponse{
-				Source:  plugin_go.RunOutpoutSourceApp,
-				ID:      a.App.ID,
+			out := &apiv1.RunOutputResponse{
+				Source:  apiv1.RunOutputResponse_SOURCE_APP,
+				Stream:  apiv1.RunOutputResponse_STREAM_STDOUT,
+				Id:      a.App.Id,
 				Name:    a.App.Name,
 				Message: s.Text(),
 			}
@@ -66,12 +66,12 @@ func (a *LocalAppRunInfo) Run(outputCh chan<- *plugin_go.RunOutputResponse) erro
 	go func() {
 		s := bufio.NewScanner(a.Stderr())
 		for s.Scan() {
-			out := &plugin_go.RunOutputResponse{
-				Source:   plugin_go.RunOutpoutSourceApp,
-				ID:       a.App.ID,
-				Name:     a.App.Name,
-				Message:  s.Text(),
-				IsStderr: true,
+			out := &apiv1.RunOutputResponse{
+				Source:  apiv1.RunOutputResponse_SOURCE_APP,
+				Stream:  apiv1.RunOutputResponse_STREAM_STDERR,
+				Id:      a.App.Id,
+				Name:    a.App.Name,
+				Message: s.Text(),
 			}
 
 			outputCh <- out
@@ -102,7 +102,7 @@ func (a *LocalAppRunInfo) Wait() error {
 	return err
 }
 
-func (a *LocalApp) Run(outputCh chan<- *plugin_go.RunOutputResponse) (*LocalAppRunInfo, error) {
+func (a *LocalApp) Run(outputCh chan<- *apiv1.RunOutputResponse) (*LocalAppRunInfo, error) {
 	i, err := NewLocalAppRunInfo(a)
 	if err != nil {
 		return nil, err

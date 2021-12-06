@@ -114,7 +114,7 @@ func (i *CmdInfo) Stop() error {
 		time.Sleep(commandCleanupTimeout)
 
 		if i.IsRunning() {
-			_ = i.cmd.Process.Signal(syscall.SIGKILL)
+			_ = i.cmd.Process.Kill()
 		}
 	}()
 

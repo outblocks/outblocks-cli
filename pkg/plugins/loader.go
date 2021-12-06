@@ -238,8 +238,16 @@ func (l *Loader) loadPlugin(pi *pluginInfo, dir string, ver *semver.Version) (*P
 		return nil, fmt.Errorf("cannot read yaml: %w", err)
 	}
 
+	cacheDir := filepath.Join(l.baseDir, ".outblocks", "cache", pi.name)
+
+	err = plugin_util.MkdirAll(cacheDir, 0755)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create dir %s: %w", cacheDir, err)
+	}
+
 	plugin := Plugin{
 		Dir:      dir,
+		CacheDir: cacheDir,
 		Version:  ver,
 		yamlData: data,
 		yamlPath: p,

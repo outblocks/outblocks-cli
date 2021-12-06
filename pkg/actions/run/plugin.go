@@ -5,16 +5,16 @@ import (
 	"fmt"
 
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
-	plugin_go "github.com/outblocks/outblocks-plugin-go"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 )
 
 type PluginRunResult struct {
 	Info     map[*plugins.Plugin]*PluginInfo
-	OutputCh chan *plugin_go.RunOutputResponse
+	OutputCh chan *apiv1.RunOutputResponse
 }
 
 type PluginInfo struct {
-	Response *plugin_go.RunningResponse
+	Response *apiv1.RunStartResponse
 	done     chan struct{}
 	err      error
 }
@@ -25,10 +25,10 @@ func (i *PluginInfo) Wait() error {
 	return i.err
 }
 
-func ThroughPlugin(ctx context.Context, runMap map[*plugins.Plugin]*plugin_go.RunRequest) (*PluginRunResult, error) {
+func ThroughPlugin(ctx context.Context, runMap map[*plugins.Plugin]*apiv1.RunRequest) (*PluginRunResult, error) {
 	ret := &PluginRunResult{
 		Info:     make(map[*plugins.Plugin]*PluginInfo),
-		OutputCh: make(chan *plugin_go.RunOutputResponse),
+		OutputCh: make(chan *apiv1.RunOutputResponse),
 	}
 
 	errCh := make(chan error, 1)
@@ -48,8 +48,6 @@ func ThroughPlugin(ctx context.Context, runMap map[*plugins.Plugin]*plugin_go.Ru
 			err := <-errCh
 			if err != nil {
 				i.err = fmt.Errorf("plugin:%s: %s", plug.Name, err)
-			} else {
-				i.err = fmt.Errorf("plugin:%s: exited", plug.Name)
 			}
 
 			close(i.done)

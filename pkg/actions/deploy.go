@@ -16,7 +16,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
-	plugin_go "github.com/outblocks/outblocks-plugin-go"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	"github.com/outblocks/outblocks-plugin-go/util/errgroup"
 	"github.com/pterm/pterm"
@@ -25,8 +25,8 @@ import (
 const deployCommand = "deploy"
 
 type planParams struct {
-	apps      []*types.AppPlan
-	deps      []*types.DependencyPlan
+	appPlans  []*apiv1.AppPlan
+	depPlans  []*apiv1.DependencyPlan
 	args      map[string]interface{}
 	firstPass bool
 }
@@ -79,8 +79,8 @@ func (d *Deploy) Run(ctx context.Context) error {
 		return err
 	}
 
-	if stateRes.Source != nil && stateRes.Source.Created {
-		d.log.Infof("New state created: '%s'\n", stateRes.Source.Name)
+	if stateRes.StateCreated {
+		d.log.Infof("New state created: '%s'\n", stateRes.StateName)
 
 		verify = true
 	}
@@ -102,18 +102,18 @@ func (d *Deploy) Run(ctx context.Context) error {
 	return d.showStateStatus(state.Apps, state.Dependencies)
 }
 
-func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, stateRes *plugin_go.GetStateResponse) (canceled bool, err error) {
+func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, stateRes *apiv1.GetStateResponse_State) (canceled bool, err error) {
 	stateBeforeStr, _ := json.Marshal(state)
 
 	// Plan and apply.
-	apps, skipAppIDs, destroy, err := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps, d.opts.Destroy)
+	appStates, skipAppIDs, destroy, err := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps, d.opts.Destroy)
 	if err != nil {
 		return false, err
 	}
 
-	deps := filterDependencies(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
+	depStates := filterDependencies(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
 
-	planMap, err := calculatePlanMap(d.cfg, apps, deps, d.opts.TargetApps, skipAppIDs)
+	planMap, err := calculatePlanMap(d.cfg, appStates, depStates, d.opts.TargetApps, skipAppIDs)
 	if err != nil {
 		return false, err
 	}
@@ -129,8 +129,8 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	spinner, _ := d.log.Spinner().Start("Planning...")
 
 	// Proceed with plan - reset state apps and deps.
-	state.Apps = make(map[string]*types.AppState)
-	state.Dependencies = make(map[string]*types.DependencyState)
+	state.Apps = make(map[string]*apiv1.AppState)
+	state.Dependencies = make(map[string]*apiv1.DependencyState)
 
 	planRetMap, err := plan(ctx, state, planMap, verify, destroy)
 	if err != nil {
@@ -160,20 +160,20 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	}
 
 	// Merge state with current apps/deps if needed (they might not have a state defined).
-	for _, app := range apps {
-		if _, ok := state.Apps[app.ID]; ok {
+	for _, appState := range appStates {
+		if _, ok := state.Apps[appState.App.Id]; ok {
 			continue
 		}
 
-		state.Apps[app.ID] = types.NewAppState(&app.App)
+		state.Apps[appState.App.Id] = &apiv1.AppState{App: appState.App}
 	}
 
-	for _, dep := range deps {
-		if _, ok := state.Dependencies[dep.ID]; ok {
+	for _, depState := range depStates {
+		if _, ok := state.Dependencies[depState.Dependency.Id]; ok {
 			continue
 		}
 
-		state.Dependencies[dep.ID] = types.NewDependencyState(&dep.Dependency)
+		state.Dependencies[depState.Dependency.Id] = &apiv1.DependencyState{Dependency: depState.Dependency}
 	}
 
 	// Proceed with saving.
@@ -197,29 +197,29 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 
 type dnsSetup struct {
 	record string
-	dns    *types.DNSState
+	dns    *apiv1.DNSState
 }
 
-func (d *Deploy) prepareAppDNSMap(appStates map[string]*types.AppState) (map[string]*types.DNSState, error) {
-	dnsMap := make(map[string]*types.DNSState)
+func (d *Deploy) prepareAppDNSMap(appStates map[string]*apiv1.AppState) (map[string]*apiv1.DNSState, error) {
+	dnsMap := make(map[string]*apiv1.DNSState)
 
 	for _, appState := range appStates {
-		if appState.DNS == nil || !appState.DNS.Manual || (appState.DNS.CNAME == "" && appState.DNS.IP == "") {
+		if appState.Dns == nil || !appState.Dns.Manual || (appState.Dns.Cname == "" && appState.Dns.Ip == "") {
 			continue
 		}
 
-		host, err := urlutil.ExtractHostname(appState.DNS.URL)
+		host, err := urlutil.ExtractHostname(appState.Dns.Url)
 		if err != nil {
 			return nil, err
 		}
 
-		dnsMap[host] = appState.DNS
+		dnsMap[host] = appState.Dns
 	}
 
 	return dnsMap, nil
 }
 
-func (d *Deploy) showStateStatus(appStates map[string]*types.AppState, dependencyStates map[string]*types.DependencyState) error {
+func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependencyStates map[string]*apiv1.DependencyState) error {
 	dnsMap, err := d.prepareAppDNSMap(appStates)
 	if err != nil {
 		return err
@@ -245,11 +245,11 @@ func (d *Deploy) showStateStatus(appStates map[string]*types.AppState, dependenc
 
 	for _, v := range dns {
 		typ := "A"
-		val := v.dns.IP
+		val := v.dns.Ip
 
-		if v.dns.CNAME != "" {
+		if v.dns.Cname != "" {
 			typ = "CNAME"
-			val = v.dns.CNAME
+			val = v.dns.Cname
 		}
 
 		data = append(data, []string{pterm.Green(v.record), pterm.Yellow(typ), val})
@@ -266,8 +266,8 @@ func (d *Deploy) showStateStatus(appStates map[string]*types.AppState, dependenc
 	appNameStyle := pterm.NewStyle(pterm.Reset, pterm.Bold)
 	appFailingStyle := pterm.NewStyle(pterm.FgRed, pterm.Bold)
 
-	readyApps := make(map[string]*types.AppState)
-	unreadyApps := make(map[string]*types.AppState)
+	readyApps := make(map[string]*apiv1.AppState)
+	unreadyApps := make(map[string]*apiv1.AppState)
 
 	for k, appState := range appStates {
 		if appState.Deployment == nil {
@@ -287,13 +287,13 @@ func (d *Deploy) showStateStatus(appStates map[string]*types.AppState, dependenc
 		for _, appState := range readyApps {
 			app := appState.App
 
-			d.log.Printf("%s %s %s (%s)\n", appURLStyle.Sprint(app.URL), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type)
+			d.log.Printf("%s %s %s (%s)\n", appURLStyle.Sprint(app.Url), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type)
 		}
 
 		for _, appState := range unreadyApps {
 			app := appState.App
 
-			d.log.Printf("%s %s %s (%s) %s\n", appURLErrorStyle.Sprint(app.URL), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type, appFailingStyle.Sprint("FAILING"))
+			d.log.Printf("%s %s %s (%s) %s\n", appURLErrorStyle.Sprint(app.Url), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type, appFailingStyle.Sprint("FAILING"))
 			d.log.Errorln(appState.Deployment.Message)
 		}
 	}
@@ -305,7 +305,7 @@ func (d *Deploy) showStateStatus(appStates map[string]*types.AppState, dependenc
 		for _, depState := range dependencyStates {
 			dep := depState.Dependency
 
-			if depState.DNS == nil {
+			if depState.Dns == nil {
 				continue
 			}
 
@@ -315,7 +315,7 @@ func (d *Deploy) showStateStatus(appStates map[string]*types.AppState, dependenc
 				first = false
 			}
 
-			d.log.Printf("%s %s %s (%s)\n", pterm.Green(depState.DNS.ConnectionInfo), pterm.Gray("==>"), appNameStyle.Sprint(dep.Name), dep.Type)
+			d.log.Printf("%s %s %s (%s)\n", pterm.Green(depState.Dns.ConnectionInfo), pterm.Gray("==>"), appNameStyle.Sprint(dep.Name), dep.Type)
 		}
 	}
 
@@ -326,7 +326,7 @@ func (d *Deploy) showStateStatus(appStates map[string]*types.AppState, dependenc
 		data := make([][]string, 0, len(dnsMap))
 
 		for host, v := range dnsMap {
-			data = append(data, []string{pterm.Green(host), pterm.Yellow(v.SSLStatus), v.SSLStatusInfo})
+			data = append(data, []string{pterm.Green(host), pterm.Yellow(v.SslStatus), v.SslStatusInfo})
 		}
 
 		sort.Slice(data, func(i, j int) bool {
@@ -345,12 +345,12 @@ func (d *Deploy) showStateStatus(appStates map[string]*types.AppState, dependenc
 	return nil
 }
 
-func saveState(cfg *config.Project, data *types.StateData) (*plugin_go.SaveStateResponse, error) {
+func saveState(cfg *config.Project, data *types.StateData) (*apiv1.SaveStateResponse, error) {
 	state := cfg.State
 	plug := state.Plugin()
 
 	if state.IsLocal() {
-		return &plugin_go.SaveStateResponse{}, state.SaveLocal(data)
+		return &apiv1.SaveStateResponse{}, state.SaveLocal(data)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultTimeout)
@@ -359,7 +359,7 @@ func saveState(cfg *config.Project, data *types.StateData) (*plugin_go.SaveState
 	return plug.Client().SaveState(ctx, data, state.Type, state.Other)
 }
 
-func getState(ctx context.Context, cfg *config.Project, lock bool, lockWait time.Duration) (stateData *types.StateData, stateRes *plugin_go.GetStateResponse, err error) {
+func getState(ctx context.Context, cfg *config.Project, lock bool, lockWait time.Duration) (stateData *types.StateData, stateRes *apiv1.GetStateResponse_State, err error) {
 	state := cfg.State
 	plug := state.Plugin()
 
@@ -369,9 +369,7 @@ func getState(ctx context.Context, cfg *config.Project, lock bool, lockWait time
 			return nil, nil, err
 		}
 
-		return stateData, &plugin_go.GetStateResponse{
-			Source: &types.StateSource{},
-		}, nil
+		return stateData, &apiv1.GetStateResponse_State{}, nil
 	}
 
 	ret, err := plug.Client().GetState(ctx, state.Type, state.Other, lock, lockWait, client.YAMLContext{
@@ -392,15 +390,15 @@ func getState(ctx context.Context, cfg *config.Project, lock bool, lockWait time
 	return stateData, ret, err
 }
 
-func calculatePlanMap(cfg *config.Project, apps []*types.AppState, deps []*types.DependencyState, targetAppIDs, skipAppIDs []string) (map[*plugins.Plugin]*planParams, error) {
+func calculatePlanMap(cfg *config.Project, appStates []*apiv1.AppState, depStates []*apiv1.DependencyState, targetAppIDs, skipAppIDs []string) (map[*plugins.Plugin]*planParams, error) {
 	planMap := make(map[*plugins.Plugin]*planParams)
 
-	for _, app := range apps {
-		includeDNS := app.DNSPlugin != "" && app.DNSPlugin == app.DeployPlugin
+	for _, appState := range appStates {
+		includeDNS := appState.App.DnsPlugin != "" && appState.App.DnsPlugin == appState.App.DeployPlugin
 
-		deployPlugin := cfg.FindLoadedPlugin(app.DeployPlugin)
+		deployPlugin := cfg.FindLoadedPlugin(appState.App.DeployPlugin)
 		if deployPlugin == nil {
-			return nil, fmt.Errorf("missing deploy plugin: %s used for app: %s", app.DeployPlugin, app.Name)
+			return nil, fmt.Errorf("missing deploy plugin: %s used for app: %s", appState.App.DeployPlugin, appState.App.Name)
 		}
 
 		if _, ok := planMap[deployPlugin]; !ok {
@@ -409,23 +407,23 @@ func calculatePlanMap(cfg *config.Project, apps []*types.AppState, deps []*types
 			}
 		}
 
-		appReq := &types.AppPlan{
-			App:      app,
+		appReq := &apiv1.AppPlan{
+			State:    appState,
 			IsDeploy: true,
-			IsDNS:    includeDNS,
+			IsDns:    includeDNS,
 		}
 
-		planMap[deployPlugin].apps = append(planMap[deployPlugin].apps, appReq)
+		planMap[deployPlugin].appPlans = append(planMap[deployPlugin].appPlans, appReq)
 		planMap[deployPlugin].firstPass = !includeDNS // if dns is handled by different plugin, plan this as a first pass
 
 		// Add DNS plugin if not already included (handled by same plugin).
-		if includeDNS || app.DNSPlugin == "" {
+		if includeDNS || appState.App.DnsPlugin == "" {
 			continue
 		}
 
-		dnsPlugin := cfg.FindLoadedPlugin(app.DNSPlugin)
+		dnsPlugin := cfg.FindLoadedPlugin(appState.App.DnsPlugin)
 		if dnsPlugin == nil {
-			return nil, fmt.Errorf("missing dns plugin: %s used for app: %s", app.DNSPlugin, app.Name)
+			return nil, fmt.Errorf("missing dns plugin: %s used for app: %s", appState.App.DnsPlugin, appState.App.Name)
 		}
 
 		if _, ok := planMap[dnsPlugin]; !ok {
@@ -434,20 +432,20 @@ func calculatePlanMap(cfg *config.Project, apps []*types.AppState, deps []*types
 			}
 		}
 
-		appReq = &types.AppPlan{
-			App:      app,
+		appReq = &apiv1.AppPlan{
+			State:    appState,
 			IsDeploy: false,
-			IsDNS:    true,
+			IsDns:    true,
 		}
 
-		planMap[dnsPlugin].apps = append(planMap[dnsPlugin].apps, appReq)
+		planMap[dnsPlugin].appPlans = append(planMap[dnsPlugin].appPlans, appReq)
 	}
 
 	// Process dependencies.
-	for _, dep := range deps {
-		deployPlugin := cfg.FindLoadedPlugin(dep.DeployPlugin)
+	for _, depState := range depStates {
+		deployPlugin := cfg.FindLoadedPlugin(depState.Dependency.DeployPlugin)
 		if deployPlugin == nil {
-			return nil, fmt.Errorf("missing deploy plugin: %s used for dependency: %s", dep.DeployPlugin, dep.Name)
+			return nil, fmt.Errorf("missing deploy plugin: %s used for dependency: %s", depState.Dependency.DeployPlugin, depState.Dependency.Name)
 		}
 
 		if _, ok := planMap[deployPlugin]; !ok {
@@ -456,8 +454,8 @@ func calculatePlanMap(cfg *config.Project, apps []*types.AppState, deps []*types
 			}
 		}
 
-		planMap[deployPlugin].deps = append(planMap[deployPlugin].deps, &types.DependencyPlan{
-			Dependency: dep,
+		planMap[deployPlugin].depPlans = append(planMap[deployPlugin].depPlans, &apiv1.DependencyPlan{
+			State: depState,
 		})
 	}
 
@@ -474,9 +472,9 @@ func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetApp
 	skipAppIDsMap := util.StringArrayToSet(skipAppIDs)
 
 	for _, planParam := range planMap {
-		for _, app := range planParam.apps {
-			if skipAppIDsMap[app.App.ID] || (len(targetAppIDsMap) > 0 && !targetAppIDsMap[app.App.ID]) {
-				app.Skip = true
+		for _, appPlan := range planParam.appPlans {
+			if skipAppIDsMap[appPlan.State.App.Id] || (len(targetAppIDsMap) > 0 && !targetAppIDsMap[appPlan.State.App.Id]) {
+				appPlan.Skip = true
 			}
 		}
 	}
@@ -484,8 +482,8 @@ func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetApp
 	return planMap
 }
 
-func mergeState(state *types.StateData, pluginName string, pluginState *types.PluginState, appStates map[string]*types.AppState, depStates map[string]*types.DependencyState) {
-	state.Plugins[pluginName] = pluginState
+func mergeState(state *types.StateData, pluginName string, pluginState *apiv1.PluginState, appStates map[string]*apiv1.AppState, depStates map[string]*apiv1.DependencyState) {
+	state.Plugins[pluginName] = types.PluginStateFromProto(pluginState)
 
 	// Merge state with new changes.
 	for k, v := range appStates {
@@ -497,17 +495,17 @@ func mergeState(state *types.StateData, pluginName string, pluginState *types.Pl
 	}
 }
 
-func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, verify, destroy bool) (retMap map[*plugins.Plugin]*plugin_go.PlanResponse, err error) {
+func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, verify, destroy bool) (retMap map[*plugins.Plugin]*apiv1.PlanResponse, err error) {
 	if state.Plugins == nil {
 		state.Plugins = make(map[string]*types.PluginState)
 	}
 
-	retMap = make(map[*plugins.Plugin]*plugin_go.PlanResponse, len(planMap))
+	retMap = make(map[*plugins.Plugin]*apiv1.PlanResponse, len(planMap))
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 
 	var mu sync.Mutex
 
-	processResponse := func(plug *plugins.Plugin, ret *plugin_go.PlanResponse) {
+	processResponse := func(plug *plugins.Plugin, ret *apiv1.PlanResponse) {
 		if ret == nil {
 			return
 		}
@@ -517,7 +515,7 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 		retMap[plug] = ret
 
 		// Merge state with new changes.
-		mergeState(state, plug.Name, ret.PluginState, ret.AppStates, ret.DependencyStates)
+		mergeState(state, plug.Name, ret.State, ret.AppStates, ret.DependencyStates)
 
 		mu.Unlock()
 	}
@@ -528,7 +526,7 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 		params := params
 
 		g.Go(func() error {
-			ret, err := plug.Client().Plan(ctx, state, params.apps, params.deps, params.args, verify, destroy)
+			ret, err := plug.Client().Plan(ctx, state, params.appPlans, params.depPlans, params.args, verify, destroy)
 			if err != nil {
 				return err
 			}
@@ -543,13 +541,13 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 
 	// Merge state with new changes.
 	for p, ret := range retMap {
-		mergeState(state, p.Name, ret.PluginState, ret.AppStates, ret.DependencyStates)
+		mergeState(state, p.Name, ret.State, ret.AppStates, ret.DependencyStates)
 	}
 
 	return retMap, err
 }
 
-func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, destroy bool, callback func(*types.ApplyAction)) error {
+func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, destroy bool, callback func(*apiv1.ApplyAction)) error {
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 
 	if state.Plugins == nil {
@@ -558,7 +556,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 
 	var mu sync.Mutex
 
-	processResponse := func(plug *plugins.Plugin, ret *plugin_go.ApplyDoneResponse) {
+	processResponse := func(plug *plugins.Plugin, ret *apiv1.ApplyDoneResponse) {
 		if ret == nil {
 			return
 		}
@@ -566,7 +564,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		mu.Lock()
 
 		// Merge state with new changes.
-		mergeState(state, plug.Name, ret.PluginState, ret.AppStates, ret.DependencyStates)
+		mergeState(state, plug.Name, ret.State, ret.AppStates, ret.DependencyStates)
 
 		mu.Unlock()
 	}
@@ -578,7 +576,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		}
 
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.args, destroy, callback)
+			ret, err := plug.Client().Apply(ctx, state, params.appPlans, params.depPlans, params.args, destroy, callback)
 			processResponse(plug, ret)
 
 			return err
@@ -597,7 +595,7 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		}
 
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, params.apps, params.deps, params.args, destroy, callback)
+			ret, err := plug.Client().Apply(ctx, state, params.appPlans, params.depPlans, params.args, destroy, callback)
 			processResponse(plug, ret)
 
 			return err

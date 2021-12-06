@@ -13,6 +13,7 @@ var (
 		"deploy":  ActionDeploy,
 		"run":     ActionRun,
 		"locking": ActionLocking,
+		"state":   ActionState,
 	}
 )
 

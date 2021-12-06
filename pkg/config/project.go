@@ -305,7 +305,7 @@ func (p *Project) FindLoadedPlugin(name string) *plugins.Plugin {
 	return p.loadedPluginsMap[name]
 }
 
-func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *plugins.Loader) error {
+func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *plugins.Loader, hostAddr string) error {
 	plugs := make([]*plugins.Plugin, len(p.Plugins))
 	pluginsToDownload := make(map[int]*Plugin)
 
@@ -365,7 +365,7 @@ func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *pl
 		plugConfig := p.Plugins[i]
 		prefix := fmt.Sprintf("$.plugins[%d]", i)
 
-		if err := plug.Prepare(ctx, log, p.env, p.ID(), p.Name, p.Dir, plugConfig.Other, prefix, p.YAMLData()); err != nil {
+		if err := plug.Prepare(ctx, log, p.env, p.ID(), p.Name, p.Dir, hostAddr, plugConfig.Other, prefix, p.YAMLData()); err != nil {
 			return fmt.Errorf("error starting plugin '%s': %w", plug.Name, err)
 		}
 	}

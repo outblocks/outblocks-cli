@@ -4,7 +4,8 @@ import (
 	"fmt"
 
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
-	"github.com/outblocks/outblocks-plugin-go/types"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 type AppNeed struct {
@@ -28,9 +29,9 @@ func (n *AppNeed) Dependency() *Dependency {
 	return n.dep
 }
 
-func (n *AppNeed) PluginType() *types.AppNeed {
-	return &types.AppNeed{
+func (n *AppNeed) Proto() *apiv1.AppNeed {
+	return &apiv1.AppNeed{
 		Dependency: n.dep.Name,
-		Properties: n.Other,
+		Properties: plugin_util.MustNewStruct(n.Other),
 	}
 }

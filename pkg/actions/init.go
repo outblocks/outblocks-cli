@@ -19,6 +19,7 @@ import (
 	"github.com/outblocks/outblocks-cli/templates"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/pterm/pterm"
+	"google.golang.org/grpc/codes"
 )
 
 var (
@@ -28,6 +29,7 @@ var (
 type Init struct {
 	log            logger.Logger
 	pluginCacheDir string
+	hostAddr       string
 	opts           *InitOptions
 }
 
@@ -52,10 +54,11 @@ func (o *InitOptions) Validate() error {
 	)
 }
 
-func NewInit(log logger.Logger, pluginCacheDir string, opts *InitOptions) *Init {
+func NewInit(log logger.Logger, pluginCacheDir, hostAddr string, opts *InitOptions) *Init {
 	return &Init{
 		log:            log,
 		pluginCacheDir: pluginCacheDir,
+		hostAddr:       hostAddr,
 		opts:           opts,
 	}
 }
@@ -107,7 +110,7 @@ func (d *Init) Run(ctx context.Context) error {
 		}
 	}
 
-	err = cfg.LoadPlugins(ctx, d.log, loader)
+	err = cfg.LoadPlugins(ctx, d.log, loader, d.hostAddr)
 	if err != nil {
 		return err
 	}
@@ -127,7 +130,7 @@ func (d *Init) Run(ctx context.Context) error {
 	for _, plug := range cfg.Plugins {
 		initRes, err := plug.Loaded().Client().ProjectInit(ctx, cfg.Name, []string{d.opts.DeployPlugin}, []string{d.opts.RunPlugin}, pluginOpts[plug.Name])
 		if err != nil {
-			if errors.Is(err, terminal.InterruptErr) {
+			if st, ok := util.StatusFromError(err); ok && st.Code() == codes.Aborted {
 				d.log.Println("Init canceled.")
 				return nil
 			}
@@ -136,7 +139,7 @@ func (d *Init) Run(ctx context.Context) error {
 		}
 
 		if initRes != nil {
-			plug.Other = initRes.Properties
+			plug.Other = initRes.Properties.AsMap()
 
 			for k, v := range plug.Other {
 				valueKey := fmt.Sprintf("%s_%s", plug.Name, k)

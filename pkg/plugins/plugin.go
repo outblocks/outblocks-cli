@@ -16,20 +16,20 @@ import (
 )
 
 type Plugin struct {
-	Name              string                    `json:"name"`
-	Author            string                    `json:"author"`
-	Usage             string                    `json:"usage"`
-	Description       string                    `json:"description"`
-	Cmd               map[string]string         `json:"cmd"`
-	Actions           []string                  `json:"actions"`
-	Hooks             []*PluginHooks            `json:"hooks"`
-	Supports          []string                  `json:"supports"`
-	StateTypes        []string                  `json:"state_types"`
-	StateMultiLocking bool                      `json:"state_multi_locking"`
-	SupportedTypes    []*PluginType             `json:"supported_types"`
-	Commands          map[string]*PluginCommand `json:"commands"`
+	Name           string                    `json:"name"`
+	Author         string                    `json:"author"`
+	Usage          string                    `json:"usage"`
+	Description    string                    `json:"description"`
+	Cmd            map[string]string         `json:"cmd"`
+	Actions        []string                  `json:"actions"`
+	Hooks          []*PluginHooks            `json:"hooks"`
+	Supports       []string                  `json:"supports"`
+	StateTypes     []string                  `json:"state_types"`
+	SupportedTypes []*PluginType             `json:"supported_types"`
+	Commands       map[string]*PluginCommand `json:"commands"`
 
 	Dir      string          `json:"-"`
+	CacheDir string          `json:"-"`
 	Version  *semver.Version `json:"-"`
 	yamlPath string
 	yamlData []byte
@@ -45,6 +45,7 @@ const (
 	ActionRun
 	ActionDNS
 	ActionLocking
+	ActionState
 )
 
 func (p *Plugin) Validate() error {
@@ -114,7 +115,7 @@ func (p *Plugin) SupportsApp(app string) bool {
 	return false
 }
 
-func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, env, projectID, projectName, projectDir string, props map[string]interface{}, yamlPrefix string, yamlData []byte) error {
+func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, env, projectID, projectName, projectDir, hostAddr string, props map[string]interface{}, yamlPrefix string, yamlData []byte) error {
 	runCommand, ok := p.Cmd[runtime.GOOS]
 	if !ok {
 		runCommand = p.Cmd["default"]
@@ -125,6 +126,7 @@ func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, env, projectID,
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("OUTBLOCKS_BIN=%s", os.Args[0]),
 		fmt.Sprintf("OUTBLOCKS_PLUGIN_DIR=%s", p.Dir),
+		fmt.Sprintf("OUTBLOCKS_PLUGIN_PROJECT_CACHE_DIR=%s", p.CacheDir),
 		fmt.Sprintf("OUTBLOCKS_ENV=%s", env),
 		fmt.Sprintf("OUTBLOCKS_PROJECT_NAME=%s", projectName),
 		fmt.Sprintf("OUTBLOCKS_PROJECT_ID=%s", projectID),
@@ -133,7 +135,7 @@ func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, env, projectID,
 
 	var err error
 
-	p.client, err = client.NewClient(log, p.Name, cmd, props, client.YAMLContext{
+	p.client, err = client.NewClient(log, p.Name, cmd, hostAddr, props, client.YAMLContext{
 		Prefix: yamlPrefix,
 		Data:   yamlData,
 	})

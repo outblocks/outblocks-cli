@@ -2,15 +2,20 @@ package main
 
 import (
 	"context"
+	"io"
 	"os"
 	"os/signal"
 	"runtime/debug"
 	"syscall"
 
 	"github.com/outblocks/outblocks-cli/cmd"
+	"google.golang.org/grpc/grpclog"
 )
 
 func main() {
+	// Disable grpc client logging.
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(io.Discard, io.Discard, io.Discard))
+
 	exec := cmd.NewExecutor()
 
 	ctx, cancel := context.WithCancel(context.Background())

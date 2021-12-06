@@ -18,7 +18,7 @@ func (e *Executor) newInitCmd() *cobra.Command {
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return actions.NewInit(e.Log(), e.PluginsCacheDir(), opts).Run(cmd.Context())
+			return actions.NewInit(e.Log(), e.PluginsCacheDir(), e.srv.Addr().String(), opts).Run(cmd.Context())
 		},
 	}
 

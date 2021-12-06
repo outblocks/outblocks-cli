@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"github.com/outblocks/outblocks-cli/internal/util"
-	"github.com/outblocks/outblocks-plugin-go/types"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 )
 
 type LocalDependency struct {
-	*types.DependencyRun
+	*apiv1.DependencyRun
 }
 
 type LocalDependencyRunInfo struct {

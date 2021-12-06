@@ -10,7 +10,8 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
-	"github.com/outblocks/outblocks-plugin-go/types"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 var (
@@ -30,15 +31,47 @@ type App interface {
 	Normalize(cfg *Project) error
 	Check(cfg *Project) error
 	Type() string
-	PluginType() *types.App
-	RunInfo() *types.AppRunInfo
-	DeployInfo() *types.AppDeployInfo
+	Proto() *apiv1.App
+	RunInfo() *AppRunInfo
+	DeployInfo() *AppDeployInfo
 	SupportsLocal() bool
 	YAMLError(path, msg string) error
 
 	DeployPlugin() *plugins.Plugin
 	RunPlugin() *plugins.Plugin
 	DNSPlugin() *plugins.Plugin
+}
+
+type AppRunInfo struct {
+	Plugin  string                 `json:"plugin,omitempty"`
+	Command string                 `json:"command,omitempty"`
+	Port    int32                  `json:"port,omitempty"`
+	Env     map[string]string      `json:"env,omitempty"`
+	Other   map[string]interface{} `yaml:",remain"`
+}
+
+func (i *AppRunInfo) Proto() *apiv1.AppRunInfo {
+	return &apiv1.AppRunInfo{
+		Plugin:  i.Plugin,
+		Command: i.Command,
+		Port:    i.Port,
+		Env:     i.Env,
+		Other:   plugin_util.MustNewStruct(i.Other),
+	}
+}
+
+type AppDeployInfo struct {
+	Plugin string                 `json:"plugin,omitempty"`
+	Env    map[string]string      `json:"env,omitempty"`
+	Other  map[string]interface{} `yaml:",remain"`
+}
+
+func (i *AppDeployInfo) Proto() *apiv1.AppDeployInfo {
+	return &apiv1.AppDeployInfo{
+		Plugin: i.Plugin,
+		Env:    i.Env,
+		Other:  plugin_util.MustNewStruct(i.Other),
+	}
 }
 
 type BasicApp struct {
@@ -48,8 +81,8 @@ type BasicApp struct {
 	AppPathRedirect string                 `json:"path_redirect"`
 	AppEnv          map[string]string      `json:"env"`
 	AppDir          string                 `json:"dir"`
-	AppRun          *types.AppRunInfo      `json:"run"`
-	AppDeploy       *types.AppDeployInfo   `json:"deploy"`
+	AppRun          *AppRunInfo            `json:"run"`
+	AppDeploy       *AppDeployInfo         `json:"deploy"`
 	Needs           map[string]*AppNeed    `json:"needs"`
 	Other           map[string]interface{} `yaml:"-,remain"`
 
@@ -63,8 +96,8 @@ type BasicApp struct {
 
 func NewBasicApp() *BasicApp {
 	return &BasicApp{
-		AppRun:    &types.AppRunInfo{},
-		AppDeploy: &types.AppDeployInfo{},
+		AppRun:    &AppRunInfo{},
+		AppDeploy: &AppDeployInfo{},
 	}
 }
 
@@ -79,7 +112,7 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 	var err error
 
 	if a.AppRun == nil {
-		a.AppRun = &types.AppRunInfo{}
+		a.AppRun = &AppRunInfo{}
 	}
 
 	if a.AppDir == "" {
@@ -99,7 +132,7 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 	a.AppDir = "./" + a.AppDir
 
 	if a.AppDeploy == nil {
-		a.AppDeploy = &types.AppDeployInfo{}
+		a.AppDeploy = &AppDeployInfo{}
 	}
 
 	if a.AppPathRedirect == "" {
@@ -225,11 +258,11 @@ func (a *BasicApp) Dir() string {
 	return a.AppDir
 }
 
-func (a *BasicApp) PluginType() *types.App {
-	needs := make(map[string]*types.AppNeed, len(a.Needs))
+func (a *BasicApp) Proto() *apiv1.App {
+	needs := make(map[string]*apiv1.AppNeed, len(a.Needs))
 
 	for k, n := range a.Needs {
-		needs[k] = n.PluginType()
+		needs[k] = n.Proto()
 	}
 
 	var appURL string
@@ -251,21 +284,21 @@ func (a *BasicApp) PluginType() *types.App {
 		runPluginName = a.RunPlugin().Name
 	}
 
-	return &types.App{
-		ID:           a.ID(),
+	return &apiv1.App{
+		Id:           a.ID(),
 		Name:         a.AppName,
 		Type:         a.Type(),
 		Dir:          a.Dir(),
-		URL:          appURL,
+		Url:          appURL,
 		PathRedirect: a.AppPathRedirect,
 		Env:          a.Env(),
 		DeployPlugin: deployPluginName,
-		DNSPlugin:    dnsPluginName,
+		DnsPlugin:    dnsPluginName,
 		RunPlugin:    runPluginName,
-		Run:          a.AppRun,
-		Deploy:       a.AppDeploy,
+		Run:          a.AppRun.Proto(),
+		Deploy:       a.AppDeploy.Proto(),
 		Needs:        needs,
-		Properties:   a.Other,
+		Properties:   plugin_util.MustNewStruct(a.Other),
 	}
 }
 
@@ -301,11 +334,11 @@ func (a *BasicApp) SupportsLocal() bool {
 	return false
 }
 
-func (a *BasicApp) RunInfo() *types.AppRunInfo {
+func (a *BasicApp) RunInfo() *AppRunInfo {
 	return a.AppRun
 }
 
-func (a *BasicApp) DeployInfo() *types.AppDeployInfo {
+func (a *BasicApp) DeployInfo() *AppDeployInfo {
 	return a.AppDeploy
 }
 

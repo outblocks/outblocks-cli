@@ -8,6 +8,7 @@ import (
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/internal/validator"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
@@ -59,15 +60,16 @@ func (s *StaticApp) Validate() error {
 	)
 }
 
-func (s *StaticApp) PluginType() *types.App {
-	base := s.BasicApp.PluginType()
+func (s *StaticApp) Proto() *apiv1.App {
+	base := s.BasicApp.Proto()
 
 	props, err := s.StaticAppProperties.Encode()
 	if err != nil {
 		panic(err)
 	}
 
-	base.Properties = plugin_util.MergeMaps(base.Properties, props)
+	mergedProps := plugin_util.MergeMaps(base.Properties.AsMap(), props)
+	base.Properties = plugin_util.MustNewStruct(mergedProps)
 
 	return base
 }

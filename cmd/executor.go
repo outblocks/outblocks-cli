@@ -17,6 +17,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/getter"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
+	"github.com/outblocks/outblocks-cli/pkg/server"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -28,6 +29,8 @@ type Executor struct {
 	env     *cli.Environment
 	loader  *plugins.Loader
 	log     logger.Logger
+
+	srv *server.Server
 
 	cfg *config.Project
 
@@ -115,7 +118,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	vals := map[string]interface{}{"var": v}
 
 	// Load config file.
-	if err := e.loadProjectConfig(ctx, cfgPath, vals, skipLoadApps, skipLoadPlugins, skipCheckConfig); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+	if err := e.loadProjectConfig(ctx, cfgPath, e.srv.Addr().String(), vals, skipLoadApps, skipLoadPlugins, skipCheckConfig); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
 		return err
 	}
 
@@ -166,12 +169,22 @@ func (e *Executor) addPluginsCommands(cmd *cobra.Command) error {
 	return nil
 }
 
+func (e *Executor) startHostServer() error {
+	e.srv = server.NewServer(e.log)
+
+	return e.srv.Serve()
+}
+
 func (e *Executor) Execute(ctx context.Context) error {
 	if err := e.initConfig(); err != nil {
 		return err
 	}
 
 	if err := e.setupLogging(); err != nil {
+		return err
+	}
+
+	if err := e.startHostServer(); err != nil {
 		return err
 	}
 

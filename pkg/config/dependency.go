@@ -6,7 +6,8 @@ import (
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
-	"github.com/outblocks/outblocks-plugin-go/types"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 type Dependency struct {
@@ -37,19 +38,19 @@ func (d *Dependency) Validate() error {
 	)
 }
 
-func (d *Dependency) PluginType() *types.Dependency {
+func (d *Dependency) Proto() *apiv1.Dependency {
 	var deployPluginName string
 
 	if d.DeployPlugin() != nil {
 		deployPluginName = d.DeployPlugin().Name
 	}
 
-	return &types.Dependency{
-		ID:           d.ID(),
+	return &apiv1.Dependency{
+		Id:           d.ID(),
 		DeployPlugin: deployPluginName,
 		Name:         d.Name,
 		Type:         d.Type,
-		Properties:   d.Other,
+		Properties:   plugin_util.MustNewStruct(d.Other),
 	}
 }
 

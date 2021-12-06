@@ -11,7 +11,7 @@ import (
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
-func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals map[string]interface{}, skipLoadApps, skipLoadPlugins, skipCheck bool) error {
+func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath, hostAddr string, vals map[string]interface{}, skipLoadApps, skipLoadPlugins, skipCheck bool) error {
 	cfg, err := config.LoadProjectConfig(cfgPath, vals, &config.ProjectOptions{
 		Env: e.opts.env,
 	})
@@ -33,7 +33,7 @@ func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals m
 	e.cfg = cfg
 
 	if !skipLoadPlugins {
-		if err := cfg.LoadPlugins(ctx, e.log, e.loader); err != nil {
+		if err := cfg.LoadPlugins(ctx, e.log, e.loader, hostAddr); err != nil {
 			return err
 		}
 	}
@@ -50,14 +50,16 @@ func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath string, vals m
 }
 
 func (e *Executor) cleanupProject() error {
-	if e.cfg == nil {
-		return nil
+	if e.cfg != nil {
+		for _, plug := range e.cfg.LoadedPlugins() {
+			if err := plug.Stop(); err != nil {
+				return fmt.Errorf("error stopping plugin '%s': %w", plug.Name, err)
+			}
+		}
 	}
 
-	for _, plug := range e.cfg.LoadedPlugins() {
-		if err := plug.Stop(); err != nil {
-			return fmt.Errorf("error stopping plugin '%s': %w", plug.Name, err)
-		}
+	if e.srv != nil {
+		e.srv.Stop()
 	}
 
 	return nil
