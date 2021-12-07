@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
@@ -44,7 +45,7 @@ func (e *PluginError) Error() string {
 }
 
 func (c *Client) mapErrorWithContext(msg string, err error, yamlContext *YAMLContext) error {
-	if err == nil {
+	if err == nil || err == io.EOF {
 		return nil
 	}
 
@@ -58,6 +59,9 @@ func (c *Client) mapErrorWithContext(msg string, err error, yamlContext *YAMLCon
 		case *apiv1.LockError:
 			return fmt.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock %s=%s",
 				r.Owner, r.CreatedAt.AsTime(), r.LockName, r.LockInfo)
+		case *apiv1.StateLockError:
+			return fmt.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock %s",
+				r.Owner, r.CreatedAt.AsTime(), r.LockInfo)
 		case *apiv1.ValidationError:
 			return fileutil.YAMLError(strings.Join([]string{yamlContext.Prefix, r.Path}, "."), r.Message, yamlContext.Data)
 		}

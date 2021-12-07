@@ -64,7 +64,7 @@ func (c *Client) statePlugin() apiv1.StatePluginServiceClient {
 	return apiv1.NewStatePluginServiceClient(c.conn)
 }
 
-func (c *Client) lockingPlugin() apiv1.LockingPluginServiceClient { // nolint:unused
+func (c *Client) lockingPlugin() apiv1.LockingPluginServiceClient {
 	return apiv1.NewLockingPluginServiceClient(c.conn)
 }
 

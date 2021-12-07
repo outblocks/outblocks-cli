@@ -26,17 +26,19 @@ func (c *Client) GetState(ctx context.Context, typ string, props map[string]inte
 		return nil, c.mapError("get state error", err)
 	}
 
+	var state *apiv1.GetStateResponse_State
+
 	for {
 		res, err := stream.Recv()
 		if err != nil {
-			return nil, c.mapError("get state error", err)
+			return state, c.mapErrorWithContext("get state error", err, &yamlContext)
 		}
 
 		switch r := res.Response.(type) {
 		case *apiv1.GetStateResponse_Waiting:
 			c.log.Infoln("Lock is acquired. Waiting for it to be free...")
 		case *apiv1.GetStateResponse_State_:
-			return r.State, c.mapErrorWithContext("get state error", err, &yamlContext)
+			state = r.State
 		}
 	}
 }

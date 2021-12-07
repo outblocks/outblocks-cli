@@ -44,10 +44,12 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*apiv
 		return nil, c.mapError("apply error", err)
 	}
 
+	var done *apiv1.ApplyDoneResponse
+
 	for {
 		res, err := stream.Recv()
 		if err != nil {
-			return nil, c.mapError("apply error", err)
+			return done, c.mapError("apply error", err)
 		}
 
 		if r := res.GetAction(); r != nil {
@@ -61,7 +63,9 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*apiv
 		}
 
 		if r := res.GetDone(); r != nil {
-			return r, nil
+			done = r
+
+			continue
 		}
 
 		return nil, c.newPluginError("unexpected response to apply request", err)
