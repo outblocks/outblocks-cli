@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.48](https://github.com/outblocks/outblocks-cli/compare/v0.1.47...v0.1.48)
+
+> 2021-12-07
+
+### FEATURES
+
+[`eae821c`](https://github.com/outblocks/outblocks-cli/commit/eae821c85784cc1a21e6b9cd8916af6ae9461093) force unlock support for arbitrary locks, fix apply errors
+
+
 ## [v0.1.47](https://github.com/outblocks/outblocks-cli/compare/v0.1.46...v0.1.47)
 
 > 2021-12-06
