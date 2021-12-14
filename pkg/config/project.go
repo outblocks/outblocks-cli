@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/pterm/pterm"
 )
@@ -43,9 +45,15 @@ type DefaultsDeploy struct {
 	Other  map[string]interface{} `yaml:"-,remain"`
 }
 
+type DefaultsDNS struct {
+	Plugin string                 `json:"plugin,omitempty"`
+	Other  map[string]interface{} `yaml:"-,remain"`
+}
+
 type Defaults struct {
 	Run    DefaultsRun    `json:"run,omitempty"`
 	Deploy DefaultsDeploy `json:"deploy,omitempty"`
+	DNS    DefaultsDNS    `json:"dns,omitempty"`
 }
 
 type Project struct {
@@ -289,11 +297,9 @@ func (p *Project) YAMLData() []byte {
 	return p.yamlData
 }
 
-func (p *Project) FindDNSPlugin(url string) *plugins.Plugin {
-	host := strings.SplitN(url, "/", 2)[0]
-
+func (p *Project) FindDNSPlugin(u *url.URL) *plugins.Plugin {
 	for _, dns := range p.DNS {
-		if strings.HasSuffix(host, dns.Domain) {
+		if dns.Match(u.Host) {
 			return dns.plugin
 		}
 	}
@@ -373,4 +379,22 @@ func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *pl
 	p.SetLoadedPlugins(plugs)
 
 	return nil
+}
+
+func (p *Project) DomainInfoProto() []*apiv1.DomainInfo {
+	var ret []*apiv1.DomainInfo
+
+	for _, d := range p.DNS {
+		if d.SSLInfo.loadedCert == "" {
+			continue
+		}
+
+		ret = append(ret, &apiv1.DomainInfo{
+			Domains: d.Domains,
+			Cert:    d.SSLInfo.loadedCert,
+			Key:     d.SSLInfo.loadedKey,
+		})
+	}
+
+	return ret
 }

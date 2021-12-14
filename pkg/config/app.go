@@ -74,6 +74,34 @@ func (i *AppDeployInfo) Proto() *apiv1.AppDeployInfo {
 	}
 }
 
+type AppNeed struct {
+	Other map[string]interface{} `yaml:"-,remain"`
+
+	dep *Dependency
+}
+
+func (n *AppNeed) Normalize(name string, cfg *Project, data []byte) error {
+	dep := cfg.DependencyByName(name)
+	if dep == nil {
+		return fileutil.YAMLError(fmt.Sprintf("$.needs.%s", name), "object not found in project dependencies", data)
+	}
+
+	n.dep = dep
+
+	return nil
+}
+
+func (n *AppNeed) Dependency() *Dependency {
+	return n.dep
+}
+
+func (n *AppNeed) Proto() *apiv1.AppNeed {
+	return &apiv1.AppNeed{
+		Dependency: n.dep.Name,
+		Properties: plugin_util.MustNewStruct(n.Other),
+	}
+}
+
 type BasicApp struct {
 	AppName         string                 `json:"name"`
 	AppType         string                 `json:"type"`
@@ -234,7 +262,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 
 	// Check dns plugin.
 	if a.AppURL != "" {
-		a.dnsPlugin = cfg.FindDNSPlugin(a.AppURL)
+		a.dnsPlugin = cfg.FindDNSPlugin(a.URL())
 	}
 
 	for k, need := range a.Needs {

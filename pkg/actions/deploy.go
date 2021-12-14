@@ -25,10 +25,9 @@ import (
 const deployCommand = "deploy"
 
 type planParams struct {
-	appPlans  []*apiv1.AppPlan
-	depPlans  []*apiv1.DependencyPlan
-	args      map[string]interface{}
-	firstPass bool
+	appPlans []*apiv1.AppPlan
+	depPlans []*apiv1.DependencyPlan
+	args     map[string]interface{}
 }
 
 type Deploy struct {
@@ -99,10 +98,11 @@ func (d *Deploy) Run(ctx context.Context) error {
 		return nil
 	}
 
-	return d.showStateStatus(state.Apps, state.Dependencies)
+	return d.showStateStatus(state.Apps, state.Dependencies, state.DNSRecords)
 }
 
 func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, stateRes *apiv1.GetStateResponse_State) (canceled bool, err error) {
+	domains := d.cfg.DomainInfoProto()
 	stateBeforeStr, _ := json.Marshal(state)
 
 	// Plan and apply.
@@ -129,10 +129,10 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	spinner, _ := d.log.Spinner().Start("Planning...")
 
 	// Proceed with plan - reset state apps and deps.
-	state.Apps = make(map[string]*apiv1.AppState)
-	state.Dependencies = make(map[string]*apiv1.DependencyState)
+	oldState := *state
+	state.Reset()
 
-	planRetMap, err := plan(ctx, state, planMap, verify, destroy)
+	planRetMap, err := plan(ctx, state, planMap, domains, verify, destroy)
 	if err != nil {
 		spinner.Stop()
 
@@ -141,11 +141,11 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 		return false, err
 	}
 
-	deployChanges, dnsChanges := computeChange(d.cfg, state, planRetMap)
+	deployChanges := computeChange(d.cfg, &oldState, state, planRetMap)
 
 	spinner.Stop()
 
-	empty, canceled := planPrompt(d.log, deployChanges, dnsChanges, d.opts.AutoApprove, d.opts.ForceApprove)
+	empty, canceled := planPrompt(d.log, deployChanges, nil, d.opts.AutoApprove, d.opts.ForceApprove)
 
 	shouldApply := !canceled && !empty
 
@@ -155,8 +155,8 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 
 	// Apply if needed.
 	if shouldApply {
-		callback := applyProgress(d.log, deployChanges, dnsChanges)
-		err = apply(context.Background(), state, planMap, destroy, callback)
+		callback := applyProgress(d.log, deployChanges, nil)
+		err = apply(context.Background(), state, planMap, domains, destroy, callback)
 	}
 
 	// Merge state with current apps/deps if needed (they might not have a state defined).
@@ -195,16 +195,11 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	return canceled, err
 }
 
-type dnsSetup struct {
-	record string
-	dns    *apiv1.DNSState
-}
-
-func (d *Deploy) prepareAppDNSMap(appStates map[string]*apiv1.AppState) (map[string]*apiv1.DNSState, error) {
-	dnsMap := make(map[string]*apiv1.DNSState)
+func (d *Deploy) prepareAppSSLMap(appStates map[string]*apiv1.AppState) (map[string]*apiv1.DNSState, error) {
+	sslMap := make(map[string]*apiv1.DNSState)
 
 	for _, appState := range appStates {
-		if appState.Dns == nil || !appState.Dns.Manual || (appState.Dns.Cname == "" && appState.Dns.Ip == "") {
+		if appState.Dns == nil || appState.Dns.SslStatus == apiv1.DNSState_SSL_STATUS_UNSPECIFIED || (appState.Dns.Cname == "" && appState.Dns.Ip == "") {
 			continue
 		}
 
@@ -213,46 +208,38 @@ func (d *Deploy) prepareAppDNSMap(appStates map[string]*apiv1.AppState) (map[str
 			return nil, err
 		}
 
-		dnsMap[host] = appState.Dns
+		sslMap[host] = appState.Dns
 	}
 
-	return dnsMap, nil
+	return sslMap, nil
 }
 
-func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependencyStates map[string]*apiv1.DependencyState) error {
-	dnsMap, err := d.prepareAppDNSMap(appStates)
-	if err != nil {
-		return err
-	}
+func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependencyStates map[string]*apiv1.DependencyState, dnsRecords types.DNSRecordMap) error {
+	var dns []*apiv1.DNSRecord
 
-	var dns []*dnsSetup
-
-	for host, v := range dnsMap {
-		dns = append(dns, &dnsSetup{
-			record: host,
-			dns:    v,
-		})
+	for k, v := range dnsRecords {
+		if !v.Created {
+			dns = append(dns, &apiv1.DNSRecord{
+				Record: k.Record,
+				Type:   k.Type,
+				Value:  v.Value,
+			})
+		}
 	}
 
 	sort.Slice(dns, func(i, j int) bool {
-		return dns[i].record < dns[j].record
+		return dns[i].Record < dns[j].Record
 	})
 
-	// Show info about manual DNS setup.
+	// Show info about DNS records still requiring setup.
 	data := [][]string{
 		{"Record", "Type", "Value"},
 	}
 
 	for _, v := range dns {
-		typ := "A"
-		val := v.dns.Ip
+		typ := v.Type.String()[len("TYPE_"):]
 
-		if v.dns.Cname != "" {
-			typ = "CNAME"
-			val = v.dns.Cname
-		}
-
-		data = append(data, []string{pterm.Green(v.record), pterm.Yellow(typ), val})
+		data = append(data, []string{pterm.Green(v.Record), pterm.Yellow(typ), v.Value})
 	}
 
 	if len(dns) > 0 {
@@ -320,13 +307,16 @@ func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependenc
 	}
 
 	// Show info about SSL status.
-	if len(dnsMap) > 0 {
-		d.log.Section().Println("SSL Certificates")
+	sslMap, err := d.prepareAppSSLMap(appStates)
+	if err != nil {
+		return err
+	}
 
-		data := make([][]string, 0, len(dnsMap))
+	if len(sslMap) > 0 {
+		data := make([][]string, 0, len(sslMap))
 
-		for host, v := range dnsMap {
-			data = append(data, []string{pterm.Green(host), pterm.Yellow(v.SslStatus), v.SslStatusInfo})
+		for host, v := range sslMap {
+			data = append(data, []string{pterm.Green(host), pterm.Yellow(v.SslStatus.String()[len("SSL_STATUS_"):]), v.SslStatusInfo})
 		}
 
 		sort.Slice(data, func(i, j int) bool {
@@ -335,6 +325,7 @@ func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependenc
 
 		data = append([][]string{{"Domain", "Status", "Info"}}, data...)
 
+		d.log.Section().Println("SSL Certificates")
 		_ = d.log.Table().WithHasHeader().WithData(pterm.TableData(data)).Render()
 	}
 
@@ -394,8 +385,6 @@ func calculatePlanMap(cfg *config.Project, appStates []*apiv1.AppState, depState
 	planMap := make(map[*plugins.Plugin]*planParams)
 
 	for _, appState := range appStates {
-		includeDNS := appState.App.DnsPlugin != "" && appState.App.DnsPlugin == appState.App.DeployPlugin
-
 		deployPlugin := cfg.FindLoadedPlugin(appState.App.DeployPlugin)
 		if deployPlugin == nil {
 			return nil, fmt.Errorf("missing deploy plugin: %s used for app: %s", appState.App.DeployPlugin, appState.App.Name)
@@ -408,37 +397,10 @@ func calculatePlanMap(cfg *config.Project, appStates []*apiv1.AppState, depState
 		}
 
 		appReq := &apiv1.AppPlan{
-			State:    appState,
-			IsDeploy: true,
-			IsDns:    includeDNS,
+			State: appState,
 		}
 
 		planMap[deployPlugin].appPlans = append(planMap[deployPlugin].appPlans, appReq)
-		planMap[deployPlugin].firstPass = !includeDNS // if dns is handled by different plugin, plan this as a first pass
-
-		// Add DNS plugin if not already included (handled by same plugin).
-		if includeDNS || appState.App.DnsPlugin == "" {
-			continue
-		}
-
-		dnsPlugin := cfg.FindLoadedPlugin(appState.App.DnsPlugin)
-		if dnsPlugin == nil {
-			return nil, fmt.Errorf("missing dns plugin: %s used for app: %s", appState.App.DnsPlugin, appState.App.Name)
-		}
-
-		if _, ok := planMap[dnsPlugin]; !ok {
-			planMap[dnsPlugin] = &planParams{
-				args: dnsPlugin.CommandArgs(deployCommand),
-			}
-		}
-
-		appReq = &apiv1.AppPlan{
-			State:    appState,
-			IsDeploy: false,
-			IsDns:    true,
-		}
-
-		planMap[dnsPlugin].appPlans = append(planMap[dnsPlugin].appPlans, appReq)
 	}
 
 	// Process dependencies.
@@ -482,7 +444,7 @@ func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetApp
 	return planMap
 }
 
-func mergeState(state *types.StateData, pluginName string, pluginState *apiv1.PluginState, appStates map[string]*apiv1.AppState, depStates map[string]*apiv1.DependencyState) {
+func mergeState(state *types.StateData, pluginName string, pluginState *apiv1.PluginState, appStates map[string]*apiv1.AppState, depStates map[string]*apiv1.DependencyState, dnsRecords []*apiv1.DNSRecord) {
 	state.Plugins[pluginName] = types.PluginStateFromProto(pluginState)
 
 	// Merge state with new changes.
@@ -493,9 +455,13 @@ func mergeState(state *types.StateData, pluginName string, pluginState *apiv1.Pl
 	for k, v := range depStates {
 		state.Dependencies[k] = v
 	}
+
+	for _, v := range dnsRecords {
+		state.AddDNSRecord(v)
+	}
 }
 
-func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, verify, destroy bool) (retMap map[*plugins.Plugin]*apiv1.PlanResponse, err error) {
+func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, domains []*apiv1.DomainInfo, verify, destroy bool) (retMap map[*plugins.Plugin]*apiv1.PlanResponse, err error) {
 	if state.Plugins == nil {
 		state.Plugins = make(map[string]*types.PluginState)
 	}
@@ -515,7 +481,7 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 		retMap[plug] = ret
 
 		// Merge state with new changes.
-		mergeState(state, plug.Name, ret.State, ret.AppStates, ret.DependencyStates)
+		mergeState(state, plug.Name, ret.State, ret.AppStates, ret.DependencyStates, ret.DnsRecords)
 
 		mu.Unlock()
 	}
@@ -526,7 +492,7 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 		params := params
 
 		g.Go(func() error {
-			ret, err := plug.Client().Plan(ctx, state, params.appPlans, params.depPlans, params.args, verify, destroy)
+			ret, err := plug.Client().Plan(ctx, state, params.appPlans, params.depPlans, domains, params.args, verify, destroy)
 			if err != nil {
 				return err
 			}
@@ -539,15 +505,10 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 
 	err = g.Wait()
 
-	// Merge state with new changes.
-	for p, ret := range retMap {
-		mergeState(state, p.Name, ret.State, ret.AppStates, ret.DependencyStates)
-	}
-
 	return retMap, err
 }
 
-func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, destroy bool, callback func(*apiv1.ApplyAction)) error {
+func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, domains []*apiv1.DomainInfo, destroy bool, callback func(*apiv1.ApplyAction)) error {
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 
 	if state.Plugins == nil {
@@ -564,45 +525,20 @@ func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plu
 		mu.Lock()
 
 		// Merge state with new changes.
-		mergeState(state, plug.Name, ret.State, ret.AppStates, ret.DependencyStates)
+		mergeState(state, plug.Name, ret.State, ret.AppStates, ret.DependencyStates, ret.DnsRecords)
 
 		mu.Unlock()
 	}
 
-	// Apply first pass plan (deployments without DNS).
-	for plug, params := range planMap {
-		if !params.firstPass {
-			continue
-		}
-
-		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, params.appPlans, params.depPlans, params.args, destroy, callback)
-			processResponse(plug, ret)
-
-			return err
-		})
-	}
-
-	err := g.Wait()
-	if err != nil {
-		return err
-	}
-
 	// Apply second pass plan (DNS and deployments with DNS).
 	for plug, params := range planMap {
-		if params.firstPass {
-			continue
-		}
-
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, params.appPlans, params.depPlans, params.args, destroy, callback)
+			ret, err := plug.Client().Apply(ctx, state, params.appPlans, params.depPlans, domains, params.args, destroy, callback)
 			processResponse(plug, ret)
 
 			return err
 		})
 	}
 
-	err = g.Wait()
-
-	return err
+	return g.Wait()
 }

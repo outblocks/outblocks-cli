@@ -8,7 +8,7 @@ import (
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
-func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*apiv1.AppPlan, deps []*apiv1.DependencyPlan, args map[string]interface{}, verify, destroy bool) (*apiv1.PlanResponse, error) {
+func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*apiv1.AppPlan, deps []*apiv1.DependencyPlan, domains []*apiv1.DomainInfo, args map[string]interface{}, verify, destroy bool) (*apiv1.PlanResponse, error) {
 	if err := c.Start(ctx); err != nil {
 		return nil, err
 	}
@@ -16,6 +16,7 @@ func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*apiv1
 	res, err := c.deployPlugin().Plan(ctx, &apiv1.PlanRequest{
 		Apps:         apps,
 		Dependencies: deps,
+		Domains:      domains,
 		Args:         plugin_util.MustNewStruct(args),
 
 		State:   state.Plugins[c.name].Proto(),
@@ -26,7 +27,7 @@ func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*apiv1
 	return res, c.mapError("plan error", err)
 }
 
-func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*apiv1.AppPlan, deps []*apiv1.DependencyPlan, args map[string]interface{}, destroy bool, callback func(*apiv1.ApplyAction)) (*apiv1.ApplyDoneResponse, error) {
+func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*apiv1.AppPlan, deps []*apiv1.DependencyPlan, domains []*apiv1.DomainInfo, args map[string]interface{}, destroy bool, callback func(*apiv1.ApplyAction)) (*apiv1.ApplyDoneResponse, error) {
 	if err := c.Start(ctx); err != nil {
 		return nil, err
 	}
@@ -34,6 +35,7 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*apiv
 	stream, err := c.deployPlugin().Apply(ctx, &apiv1.ApplyRequest{
 		Apps:         apps,
 		Dependencies: deps,
+		Domains:      domains,
 		Args:         plugin_util.MustNewStruct(args),
 
 		State:   state.Plugins[c.name].Proto(),

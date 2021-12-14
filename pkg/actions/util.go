@@ -128,18 +128,15 @@ func computeChangeInfo(cfg *config.Project, state *types.StateData, plugin *plug
 	return changes
 }
 
-func computeChange(cfg *config.Project, state *types.StateData, planMap map[*plugins.Plugin]*apiv1.PlanResponse) (deploy, dns []*change) {
-	for plugin, p := range planMap {
-		if p.Deploy != nil {
-			deploy = computeChangeInfo(cfg, state, plugin, p.Deploy.Actions)
-		}
+func computeChange(cfg *config.Project, oldState, state *types.StateData, planMap map[*plugins.Plugin]*apiv1.PlanResponse) []*change { // nolint:unparam
+	var changes []*change
 
-		if p.Dns != nil {
-			dns = computeChangeInfo(cfg, state, plugin, p.Deploy.Actions)
-		}
+	for plugin, p := range planMap {
+		chg := computeChangeInfo(cfg, state, plugin, p.Deploy.Actions)
+		changes = append(changes, chg...)
 	}
 
-	return deploy, dns
+	return changes
 }
 
 func calculateTotal(chg []*change) (add, change, process, destroy int) {
@@ -248,6 +245,7 @@ func planPrompt(log logger.Logger, deploy, dns []*change, approve, force bool) (
 	}
 
 	// DNS
+	// TODO: handle dns as a diff of records
 	dnsInfo, dnsCritical := planChangeInfo("DNS:", dns)
 	if dnsInfo != "" {
 		empty = false
@@ -275,7 +273,7 @@ func planPrompt(log logger.Logger, deploy, dns []*change, approve, force bool) (
 	}
 
 	if critical {
-		prompt.Message = "Some changes are potentially destructive. Are you really sure you want to perform these actions?"
+		prompt.Message = fmt.Sprintf("%s Some changes are potentially destructive! Are you really sure you want to perform these actions?", pterm.Red("Warning!"))
 	}
 
 	_ = survey.AskOne(prompt, &proceed)

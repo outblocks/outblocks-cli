@@ -45,13 +45,46 @@
           "domain": {
             "type": "string"
           },
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "plugin": {
             "type": "string"
+          },
+          "ssl": {
+            "description": "SSL configuration.",
+            "$ref": "#/definitions/SSL"
           }
         },
         "required": [
           "domain"
         ]
+      }
+    },
+    "SSL": {
+      "title": "SSL",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cert_file": {
+          "description": "Public key file path. Required to be in PEM format.",
+          "type": "string"
+        },
+        "key_file": {
+          "description": "Private key file path. Required to be in PEM format.",
+          "type": "string"
+        },
+        "cert": {
+          "description": "Public key value in PEM format.",
+          "type": "string"
+        },
+        "key": {
+          "description": "Private key value in PEM format.",
+          "type": "string"
+        }
       }
     },
     "State": {
@@ -141,6 +174,10 @@
           "description": "Deploy config.",
           "$ref": "#/definitions/DefaultDeploy"
         },
+        "dns": {
+          "description": "DNS config.",
+          "$ref": "#/definitions/DefaultDNS"
+        },
         "run": {
           "description": "Run config.",
           "$ref": "#/definitions/DefaultRun"
@@ -154,6 +191,17 @@
       "properties": {
         "plugin": {
           "description": "Deploy plugin override. Defaults to first supported plugin available.",
+          "type": "string"
+        }
+      }
+    },
+    "DefaultDNS": {
+      "title": "DNS defaults",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "plugin": {
+          "description": "DNS plugin override. Defaults to first supported plugin available.",
           "type": "string"
         }
       }
