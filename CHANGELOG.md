@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.49](https://github.com/outblocks/outblocks-cli/compare/v0.1.48...v0.1.49)
+
+> 2021-12-14
+
+### FEATURES
+
+[`abd3711`](https://github.com/outblocks/outblocks-cli/commit/abd37111bf3e8acd9505984545ab87539dfccbb9) changed dns handling, self managed certs
+
+
 ## [v0.1.48](https://github.com/outblocks/outblocks-cli/compare/v0.1.47...v0.1.48)
 
 > 2021-12-07
