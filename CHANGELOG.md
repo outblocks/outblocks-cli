@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.50](https://github.com/outblocks/outblocks-cli/compare/v0.1.49...v0.1.50)
+
+> 2021-12-15
+
+### BUG FIXES
+
+[`aa91d35`](https://github.com/outblocks/outblocks-cli/commit/aa91d358d6e952462c631a941d5a80251be67239) empty state handling
+
+
 ## [v0.1.49](https://github.com/outblocks/outblocks-cli/compare/v0.1.48...v0.1.49)
 
 > 2021-12-14
