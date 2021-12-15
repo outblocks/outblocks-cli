@@ -101,3 +101,7 @@ func (s *State) Check(cfg *Project) error {
 func (s *State) Plugin() *plugins.Plugin {
 	return s.plugin
 }
+
+func (s *State) Env() string {
+	return s.env
+}

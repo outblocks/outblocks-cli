@@ -13,13 +13,18 @@ func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*apiv1
 		return nil, err
 	}
 
+	pluginState := state.Plugins[c.name]
+	if pluginState == nil {
+		pluginState = &types.PluginState{}
+	}
+
 	res, err := c.deployPlugin().Plan(ctx, &apiv1.PlanRequest{
 		Apps:         apps,
 		Dependencies: deps,
 		Domains:      domains,
 		Args:         plugin_util.MustNewStruct(args),
 
-		State:   state.Plugins[c.name].Proto(),
+		State:   pluginState.Proto(),
 		Destroy: destroy,
 		Verify:  verify,
 	})

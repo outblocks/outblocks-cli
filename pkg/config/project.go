@@ -398,3 +398,7 @@ func (p *Project) DomainInfoProto() []*apiv1.DomainInfo {
 
 	return ret
 }
+
+func (p *Project) Env() string {
+	return p.env
+}

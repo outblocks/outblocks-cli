@@ -79,7 +79,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 	}
 
 	if stateRes.StateCreated {
-		d.log.Infof("New state created: '%s'\n", stateRes.StateName)
+		d.log.Infof("New state created: '%s' for env: %s\n", stateRes.StateName, d.cfg.State.Env())
 
 		verify = true
 	}
@@ -371,11 +371,10 @@ func getState(ctx context.Context, cfg *config.Project, lock bool, lockWait time
 		return nil, nil, err
 	}
 
-	stateData = &types.StateData{}
-	err = json.Unmarshal(ret.State, &stateData)
+	stateData = types.NewStateData()
 
-	if stateData == nil {
-		stateData = &types.StateData{}
+	if len(ret.State) != 0 {
+		err = json.Unmarshal(ret.State, &stateData)
 	}
 
 	return stateData, ret, err
