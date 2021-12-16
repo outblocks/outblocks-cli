@@ -17,6 +17,7 @@ type Dependency struct {
 	Run    *DependencyRun         `json:"run"`
 	Other  map[string]interface{} `yaml:"-,remain"`
 
+	cfg          *Project
 	deployPlugin *plugins.Plugin
 	runPlugin    *plugins.Plugin
 }
@@ -95,7 +96,7 @@ func (d *Dependency) Check(key string, cfg *Project) error {
 	}
 
 	if d.deployPlugin == nil {
-		return cfg.yamlError(fmt.Sprintf("$.dependencies.%s", key), "dependency has no matching deployment plugin available")
+		return d.YAMLError("", "dependency has no matching deployment plugin available")
 	}
 
 	// Check run plugin.
@@ -115,7 +116,7 @@ func (d *Dependency) Check(key string, cfg *Project) error {
 	}
 
 	if d.runPlugin == nil {
-		return cfg.yamlError(fmt.Sprintf("$.dependencies.%s", key), "dependency has no matching run plugin available")
+		return d.YAMLError("", "dependency has no matching run plugin available")
 	}
 
 	return nil
@@ -127,6 +128,10 @@ func (d *Dependency) DeployPlugin() *plugins.Plugin {
 
 func (d *Dependency) RunPlugin() *plugins.Plugin {
 	return d.runPlugin
+}
+
+func (d *Dependency) YAMLError(subPath, err string) error {
+	return d.cfg.yamlError(fmt.Sprintf("$.dependencies.%s%s", d.Name, subPath), err)
 }
 
 func ComputeDependencyID(name string) string {

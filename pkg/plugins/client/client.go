@@ -26,6 +26,7 @@ type Client struct {
 	conn *grpc.ClientConn
 
 	name        string
+	env         string
 	props       map[string]interface{}
 	yamlContext YAMLContext
 
@@ -44,13 +45,14 @@ const (
 	DefaultTimeout = 10 * time.Second
 )
 
-func NewClient(log logger.Logger, name string, cmd *exec.Cmd, hostAddr string, props map[string]interface{}, yamlContext YAMLContext) (*Client, error) {
+func NewClient(log logger.Logger, name, env string, cmd *exec.Cmd, hostAddr string, props map[string]interface{}, yamlContext YAMLContext) (*Client, error) {
 	return &Client{
 		log:      log,
 		cmd:      cmd,
 		hostAddr: hostAddr,
 
 		name:        name,
+		env:         env,
 		props:       props,
 		yamlContext: yamlContext,
 	}, nil

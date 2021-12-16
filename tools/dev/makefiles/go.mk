@@ -11,7 +11,7 @@ FORMAT_FILES ?= .
 GOFUMPT_VERSION ?= 0.1.1
 GOFUMPT := go run mvdan.cc/gofumpt@v$(GOFUMPT_VERSION)
 
-GOLANGCILINT_VERSION ?= 1.42.0
+GOLANGCILINT_VERSION ?= 1.43.0
 GOLANGCILINT := go run github.com/golangci/golangci-lint/cmd/golangci-lint@v$(GOLANGCILINT_VERSION)
 GOLANGCILINT_CONCURRENCY ?= 16
 

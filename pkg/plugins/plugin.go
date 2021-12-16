@@ -12,7 +12,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
-	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
+	"github.com/outblocks/outblocks-plugin-go/util/command"
 )
 
 type Plugin struct {
@@ -121,7 +121,7 @@ func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, env, projectID,
 		runCommand = p.Cmd["default"]
 	}
 
-	cmd := plugin_util.NewCmdAsUser(runCommand)
+	cmd := command.NewCmdAsUser(runCommand)
 
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("OUTBLOCKS_BIN=%s", os.Args[0]),
@@ -135,7 +135,7 @@ func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, env, projectID,
 
 	var err error
 
-	p.client, err = client.NewClient(log, p.Name, cmd, hostAddr, props, client.YAMLContext{
+	p.client, err = client.NewClient(log, p.Name, env, cmd, hostAddr, props, client.YAMLContext{
 		Prefix: yamlPrefix,
 		Data:   yamlData,
 	})

@@ -3,8 +3,8 @@ package config
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -97,7 +97,7 @@ func LoadProjectConfig(cfgPath string, vars map[string]interface{}, opts *Projec
 		return nil, ErrProjectConfigNotFound
 	}
 
-	data, err := ioutil.ReadFile(cfgPath)
+	data, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read project yaml: %w", err)
 	}
@@ -200,7 +200,7 @@ func KnownType(typ string) string {
 }
 
 func (p *Project) LoadFile(file string) error {
-	data, err := ioutil.ReadFile(file)
+	data, err := os.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("cannot read yaml: %w", err)
 	}

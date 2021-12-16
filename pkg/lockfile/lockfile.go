@@ -2,7 +2,7 @@ package lockfile
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
@@ -21,7 +21,7 @@ func (l *Lockfile) Validate() error {
 }
 
 func LoadLockfile(f string) (*Lockfile, error) {
-	data, err := ioutil.ReadFile(f)
+	data, err := os.ReadFile(f)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read lockfile: %w", err)
 	}

@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -39,7 +38,7 @@ func (s *State) LocalPath() string {
 }
 
 func (s *State) LoadLocal() (*types.StateData, error) {
-	data, err := ioutil.ReadFile(s.LocalPath())
+	data, err := os.ReadFile(s.LocalPath())
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return &types.StateData{}, nil

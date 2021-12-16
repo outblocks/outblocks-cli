@@ -37,9 +37,11 @@ func (l *LocalRunResult) Wait() error {
 
 		go func() {
 			err := a.Wait()
-			if err != nil {
-				err = fmt.Errorf("app %s %w", a.App.Name, err)
+			if err == nil {
+				err = fmt.Errorf("exited")
 			}
+
+			err = fmt.Errorf("app %s %w", a.App.Name, err)
 
 			errCh <- err
 		}()

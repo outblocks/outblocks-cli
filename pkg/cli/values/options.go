@@ -5,7 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -29,7 +29,7 @@ func (opts *Options) readFile(ctx context.Context, rootPath, filePath string, p 
 		if errors.As(err, &perr) && !filepath.IsAbs(filePath) && rootPath != "" {
 			// Try different cfg root path.
 			filePath = filepath.Join(rootPath, filePath)
-			return ioutil.ReadFile(filePath)
+			return os.ReadFile(filePath)
 		}
 	}
 
@@ -70,14 +70,14 @@ func (opts *Options) MergeValues(ctx context.Context, root string, p getter.Prov
 // readFile load a file from stdin, the local directory, or a remote file with a url.
 func readFile(ctx context.Context, filePath string, p getter.Providers) ([]byte, error) {
 	if strings.TrimSpace(filePath) == "-" {
-		return ioutil.ReadAll(os.Stdin)
+		return io.ReadAll(os.Stdin)
 	}
 
 	u, _ := url.Parse(filePath)
 
 	g, err := p.ByScheme(u.Scheme)
 	if err != nil {
-		return ioutil.ReadFile(filePath)
+		return os.ReadFile(filePath)
 	}
 
 	data, err := g.Get(ctx, filePath, getter.WithURL(filePath))

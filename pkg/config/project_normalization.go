@@ -17,6 +17,8 @@ func (p *Project) Normalize() error {
 
 	err := func() error {
 		for key, dep := range p.Dependencies {
+			dep.cfg = p
+
 			dep.Name = key
 			if err := dep.Normalize(key, p); err != nil {
 				return err

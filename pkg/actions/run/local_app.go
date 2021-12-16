@@ -2,11 +2,12 @@ package run
 
 import (
 	"bufio"
-	"fmt"
 	"sync"
+	"time"
 
 	"github.com/outblocks/outblocks-cli/internal/util"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
+	"github.com/outblocks/outblocks-plugin-go/util/command"
 )
 
 type LocalApp struct {
@@ -14,10 +15,14 @@ type LocalApp struct {
 }
 
 type LocalAppRunInfo struct {
-	*util.CmdInfo
+	*command.Cmd
 	*LocalApp
 	wg sync.WaitGroup
 }
+
+const (
+	localAppCleanupTimeout = 10 * time.Second
+)
 
 func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 	info := &LocalAppRunInfo{
@@ -26,10 +31,10 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 
 	var err error
 
-	info.CmdInfo, err = util.NewCmdInfo(
+	info.Cmd, err = command.New(
 		a.App.Run.Command,
-		a.App.Dir,
-		util.FlattenEnvMap(a.App.Env),
+		command.WithDir(a.App.Dir),
+		command.WithEnv(util.FlattenEnvMap(a.App.Env)),
 	)
 	if err != nil {
 		return nil, err
@@ -39,7 +44,7 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 }
 
 func (a *LocalAppRunInfo) Run(outputCh chan<- *apiv1.RunOutputResponse) error {
-	err := a.CmdInfo.Run()
+	err := a.Cmd.Run()
 	if err != nil {
 		return err
 	}
@@ -84,7 +89,7 @@ func (a *LocalAppRunInfo) Run(outputCh chan<- *apiv1.RunOutputResponse) error {
 }
 
 func (a *LocalAppRunInfo) Stop() error {
-	err := a.CmdInfo.Stop()
+	err := a.Cmd.Stop(localAppCleanupTimeout)
 
 	a.wg.Wait()
 
@@ -92,10 +97,7 @@ func (a *LocalAppRunInfo) Stop() error {
 }
 
 func (a *LocalAppRunInfo) Wait() error {
-	err := a.CmdInfo.Wait()
-	if err == nil {
-		err = fmt.Errorf("exited")
-	}
+	err := a.Cmd.Wait()
 
 	a.wg.Wait()
 

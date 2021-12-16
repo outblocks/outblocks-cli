@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -91,7 +90,7 @@ func (l *Loader) DownloadPlugin(ctx context.Context, name string, verConstr *sem
 }
 
 func (l *Loader) findMatchingPluginLocation(pi *pluginInfo, path string) (string, *semver.Version) {
-	entries, err := ioutil.ReadDir(path)
+	entries, err := os.ReadDir(path)
 	if err != nil {
 		return "", nil
 	}
@@ -104,7 +103,7 @@ func (l *Loader) findMatchingPluginLocation(pi *pluginInfo, path string) (string
 	arch := CurrentArch()
 
 	for _, entry := range entries {
-		isSymlink := entry.Mode().Type()&fs.ModeSymlink != 0
+		isSymlink := entry.Type()&fs.ModeSymlink != 0
 
 		if !isSymlink && !entry.IsDir() {
 			continue
@@ -233,7 +232,7 @@ func (l *Loader) loadPlugin(pi *pluginInfo, dir string, ver *semver.Version) (*P
 		return nil, fmt.Errorf("plugin yaml is missing in: %s", dir)
 	}
 
-	data, err := ioutil.ReadFile(p)
+	data, err := os.ReadFile(p)
 	if err != nil {
 		return nil, fmt.Errorf("cannot read yaml: %w", err)
 	}

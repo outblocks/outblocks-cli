@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
@@ -24,14 +23,6 @@ type PluginError struct {
 	wrapped error
 }
 
-func (c *Client) newPluginError(msg string, wrapped error) *PluginError {
-	return &PluginError{
-		c:       c,
-		msg:     msg,
-		wrapped: wrapped,
-	}
-}
-
 func (e *PluginError) Unwrap() error {
 	return e.wrapped
 }
@@ -42,6 +33,14 @@ func (e *PluginError) Error() string {
 	}
 
 	return fmt.Sprintf("plugin '%s' %s", e.c.name, e.msg)
+}
+
+func (c *Client) newPluginError(msg string, wrapped error) *PluginError {
+	return &PluginError{
+		c:       c,
+		msg:     msg,
+		wrapped: wrapped,
+	}
 }
 
 func (c *Client) mapErrorWithContext(msg string, err error, yamlContext *YAMLContext) error {
@@ -57,13 +56,13 @@ func (c *Client) mapErrorWithContext(msg string, err error, yamlContext *YAMLCon
 	for _, det := range st.Details() {
 		switch r := det.(type) {
 		case *apiv1.LockError:
-			return fmt.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock %s=%s",
-				r.Owner, r.CreatedAt.AsTime(), r.LockName, r.LockInfo)
+			return fmt.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock --env %s %s=%s",
+				c.env, r.Owner, r.CreatedAt.AsTime(), r.LockName, r.LockInfo)
 		case *apiv1.StateLockError:
-			return fmt.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock %s",
-				r.Owner, r.CreatedAt.AsTime(), r.LockInfo)
+			return fmt.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock --env %s %s",
+				c.env, r.Owner, r.CreatedAt.AsTime(), r.LockInfo)
 		case *apiv1.ValidationError:
-			return fileutil.YAMLError(strings.Join([]string{yamlContext.Prefix, r.Path}, "."), r.Message, yamlContext.Data)
+			return fileutil.YAMLError(yamlContext.Prefix+"."+r.Path, r.Message, yamlContext.Data)
 		}
 	}
 

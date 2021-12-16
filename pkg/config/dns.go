@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -65,7 +65,7 @@ func (s *DNS) Normalize(i int, cfg *Project) error {
 	s.SSLInfo.loadedCert = s.SSLInfo.Cert
 
 	if s.SSLInfo.CertFile != "" {
-		certBytes, err := ioutil.ReadFile(filepath.Join(s.SSLInfo.CertFile))
+		certBytes, err := os.ReadFile(filepath.Join(cfg.Dir, s.SSLInfo.CertFile))
 		if err != nil {
 			return cfg.yamlError(fmt.Sprintf("$.dns[%d].ssl.cert_file", i), "cert file cannot be read")
 		}
@@ -76,7 +76,7 @@ func (s *DNS) Normalize(i int, cfg *Project) error {
 	s.SSLInfo.loadedKey = s.SSLInfo.Key
 
 	if s.SSLInfo.KeyFile != "" {
-		keyBytes, err := ioutil.ReadFile(filepath.Join(s.SSLInfo.KeyFile))
+		keyBytes, err := os.ReadFile(filepath.Join(cfg.Dir, s.SSLInfo.KeyFile))
 		if err != nil {
 			return cfg.yamlError(fmt.Sprintf("$.dns[%d].ssl.key_file", i), "private key file cannot be read")
 		}

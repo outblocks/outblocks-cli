@@ -45,7 +45,7 @@ type App interface {
 type AppRunInfo struct {
 	Plugin  string                 `json:"plugin,omitempty"`
 	Command string                 `json:"command,omitempty"`
-	Port    int32                  `json:"port,omitempty"`
+	Port    int                    `json:"port,omitempty"`
 	Env     map[string]string      `json:"env,omitempty"`
 	Other   map[string]interface{} `yaml:",remain"`
 }
@@ -54,7 +54,7 @@ func (i *AppRunInfo) Proto() *apiv1.AppRunInfo {
 	return &apiv1.AppRunInfo{
 		Plugin:  i.Plugin,
 		Command: i.Command,
-		Port:    i.Port,
+		Port:    int32(i.Port),
 		Env:     i.Env,
 		Other:   plugin_util.MustNewStruct(i.Other),
 	}
@@ -141,6 +141,10 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 
 	if a.AppRun == nil {
 		a.AppRun = &AppRunInfo{}
+	}
+
+	if a.AppEnv == nil {
+		a.AppEnv = make(map[string]string)
 	}
 
 	if a.AppDir == "" {

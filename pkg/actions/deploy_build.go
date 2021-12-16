@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Masterminds/semver"
 	dockertypes "github.com/docker/docker/api/types"
@@ -16,6 +17,7 @@ import (
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
+	"github.com/outblocks/outblocks-plugin-go/util/command"
 	"github.com/outblocks/outblocks-plugin-go/util/errgroup"
 	"github.com/pterm/pterm"
 )
@@ -23,6 +25,7 @@ import (
 var (
 	dockerServerMinimumVersion = semver.MustParse("18.09")
 	dockerClientMinimumVersion = semver.MustParse("1.39")
+	commandCleanupTimeout      = 5 * time.Second
 )
 
 func (d *Deploy) dockerClient(ctx context.Context) (*dockerclient.Client, error) {
@@ -65,7 +68,7 @@ func (d *Deploy) dockerClient(ctx context.Context) (*dockerclient.Client, error)
 	return d.dockerCli, err
 }
 
-func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *util.CmdInfo, app *config.BasicApp) error {
+func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *command.Cmd, app *config.BasicApp) error {
 	prefix := fmt.Sprintf("APP:%s:%s:", app.Type(), app.Name())
 
 	err := cmd.Run()
@@ -100,7 +103,7 @@ func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *util.CmdInfo, app 
 
 	select {
 	case <-ctx.Done():
-		_ = cmd.Stop()
+		_ = cmd.Stop(commandCleanupTimeout)
 	case <-cmd.WaitChannel():
 	}
 
@@ -124,7 +127,7 @@ func (d *Deploy) buildStaticApp(ctx context.Context, app *config.StaticApp, eval
 		return err
 	}
 
-	cmd, err := util.NewCmdInfo(app.Build.Command, app.Dir(), util.FlattenEnvMap(env))
+	cmd, err := command.New(app.Build.Command, command.WithDir(app.Dir()), command.WithEnv(util.FlattenEnvMap(env)))
 	if err != nil {
 		return fmt.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
@@ -171,7 +174,7 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 
 	cmdStr += " ."
 
-	cmd, err := util.NewCmdInfo(cmdStr, dockercontext, []string{"DOCKER_BUILDKIT=1"})
+	cmd, err := command.New(cmdStr, command.WithDir(dockercontext), command.WithEnv([]string{"DOCKER_BUILDKIT=1"}))
 	if err != nil {
 		return fmt.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
 	}

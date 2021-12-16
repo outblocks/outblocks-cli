@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -131,6 +132,23 @@ func (d *Run) loopbackHost() string {
 	return loopbackHost + d.opts.HostsSuffix
 }
 
+func isPortFree(ports map[int]struct{}, port int) bool {
+	_, ok := ports[port]
+
+	return !ok
+}
+
+func grabPort(ports map[int]struct{}, lastPort int) int {
+	for {
+		if isPortFree(ports, lastPort) {
+			ports[lastPort] = struct{}{}
+			return lastPort
+		}
+
+		lastPort++
+	}
+}
+
 func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 	info := &runInfo{
 		pluginAppsMap: make(map[*plugins.Plugin]*apiv1.RunRequest),
@@ -144,6 +162,19 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 	// Apps.
 	port := d.opts.ListenPort + 1
+	ports := make(map[int]struct{})
+
+	for _, app := range cfg.Apps {
+		appPort := app.RunInfo().Port
+
+		if appPort != 0 {
+			if !isPortFree(ports, appPort) {
+				return nil, app.YAMLError("$.run.port", "run.port is already in use")
+			}
+
+			grabPort(ports, appPort)
+		}
+	}
 
 	for _, app := range cfg.Apps {
 		if app.RunInfo().Command == "" {
@@ -152,13 +183,13 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 		runInfo := app.RunInfo()
 
-		appPort := int(runInfo.Port)
+		appPort := runInfo.Port
 		if appPort == 0 {
-			appPort = port
-			port++
+			appPort = grabPort(ports, port)
 		}
 
 		appType := app.Proto()
+		appType.Env["PORT"] = strconv.Itoa(appPort)
 		mergedProps := plugin_util.MergeMaps(cfg.Defaults.Run.Other, appType.Properties.AsMap(), runInfo.Other)
 		appType.Env = plugin_util.MergeStringMaps(appType.Env, runInfo.Env)
 		appType.Properties = plugin_util.MustNewStruct(mergedProps)
@@ -194,12 +225,23 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 	// Dependencies.
 	for _, dep := range cfg.Dependencies {
+		depPort := dep.Run.Port
+
+		if depPort != 0 {
+			if !isPortFree(ports, depPort) {
+				return nil, dep.YAMLError(".run.port", "run.port is already in use")
+			}
+
+			grabPort(ports, depPort)
+		}
+	}
+
+	for _, dep := range cfg.Dependencies {
 		depType := dep.Proto()
 		depPort := dep.Run.Port
 
 		if depPort == 0 {
-			depPort = port
-			port++
+			depPort = grabPort(ports, depPort)
 		}
 
 		mergedProps := plugin_util.MergeMaps(cfg.Defaults.Run.Other, depType.Properties.AsMap())
@@ -378,7 +420,7 @@ func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 	for _, app := range runInfo.apps {
 		app := app
 
-		req, err := http.NewRequestWithContext(ctx, "HEAD", fmt.Sprintf("http://%s:%d/", app.Ip, app.Port), nil)
+		req, err := http.NewRequestWithContext(ctx, "HEAD", fmt.Sprintf("http://%s:%d/", app.Ip, app.Port), http.NoBody)
 		if err != nil {
 			return err
 		}
@@ -531,12 +573,12 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 		go func() {
 			err = localRet.Wait()
 
-			wg.Done()
-
 			if err != nil {
 				runnerCancel()
 				errCh <- err
 			}
+
+			wg.Done()
 		}()
 	}
 
@@ -557,12 +599,14 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 		go func() {
 			err = pluginRet.Wait()
 
-			wg.Done()
-
 			if err != nil {
 				runnerCancel()
 				errCh <- err
+
+				_ = pluginRet.Stop()
 			}
+
+			wg.Done()
 		}()
 	}
 
@@ -637,6 +681,8 @@ func (d *Run) Run(ctx context.Context) error {
 	cleanupErr := d.cleanup()
 
 	if err != nil {
+		d.log.Errorln("Error occurred. Waiting for shutdown...")
+
 		wg.Wait()
 
 		if errors.Is(err, context.Canceled) {

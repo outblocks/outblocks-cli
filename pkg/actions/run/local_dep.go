@@ -3,8 +3,8 @@ package run
 import (
 	"fmt"
 
-	"github.com/outblocks/outblocks-cli/internal/util"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
+	"github.com/outblocks/outblocks-plugin-go/util/command"
 )
 
 type LocalDependency struct {
@@ -12,7 +12,7 @@ type LocalDependency struct {
 }
 
 type LocalDependencyRunInfo struct {
-	*util.CmdInfo
+	*command.Cmd
 	*LocalDependency
 	StdoutCh chan string
 	StderrCh chan string

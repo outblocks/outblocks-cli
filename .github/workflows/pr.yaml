@@ -17,7 +17,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.42.0
+          version: v1.43.0
           skip-go-installation: true
       - name: Run go list
         run: go list -json -m all > go.list
