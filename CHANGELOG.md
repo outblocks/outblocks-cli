@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.52](https://github.com/outblocks/outblocks-cli/compare/v0.1.51...v0.1.52)
+
+> 2021-12-16
+
+### BUG FIXES
+
+[`5458c8e`](https://github.com/outblocks/outblocks-cli/commit/5458c8e8d81ca0526b9f9dcff04552bc46574d71) update sdk
+
+
 ## [v0.1.51](https://github.com/outblocks/outblocks-cli/compare/v0.1.50...v0.1.51)
 
 > 2021-12-16
