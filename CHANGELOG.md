@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.51](https://github.com/outblocks/outblocks-cli/compare/v0.1.50...v0.1.51)
+
+> 2021-12-16
+
+### FEATURES
+
+[`a5238a8`](https://github.com/outblocks/outblocks-cli/commit/a5238a8e4b9548e4a25df5a97e6251f2471b0694) fix local and remote run, proper port selection, bump lint
+
+
 ## [v0.1.50](https://github.com/outblocks/outblocks-cli/compare/v0.1.49...v0.1.50)
 
 > 2021-12-15
