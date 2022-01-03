@@ -1,5 +1,15 @@
 # Outblocks CLI Changelog
 
+## [v0.1.53](https://github.com/outblocks/outblocks-cli/compare/v0.1.52...v0.1.53)
+
+> 2022-01-03
+
+### FEATURES
+
+[`60cbbb3`](https://github.com/outblocks/outblocks-cli/commit/60cbbb3016fff9d6730412e586d2e845b9733fed) blocking dial to fix potential errors, sdk update
+[`8f34147`](https://github.com/outblocks/outblocks-cli/commit/8f341474f29ff817c4b015edea9665d5c66ba92b) errors with stack, private svc support
+
+
 ## [v0.1.52](https://github.com/outblocks/outblocks-cli/compare/v0.1.51...v0.1.52)
 
 > 2021-12-16
