@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 )
 
@@ -34,7 +35,7 @@ func (p *Plugin) Normalize() error {
 	}()
 
 	if err != nil {
-		return fmt.Errorf("plugin config validation failed.\nfile: %s\n%s", p.yamlPath, err)
+		return merry.Errorf("plugin config validation failed.\nfile: %s\n%s", p.yamlPath, err)
 	}
 
 	return nil

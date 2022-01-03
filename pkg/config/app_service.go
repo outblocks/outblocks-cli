@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 
+	"github.com/ansel1/merry/v2"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
@@ -30,7 +32,7 @@ func LoadServiceAppData(path string, data []byte) (App, error) {
 	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
-		return nil, fmt.Errorf("load service config %s error: \n%s", path, yaml.FormatErrorDefault(err))
+		return nil, merry.Errorf("load service config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
 	out.LocalDockerImage = fmt.Sprintf("outblocks/%s", out.ID())
@@ -39,6 +41,12 @@ func LoadServiceAppData(path string, data []byte) (App, error) {
 	out.yamlData = data
 
 	return out, nil
+}
+
+func (s *ServiceApp) Validate() error {
+	return validation.ValidateStruct(s,
+		validation.Field(&s.AppURL, validation.When(!s.Private, validation.Required)),
+	)
 }
 
 func (s *ServiceApp) SupportsLocal() bool {

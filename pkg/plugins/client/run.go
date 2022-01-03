@@ -2,9 +2,9 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"io"
 
+	"github.com/ansel1/merry/v2"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 )
 
@@ -17,12 +17,12 @@ func (c *Client) Run(ctx context.Context, req *apiv1.RunRequest,
 	stream, err := c.runPlugin().Run(ctx, req)
 
 	if err != nil {
-		return nil, c.mapError("run error", err)
+		return nil, c.mapError("run error", merry.Wrap(err))
 	}
 
 	res, err := stream.Recv()
 	if err != nil {
-		return nil, c.mapError("run error", err)
+		return nil, c.mapError("run error", merry.Wrap(err))
 	}
 
 	if r := res.GetStart(); r != nil {
@@ -40,12 +40,12 @@ func (c *Client) Run(ctx context.Context, req *apiv1.RunRequest,
 				}
 
 				if err == io.EOF {
-					errCh <- fmt.Errorf("run stopped unexpectedly")
+					errCh <- merry.Prepend(err, "run stopped unexpectedly")
 					return
 				}
 
 				if err != nil {
-					errCh <- fmt.Errorf("run error: %w", err)
+					errCh <- merry.Prepend(err, "run error")
 					return
 				}
 
@@ -54,7 +54,7 @@ func (c *Client) Run(ctx context.Context, req *apiv1.RunRequest,
 					continue
 				}
 
-				errCh <- fmt.Errorf("unexpected response to run request: %w", err)
+				errCh <- merry.Prepend(err, "unexpected response to run request")
 
 				return
 			}
@@ -63,5 +63,5 @@ func (c *Client) Run(ctx context.Context, req *apiv1.RunRequest,
 		return r, nil
 	}
 
-	return nil, c.newPluginError("unexpected response to run request", err)
+	return nil, c.newPluginError("unexpected response to run request", merry.Wrap(err))
 }

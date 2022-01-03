@@ -5,10 +5,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/tlsutil"
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
 	"github.com/outblocks/outblocks-cli/internal/version"
@@ -59,7 +59,7 @@ func (g *HTTPGetter) get(ctx context.Context, href string) (*bytes.Buffer, error
 	}
 
 	if resp.StatusCode != 200 {
-		return buf, fmt.Errorf("failed to fetch %s : %s", href, resp.Status)
+		return buf, merry.Errorf("failed to fetch %s : %s", href, resp.Status)
 	}
 
 	_, err = io.Copy(buf, resp.Body)
@@ -88,7 +88,7 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" {
 		tlsConf, err := tlsutil.NewClientTLS(g.opts.certFile, g.opts.keyFile, g.opts.caFile)
 		if err != nil {
-			return nil, fmt.Errorf("can't create TLS config for client: %w", err)
+			return nil, merry.Errorf("can't create TLS config for client: %w", err)
 		}
 
 		tlsConf.BuildNameToCertificate()

@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/gookit/color"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/pterm/pterm"
@@ -156,12 +157,31 @@ func (l *Log) Warnln(a ...interface{}) {
 	l.warn.Println(a...)
 }
 
+func (l *Log) printStackTrace(a ...interface{}) {
+	for _, e := range a {
+		err, ok := e.(error)
+
+		if !ok {
+			continue
+		}
+
+		s := merry.Stacktrace(err)
+		if s != "" {
+			pterm.Println(pterm.FgGray.Sprint("└ " + s))
+
+			return
+		}
+	}
+
+	_, fileName, line, _ := runtime.Caller(2)
+	pterm.Println(pterm.FgGray.Sprint("└ " + fmt.Sprintf("(%s:%d)", fileName, line)))
+}
+
 func (l *Log) Errorf(format string, a ...interface{}) {
 	l.err.Printf(format, a...)
 
 	if l.logLevel == LogLevelDebug {
-		_, fileName, line, _ := runtime.Caller(1)
-		pterm.Println(pterm.FgGray.Sprint("└ " + fmt.Sprintf("(%s:%d)", fileName, line)))
+		l.printStackTrace(a...)
 	}
 }
 
@@ -169,8 +189,7 @@ func (l *Log) Errorln(a ...interface{}) {
 	l.err.Println(a...)
 
 	if l.logLevel == LogLevelDebug {
-		_, fileName, line, _ := runtime.Caller(1)
-		pterm.Println(pterm.FgGray.Sprint("└ " + fmt.Sprintf("(%s:%d)", fileName, line)))
+		l.printStackTrace(a...)
 	}
 }
 
@@ -187,7 +206,7 @@ func (l *Log) SetLevelString(logLevel string) error {
 	case "error":
 		level = LogLevelError
 	default:
-		return fmt.Errorf("unknown log level specified")
+		return merry.Errorf("unknown log level specified")
 	}
 
 	l.logLevel = level

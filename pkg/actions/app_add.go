@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
+	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
@@ -22,7 +22,6 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/templates"
 	"github.com/outblocks/outblocks-plugin-go/types"
-	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/pterm/pterm"
 )
 
@@ -81,7 +80,7 @@ func NewAppAdd(log logger.Logger, cfg *config.Project, opts *AppAddOptions) *App
 func (d *AppAdd) Run(ctx context.Context) error {
 	_, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("can't get current working dir: %w", err)
+		return merry.Errorf("can't get current working dir: %w", err)
 	}
 
 	appInfo, err := d.prompt()
@@ -109,7 +108,7 @@ func (d *AppAdd) Run(ctx context.Context) error {
 		path = app.App.AppDir
 		// TODO: add templates for function app
 	default:
-		return fmt.Errorf("unsupported app type (WIP)")
+		return merry.Errorf("unsupported app type (WIP)")
 	}
 
 	var appYAML bytes.Buffer
@@ -121,7 +120,7 @@ func (d *AppAdd) Run(ctx context.Context) error {
 
 	destFile := filepath.Join(path, config.AppYAMLName+".yaml")
 
-	err = plugin_util.WriteFile(destFile, appYAML.Bytes(), 0644)
+	err = fileutil.WriteFile(destFile, appYAML.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
@@ -140,7 +139,7 @@ func validateAppAddURL(val interface{}) error {
 func validateAppAddOutputDir(cfg *config.Project) func(val interface{}) error {
 	return func(val interface{}) error {
 		if s, ok := val.(string); ok && !fileutil.IsRelativeSubdir(cfg.Dir, s) {
-			return fmt.Errorf("output dir must be somewhere in current project config location tree")
+			return merry.Errorf("output dir must be somewhere in current project config location tree")
 		}
 
 		return nil
@@ -150,7 +149,7 @@ func validateAppAddOutputDir(cfg *config.Project) func(val interface{}) error {
 func validateAppAddDir(cfg *config.Project) func(val interface{}) error {
 	return func(val interface{}) error {
 		if s, ok := val.(string); ok && !fileutil.IsRelativeSubdir(cfg.Dir, s) {
-			return fmt.Errorf("application dir must be somewhere in current project config location tree")
+			return merry.Errorf("application dir must be somewhere in current project config location tree")
 		}
 
 		return nil
@@ -362,9 +361,9 @@ func (d *AppAdd) prompt() (interface{}, error) {
 
 	stat, err := os.Stat(d.opts.OutputDir)
 	if os.IsNotExist(err) {
-		err = plugin_util.MkdirAll(d.opts.OutputDir, 0755)
+		err = fileutil.MkdirAll(d.opts.OutputDir, 0755)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create dir %s: %w", d.opts.OutputDir, err)
+			return nil, merry.Errorf("failed to create dir %s: %w", d.opts.OutputDir, err)
 		}
 	}
 
@@ -373,7 +372,7 @@ func (d *AppAdd) prompt() (interface{}, error) {
 	}
 
 	if stat != nil && !stat.IsDir() {
-		return nil, fmt.Errorf("output dir '%s' is not a directory", d.opts.OutputDir)
+		return nil, merry.Errorf("output dir '%s' is not a directory", d.opts.OutputDir)
 	}
 
 	if !d.opts.Overwrite && fileutil.FindYAML(filepath.Join(d.opts.OutputDir, config.AppYAMLName)) != "" {
@@ -396,7 +395,7 @@ func (d *AppAdd) prompt() (interface{}, error) {
 		return d.promptService()
 		// TODO: add adding function app
 	default:
-		return nil, fmt.Errorf("unsupported app type (WIP)")
+		return nil, merry.Errorf("unsupported app type (WIP)")
 	}
 }
 
@@ -408,11 +407,11 @@ func validateAppStaticBuildDir(cfg *config.Project, opts *AppAddOptions) func(va
 		}
 
 		if !fileutil.IsRelativeSubdir(cfg.Dir, str) {
-			return fmt.Errorf("build dir must be somewhere in current project config location tree")
+			return merry.Errorf("build dir must be somewhere in current project config location tree")
 		}
 
 		if fileutil.IsRelativeSubdir(str, opts.OutputDir) {
-			return fmt.Errorf("build dir cannot be a parent of output dir")
+			return merry.Errorf("build dir cannot be a parent of output dir")
 		}
 
 		return nil

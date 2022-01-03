@@ -10,6 +10,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
+	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
@@ -17,7 +18,6 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/templates"
-	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/pterm/pterm"
 	"google.golang.org/grpc/codes"
 )
@@ -72,7 +72,7 @@ type projectInit struct {
 func (d *Init) Run(ctx context.Context) error {
 	curDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("can't get current working dir: %w", err)
+		return merry.Errorf("can't get current working dir: %w", err)
 	}
 
 	cfg := &config.Project{}
@@ -159,7 +159,7 @@ func (d *Init) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = plugin_util.WriteFile(config.ProjectYAMLName+".yaml", projectYAML.Bytes(), 0644)
+	err = fileutil.WriteFile(config.ProjectYAMLName+".yaml", projectYAML.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (d *Init) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = plugin_util.WriteFile("dev.values.yaml", valuesYAML.Bytes(), 0644)
+	err = fileutil.WriteFile("dev.values.yaml", valuesYAML.Bytes(), 0644)
 	if err != nil {
 		return err
 	}
@@ -289,12 +289,12 @@ func (d *Init) prompt(ctx context.Context, cfg *config.Project, loader *plugins.
 
 	_, latestDeployVersion, err := loader.MatchingVersion(ctx, d.opts.DeployPlugin, "", nil)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving latest version of plugin '%s': %w", d.opts.RunPlugin, err)
+		return nil, merry.Errorf("error retrieving latest version of plugin '%s': %w", d.opts.RunPlugin, err)
 	}
 
 	_, latestRunVersion, err := loader.MatchingVersion(ctx, d.opts.RunPlugin, "", nil)
 	if err != nil {
-		return nil, fmt.Errorf("error retrieving latest version of plugin '%s': %w", d.opts.RunPlugin, err)
+		return nil, merry.Errorf("error retrieving latest version of plugin '%s': %w", d.opts.RunPlugin, err)
 	}
 
 	cfg.Plugins = []*config.Plugin{

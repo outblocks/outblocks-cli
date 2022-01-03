@@ -100,6 +100,10 @@
           },
           "then": {
             "properties": {
+              "private": {
+                "description": "Marks app as private - won't be exposed externally and URL is ignored.",
+                "type": "boolean"
+              },
               "build": {
                 "description": "Service application build config used for deployment builds.",
                 "$ref": "#/definitions/ServiceBuild"

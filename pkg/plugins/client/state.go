@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/ansel1/merry/v2"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
@@ -23,7 +24,7 @@ func (c *Client) GetState(ctx context.Context, typ string, props map[string]inte
 		LockWait:   durationpb.New(lockWait),
 	})
 	if err != nil {
-		return nil, c.mapError("get state error", err)
+		return nil, c.mapError("get state error", merry.Wrap(err))
 	}
 
 	var state *apiv1.GetStateResponse_State
@@ -31,7 +32,7 @@ func (c *Client) GetState(ctx context.Context, typ string, props map[string]inte
 	for {
 		res, err := stream.Recv()
 		if err != nil {
-			return state, c.mapErrorWithContext("get state error", err, &yamlContext)
+			return state, c.mapErrorWithContext("get state error", merry.Wrap(err), &yamlContext)
 		}
 
 		switch r := res.Response.(type) {
@@ -59,7 +60,7 @@ func (c *Client) SaveState(ctx context.Context, state *types.StateData, typ stri
 		Properties: plugin_util.MustNewStruct(props),
 	})
 
-	return res, c.mapError("save sate error", err)
+	return res, c.mapError("save sate error", merry.Wrap(err))
 }
 
 func (c *Client) ReleaseStateLock(ctx context.Context, typ string, props map[string]interface{}, lockinfo string) error {
@@ -73,5 +74,5 @@ func (c *Client) ReleaseStateLock(ctx context.Context, typ string, props map[str
 		Properties: plugin_util.MustNewStruct(props),
 	})
 
-	return c.mapError("release state lock error", err)
+	return c.mapError("release state lock error", merry.Wrap(err))
 }

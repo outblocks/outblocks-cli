@@ -2,8 +2,8 @@ package run
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 )
@@ -47,7 +47,7 @@ func ThroughPlugin(ctx context.Context, runMap map[*plugins.Plugin]*apiv1.RunReq
 		go func() {
 			err := <-errCh
 			if err != nil {
-				i.err = fmt.Errorf("plugin:%s: %s", plug.Name, err)
+				i.err = merry.Errorf("plugin:%s: %s", plug.Name, err)
 			}
 
 			close(i.done)

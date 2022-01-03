@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
@@ -99,7 +100,7 @@ func LoadProjectConfig(cfgPath string, vars map[string]interface{}, opts *Projec
 
 	data, err := os.ReadFile(cfgPath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read project yaml: %w", err)
+		return nil, merry.Errorf("cannot read project yaml: %w", err)
 	}
 
 	// Process lockfile.
@@ -124,7 +125,7 @@ func LoadProjectConfig(cfgPath string, vars map[string]interface{}, opts *Projec
 func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}, opts *ProjectOptions, lock *lockfile.Lockfile) (*Project, error) {
 	data, err := NewYAMLEvaluator(vars).Expand(data)
 	if err != nil {
-		return nil, fmt.Errorf("load project config %s error: \n%w", path, err)
+		return nil, merry.Errorf("load project config %s error: \n%w", path, err)
 	}
 
 	out := &Project{
@@ -141,7 +142,7 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
-		return nil, fmt.Errorf("load project config %s error: \n%s", path, yaml.FormatErrorDefault(err))
+		return nil, merry.Errorf("load project config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
 	return out, nil
@@ -202,12 +203,12 @@ func KnownType(typ string) string {
 func (p *Project) LoadFile(file string) error {
 	data, err := os.ReadFile(file)
 	if err != nil {
-		return fmt.Errorf("cannot read yaml: %w", err)
+		return merry.Errorf("cannot read yaml: %w", err)
 	}
 
 	data, err = NewYAMLEvaluator(p.vars).Expand(data)
 	if err != nil {
-		return fmt.Errorf("load application file %s error: \n%w", file, err)
+		return merry.Errorf("load application file %s error: \n%w", file, err)
 	}
 
 	typ, err := DetectAppType(data)
@@ -216,12 +217,12 @@ func (p *Project) LoadFile(file string) error {
 	}
 
 	if typ == "" {
-		return fmt.Errorf("unknown application file found.\nfile: %s", file)
+		return merry.Errorf("unknown application file found.\nfile: %s", file)
 	}
 
 	typ = KnownType(typ)
 	if typ == "" {
-		return fmt.Errorf("application type not supported: %s\nfile: %s", typ, file)
+		return merry.Errorf("application type not supported: %s\nfile: %s", typ, file)
 	}
 
 	var app App
@@ -242,7 +243,7 @@ func (p *Project) LoadFile(file string) error {
 	}
 
 	if !p.RegisterApp(app) {
-		return fmt.Errorf("application with name: '%s' of type: '%s' found more than once\nfile: %s", typ, app.Name(), file)
+		return merry.Errorf("application with name: '%s' of type: '%s' found more than once\nfile: %s", typ, app.Name(), file)
 	}
 
 	return nil
@@ -351,7 +352,7 @@ func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *pl
 			if err != nil {
 				prog.Stop()
 
-				return fmt.Errorf("unable to load '%s' plugin: %w", plug.Name, err)
+				return merry.Errorf("unable to load '%s' plugin: %w", plug.Name, err)
 			}
 
 			prog.Increment()
@@ -372,7 +373,7 @@ func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *pl
 		prefix := fmt.Sprintf("$.plugins[%d]", i)
 
 		if err := plug.Prepare(ctx, log, p.env, p.ID(), p.Name, p.Dir, hostAddr, plugConfig.Other, prefix, p.YAMLData()); err != nil {
-			return fmt.Errorf("error starting plugin '%s': %w", plug.Name, err)
+			return merry.Errorf("error starting plugin '%s': %w", plug.Name, err)
 		}
 	}
 

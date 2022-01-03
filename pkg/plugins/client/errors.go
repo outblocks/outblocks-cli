@@ -5,17 +5,12 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"google.golang.org/grpc/codes"
 )
-
-func IsPluginError(err error) bool {
-	var e *PluginError
-
-	return errors.As(err, &e)
-}
 
 type PluginError struct {
 	c       *Client
@@ -44,7 +39,7 @@ func (c *Client) newPluginError(msg string, wrapped error) *PluginError {
 }
 
 func (c *Client) mapErrorWithContext(msg string, err error, yamlContext *YAMLContext) error {
-	if err == nil || err == io.EOF {
+	if err == nil || errors.Is(err, io.EOF) {
 		return nil
 	}
 
@@ -56,10 +51,10 @@ func (c *Client) mapErrorWithContext(msg string, err error, yamlContext *YAMLCon
 	for _, det := range st.Details() {
 		switch r := det.(type) {
 		case *apiv1.LockError:
-			return fmt.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock --env %s %s=%s",
+			return merry.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock --env %s %s=%s",
 				c.env, r.Owner, r.CreatedAt.AsTime(), r.LockName, r.LockInfo)
 		case *apiv1.StateLockError:
-			return fmt.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock --env %s %s",
+			return merry.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock --env %s %s",
 				c.env, r.Owner, r.CreatedAt.AsTime(), r.LockInfo)
 		case *apiv1.ValidationError:
 			return fileutil.YAMLError(yamlContext.Prefix+"."+r.Path, r.Message, yamlContext.Data)
@@ -67,7 +62,7 @@ func (c *Client) mapErrorWithContext(msg string, err error, yamlContext *YAMLCon
 	}
 
 	if st.Code() == codes.Unknown {
-		err = errors.New(st.Message())
+		err = merry.New(st.Message())
 	}
 
 	return c.newPluginError(msg, err)

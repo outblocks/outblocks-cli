@@ -2,7 +2,6 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,11 +9,12 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/ansel1/merry/v2"
 	"github.com/google/go-github/v35/github"
 	"github.com/mholt/archiver/v3"
+	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"
 	"github.com/outblocks/outblocks-cli/pkg/getter"
-	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"golang.org/x/oauth2"
 )
 
@@ -79,23 +79,23 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 	}
 
 	dest := clipath.CacheDir("plugin-release", pi.author, pi.name, filepath.Base(matchingAsset.GetName()))
-	if err := plugin_util.MkdirAll(filepath.Dir(dest), 0755); err != nil {
-		return nil, fmt.Errorf("failed to create dir %s: %w", dest, err)
+	if err := fileutil.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+		return nil, merry.Errorf("failed to create dir %s: %w", dest, err)
 	}
 
 	g, err := getter.NewHTTPGetter()
 	if err != nil {
-		return nil, fmt.Errorf("http getter init error: %w", err)
+		return nil, merry.Errorf("http getter init error: %w", err)
 	}
 
 	b, err := g.Get(ctx, matchingAsset.GetBrowserDownloadURL())
 	if err != nil {
-		return nil, fmt.Errorf("downloading file error: %w", err)
+		return nil, merry.Errorf("downloading file error: %w", err)
 	}
 
-	err = plugin_util.WriteFile(dest, b.Bytes(), 0755)
+	err = fileutil.WriteFile(dest, b.Bytes(), 0755)
 	if err != nil {
-		return nil, fmt.Errorf("writing downloaded file error: %w", err)
+		return nil, merry.Errorf("writing downloaded file error: %w", err)
 	}
 
 	outDest := clipath.CacheDir("plugin-release", pi.author, pi.name, "out")
@@ -103,12 +103,12 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 
 	err = archiver.Unarchive(dest, outDest)
 	if err != nil {
-		return nil, fmt.Errorf("unarchiving error: %w", err)
+		return nil, merry.Errorf("unarchiving error: %w", err)
 	}
 
 	err = os.RemoveAll(dest)
 	if err != nil {
-		return nil, fmt.Errorf("error removing archive file: %w", err)
+		return nil, merry.Errorf("error removing archive file: %w", err)
 	}
 
 	return &DownloadedPlugin{

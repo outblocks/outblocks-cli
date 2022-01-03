@@ -4,13 +4,13 @@ package values
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/pkg/getter"
 	"github.com/outblocks/outblocks-cli/pkg/strvals"
@@ -51,7 +51,7 @@ func (opts *Options) MergeValues(ctx context.Context, root string, p getter.Prov
 		}
 
 		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", filePath, err)
+			return nil, merry.Errorf("failed to parse %s: %w", filePath, err)
 		}
 		// Merge with the previous map
 		base = plugin_util.MergeMaps(base, currentMap)
@@ -60,7 +60,7 @@ func (opts *Options) MergeValues(ctx context.Context, root string, p getter.Prov
 	// User specified a value via --set
 	for _, value := range opts.Values {
 		if err := strvals.ParseInto(value, base); err != nil {
-			return nil, fmt.Errorf("failed parsing --set data: %w", err)
+			return nil, merry.Errorf("failed parsing --set data: %w", err)
 		}
 	}
 

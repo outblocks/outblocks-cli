@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"sort"
 	"sync"
 	"time"
 
+	"github.com/ansel1/merry/v2"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
@@ -145,7 +145,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 
 	spinner.Stop()
 
-	empty, canceled := planPrompt(d.log, deployChanges, nil, d.opts.AutoApprove, d.opts.ForceApprove)
+	empty, canceled := planPrompt(d.log, d.cfg.Env(), deployChanges, nil, d.opts.AutoApprove, d.opts.ForceApprove)
 
 	shouldApply := !canceled && !empty
 
@@ -214,6 +214,71 @@ func (d *Deploy) prepareAppSSLMap(appStates map[string]*apiv1.AppState) (map[str
 	return sslMap, nil
 }
 
+func (d *Deploy) showAppStates(appStates map[string]*apiv1.AppState, appNameStyle *pterm.Style) (allReady bool) {
+	appURLStyle := pterm.NewStyle(pterm.FgGreen, pterm.Underscore)
+	appURLErrorStyle := pterm.NewStyle(pterm.FgRed, pterm.Underscore)
+	appFailingStyle := pterm.NewStyle(pterm.FgRed, pterm.Bold)
+
+	var (
+		readyApps   []*apiv1.AppState
+		unreadyApps []*apiv1.AppState
+	)
+
+	for _, appState := range appStates {
+		if appState.Deployment == nil {
+			continue
+		}
+
+		if appState.Deployment.Ready {
+			readyApps = append(readyApps, appState)
+		} else {
+			unreadyApps = append(unreadyApps, appState)
+		}
+	}
+
+	sort.Slice(readyApps, func(i int, j int) bool {
+		return readyApps[i].App.Name < readyApps[j].App.Name
+	})
+
+	sort.Slice(unreadyApps, func(i int, j int) bool {
+		return unreadyApps[i].App.Name < unreadyApps[j].App.Name
+	})
+
+	if len(readyApps) > 0 || len(unreadyApps) > 0 {
+		d.log.Section().Println("App Status")
+
+		for _, appState := range readyApps {
+			app := appState.App
+
+			if app.Url != "" {
+				d.log.Printf("%s %s %s (%s)\n", appURLStyle.Sprint(app.Url), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type)
+			} else if appState.Dns != nil {
+				var privateURL string
+
+				switch {
+				case appState.Dns.InternalUrl != "":
+					privateURL = appState.Dns.InternalUrl
+				case appState.Dns.InternalIp != "":
+					privateURL = appState.Dns.InternalIp
+				default:
+					continue
+				}
+
+				d.log.Printf("%s %s %s %s (%s)\n", pterm.Gray("private ==>"), appURLStyle.Sprint(privateURL), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type)
+			}
+		}
+
+		for _, appState := range unreadyApps {
+			app := appState.App
+
+			d.log.Printf("%s %s %s (%s) %s\n", appURLErrorStyle.Sprint(app.Url), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type, appFailingStyle.Sprint("FAILING"))
+			d.log.Errorln(appState.Deployment.Message)
+		}
+	}
+
+	return len(unreadyApps) == 0
+}
+
 func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependencyStates map[string]*apiv1.DependencyState, dnsRecords types.DNSRecordMap) error {
 	var dns []*apiv1.DNSRecord
 
@@ -248,42 +313,8 @@ func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependenc
 	}
 
 	// App Status.
-	appURLStyle := pterm.NewStyle(pterm.FgGreen, pterm.Underscore)
-	appURLErrorStyle := pterm.NewStyle(pterm.FgRed, pterm.Underscore)
 	appNameStyle := pterm.NewStyle(pterm.Reset, pterm.Bold)
-	appFailingStyle := pterm.NewStyle(pterm.FgRed, pterm.Bold)
-
-	readyApps := make(map[string]*apiv1.AppState)
-	unreadyApps := make(map[string]*apiv1.AppState)
-
-	for k, appState := range appStates {
-		if appState.Deployment == nil {
-			continue
-		}
-
-		if appState.Deployment.Ready {
-			readyApps[k] = appState
-		} else {
-			unreadyApps[k] = appState
-		}
-	}
-
-	if len(readyApps) > 0 || len(unreadyApps) > 0 {
-		d.log.Section().Println("App Status")
-
-		for _, appState := range readyApps {
-			app := appState.App
-
-			d.log.Printf("%s %s %s (%s)\n", appURLStyle.Sprint(app.Url), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type)
-		}
-
-		for _, appState := range unreadyApps {
-			app := appState.App
-
-			d.log.Printf("%s %s %s (%s) %s\n", appURLErrorStyle.Sprint(app.Url), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type, appFailingStyle.Sprint("FAILING"))
-			d.log.Errorln(appState.Deployment.Message)
-		}
-	}
+	allReady := d.showAppStates(appStates, appNameStyle)
 
 	// Dependency Status.
 	if len(dependencyStates) > 0 {
@@ -329,8 +360,8 @@ func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependenc
 		_ = d.log.Table().WithHasHeader().WithData(pterm.TableData(data)).Render()
 	}
 
-	if len(unreadyApps) > 0 {
-		return fmt.Errorf("not all apps are ready")
+	if !allReady {
+		return merry.Errorf("not all apps are ready")
 	}
 
 	return nil
@@ -386,7 +417,7 @@ func calculatePlanMap(cfg *config.Project, appStates []*apiv1.AppState, depState
 	for _, appState := range appStates {
 		deployPlugin := cfg.FindLoadedPlugin(appState.App.DeployPlugin)
 		if deployPlugin == nil {
-			return nil, fmt.Errorf("missing deploy plugin: %s used for app: %s", appState.App.DeployPlugin, appState.App.Name)
+			return nil, merry.Errorf("missing deploy plugin: %s used for app: %s", appState.App.DeployPlugin, appState.App.Name)
 		}
 
 		if _, ok := planMap[deployPlugin]; !ok {
@@ -406,7 +437,7 @@ func calculatePlanMap(cfg *config.Project, appStates []*apiv1.AppState, depState
 	for _, depState := range depStates {
 		deployPlugin := cfg.FindLoadedPlugin(depState.Dependency.DeployPlugin)
 		if deployPlugin == nil {
-			return nil, fmt.Errorf("missing deploy plugin: %s used for dependency: %s", depState.Dependency.DeployPlugin, depState.Dependency.Name)
+			return nil, merry.Errorf("missing deploy plugin: %s used for dependency: %s", depState.Dependency.DeployPlugin, depState.Dependency.Name)
 		}
 
 		if _, ok := planMap[deployPlugin]; !ok {

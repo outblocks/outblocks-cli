@@ -1,12 +1,12 @@
 package util
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"reflect"
 	"regexp"
 
+	"github.com/ansel1/merry/v2"
 	"golang.org/x/term"
 )
 
@@ -33,7 +33,7 @@ func RegexValidator(regex *regexp.Regexp, msg string) func(interface{}) error {
 	return func(val interface{}) error {
 		// since we are validating an Input, the assertion will always succeed
 		if str, ok := val.(string); !ok || !regex.MatchString(str) {
-			return errors.New(msg)
+			return merry.New(msg)
 		}
 
 		return nil

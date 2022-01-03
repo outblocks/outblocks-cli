@@ -4,11 +4,11 @@ package strvals
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"strconv"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/goccy/go-yaml"
 )
 
@@ -151,7 +151,7 @@ func runeSet(r []rune) map[rune]bool {
 func (t *parser) key(data map[string]interface{}) (reterr error) {
 	defer func() {
 		if r := recover(); r != nil {
-			reterr = fmt.Errorf("unable to parse key: %s", r)
+			reterr = merry.Errorf("unable to parse key: %s", r)
 		}
 	}()
 
@@ -164,12 +164,12 @@ func (t *parser) key(data map[string]interface{}) (reterr error) {
 				return err
 			}
 
-			return fmt.Errorf("key %q has no value", string(k))
+			return merry.Errorf("key %q has no value", string(k))
 		case last == '[':
 			// We are in a list index context, so we need to set an index.
 			i, err := t.keyIndex()
 			if err != nil {
-				return fmt.Errorf("error parsing index: %w", err)
+				return merry.Errorf("error parsing index: %w", err)
 			}
 
 			kk := string(k)
@@ -213,7 +213,7 @@ func (t *parser) key(data map[string]interface{}) (reterr error) {
 		case last == ',':
 			// No value given. Set the value to empty string. Return error.
 			set(data, string(k), "")
-			return fmt.Errorf("key %q has no value (cannot end with ,)", string(k))
+			return merry.Errorf("key %q has no value (cannot end with ,)", string(k))
 		case last == '.':
 			// First, create or find the target map.
 			inner := map[string]interface{}{}
@@ -225,7 +225,7 @@ func (t *parser) key(data map[string]interface{}) (reterr error) {
 			e := t.key(inner)
 
 			if len(inner) == 0 {
-				return fmt.Errorf("key map %q has no value", string(k))
+				return merry.Errorf("key map %q has no value", string(k))
 			}
 
 			set(data, string(k), inner)
@@ -250,12 +250,12 @@ func setIndex(list []interface{}, index int, val interface{}) (l2 []interface{},
 	// The value of the index that causes a panic varies from system to system.
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("error processing index %d: %s", index, r)
+			err = merry.Errorf("error processing index %d: %s", index, r)
 		}
 	}()
 
 	if index < 0 {
-		return list, fmt.Errorf("negative %d index not allowed", index)
+		return list, merry.Errorf("negative %d index not allowed", index)
 	}
 
 	if len(list) <= index {
@@ -284,14 +284,14 @@ func (t *parser) keyIndex() (int, error) {
 
 func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
 	if i < 0 {
-		return list, fmt.Errorf("negative %d index not allowed", i)
+		return list, merry.Errorf("negative %d index not allowed", i)
 	}
 
 	stop := runeSet([]rune{'[', '.', '='})
 
 	switch k, last, err := runesUntil(t.sc, stop); {
 	case len(k) > 0:
-		return list, fmt.Errorf("unexpected data at end of array index: %q", k)
+		return list, merry.Errorf("unexpected data at end of array index: %q", k)
 	case err != nil:
 		return list, err
 	case last == '=':
@@ -320,7 +320,7 @@ func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
 		// now we have a nested list. Read the index and handle.
 		nextI, err := t.keyIndex()
 		if err != nil {
-			return list, fmt.Errorf("error parsing index: %w", err)
+			return list, merry.Errorf("error parsing index: %w", err)
 		}
 
 		var crtList []interface{}
@@ -362,7 +362,7 @@ func (t *parser) listItem(list []interface{}, i int) ([]interface{}, error) {
 
 		return setIndex(list, i, inner)
 	default:
-		return nil, fmt.Errorf("parse error: unexpected token %v", last)
+		return nil, merry.Errorf("parse error: unexpected token %v", last)
 	}
 }
 

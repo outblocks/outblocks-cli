@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver"
+	"github.com/ansel1/merry/v2"
 	dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/outblocks/outblocks-cli/internal/util"
@@ -48,7 +49,7 @@ func (d *Deploy) dockerClient(ctx context.Context) (*dockerclient.Client, error)
 		ver := semver.MustParse(dockerVer.Version)
 
 		if ver.LessThan(dockerServerMinimumVersion) {
-			err = fmt.Errorf("minimum docker server version required: %s", dockerServerMinimumVersion)
+			err = merry.Errorf("minimum docker server version required: %s", dockerServerMinimumVersion)
 			return
 		}
 
@@ -56,13 +57,13 @@ func (d *Deploy) dockerClient(ctx context.Context) (*dockerclient.Client, error)
 		ver = semver.MustParse(d.dockerCli.ClientVersion())
 
 		if ver.LessThan(dockerClientMinimumVersion) {
-			err = fmt.Errorf("minimum docker client version required: %s", dockerClientMinimumVersion)
+			err = merry.Errorf("minimum docker client version required: %s", dockerClientMinimumVersion)
 			return
 		}
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("error creating docker client: %w", err)
+		return nil, merry.Errorf("error creating docker client: %w", err)
 	}
 
 	return d.dockerCli, err
@@ -73,7 +74,7 @@ func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *command.Cmd, app *
 
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("error running build for %s app: %s: %w", app.Type(), app.Name(), err)
+		return merry.Errorf("error running build for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
 
 	// Process stdout/stderr.
@@ -111,7 +112,7 @@ func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *command.Cmd, app *
 
 	err = cmd.Wait()
 	if err != nil {
-		return fmt.Errorf("error running build for %s app: %s: %w", app.Type(), app.Name(), err)
+		return merry.Errorf("error running build for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
 
 	return nil
@@ -129,7 +130,7 @@ func (d *Deploy) buildStaticApp(ctx context.Context, app *config.StaticApp, eval
 
 	cmd, err := command.New(app.Build.Command, command.WithDir(app.Dir()), command.WithEnv(util.FlattenEnvMap(env)))
 	if err != nil {
-		return fmt.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
+		return merry.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
 
 	return d.runAppBuildCommand(ctx, cmd, &app.BasicApp)
@@ -140,13 +141,13 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 	dockercontext, ok := plugin_util.CheckDir(dockercontext)
 
 	if !ok {
-		return fmt.Errorf("%s app '%s' docker context '%s' does not exist", app.Type(), app.Name(), dockercontext)
+		return merry.Errorf("%s app '%s' docker context '%s' does not exist", app.Type(), app.Name(), dockercontext)
 	}
 
 	dockerfile := filepath.Join(dockercontext, app.Build.Dockerfile)
 
 	if !plugin_util.FileExists(dockerfile) {
-		return fmt.Errorf("%s app '%s' dockerfile '%s' does not exist", app.Type(), app.Name(), dockerfile)
+		return merry.Errorf("%s app '%s' dockerfile '%s' does not exist", app.Type(), app.Name(), dockerfile)
 	}
 
 	cli, err := d.dockerClient(ctx)
@@ -176,7 +177,7 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 
 	cmd, err := command.New(cmdStr, command.WithDir(dockercontext), command.WithEnv([]string{"DOCKER_BUILDKIT=1"}))
 	if err != nil {
-		return fmt.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
+		return merry.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
 
 	err = d.runAppBuildCommand(ctx, cmd, &app.BasicApp)
@@ -186,7 +187,7 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 
 	insp, _, err := cli.ImageInspectWithRaw(ctx, app.LocalDockerImage)
 	if err != nil {
-		return fmt.Errorf("error inspecting created image for %s app: %s: %w", app.Type(), app.Name(), err)
+		return merry.Errorf("error inspecting created image for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
 
 	app.LocalDockerHash = insp.ID

@@ -4,8 +4,9 @@ package getter
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"time"
+
+	"github.com/ansel1/merry/v2"
 )
 
 // options are generic parameters to be provided to the getter during instantiation.
@@ -116,7 +117,7 @@ func (p Providers) ByScheme(scheme string) (Getter, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("scheme %q not supported", scheme)
+	return nil, merry.Errorf("scheme %q not supported", scheme)
 }
 
 var httpProvider = Provider{

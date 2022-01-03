@@ -1,9 +1,9 @@
 package config
 
 import (
-	"fmt"
 	"path/filepath"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 )
 
@@ -56,7 +56,7 @@ func (p *Project) Normalize() error {
 	}()
 
 	if err != nil {
-		return fmt.Errorf("project config validation failed.\nfile: %s\n%s", p.yamlPath, err)
+		return merry.Errorf("project config validation failed.\nfile: %s\n%s", p.yamlPath, err)
 	}
 
 	// URL uniqueness check.
@@ -71,7 +71,7 @@ func (p *Project) Normalize() error {
 			if app.URL() != nil {
 				url := app.URL().String()
 				if cur, ok := urlMap[url]; ok {
-					return fmt.Errorf("same URL '%s' used in more than 1 app: '%s' and '%s'", url, app.Name(), cur.Name())
+					return merry.Errorf("same URL '%s' used in more than 1 app: '%s' and '%s'", url, app.Name(), cur.Name())
 				}
 
 				urlMap[url] = app
@@ -107,7 +107,7 @@ func (p *Project) FullCheck() error {
 	}()
 
 	if err != nil {
-		return fmt.Errorf("project config check failed.\nfile: %s\n%s", p.yamlPath, err)
+		return merry.Errorf("project config check failed.\nfile: %s\n%s", p.yamlPath, err)
 	}
 
 	err = func() error {

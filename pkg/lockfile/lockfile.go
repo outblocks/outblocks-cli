@@ -1,9 +1,9 @@
 package lockfile
 
 import (
-	"fmt"
 	"os"
 
+	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/validator"
@@ -23,7 +23,7 @@ func (l *Lockfile) Validate() error {
 func LoadLockfile(f string) (*Lockfile, error) {
 	data, err := os.ReadFile(f)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read lockfile: %w", err)
+		return nil, merry.Errorf("cannot read lockfile: %w", err)
 	}
 
 	p, err := LoadLockfileData(f, data)
@@ -41,7 +41,7 @@ func LoadLockfileData(path string, data []byte) (*Lockfile, error) {
 	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator()), yaml.UseJSONUnmarshaler(), yaml.Strict()); err != nil {
-		return nil, fmt.Errorf("load lockfile %s error: \n%s", path, yaml.FormatErrorDefault(err))
+		return nil, merry.Errorf("load lockfile %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
 	return out, nil

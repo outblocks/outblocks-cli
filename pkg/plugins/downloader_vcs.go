@@ -2,12 +2,12 @@ package plugins
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Masterminds/semver"
 	"github.com/Masterminds/vcs"
+	"github.com/ansel1/merry/v2"
+	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"
-	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 type VCSDownloader struct {
@@ -30,8 +30,8 @@ type vcsVersionInfo struct {
 
 func (d *VCSDownloader) fetch(_ context.Context, pi *pluginInfo) (vcs.Repo, error) {
 	cachePath := clipath.CacheDir("plugins", pi.author, pi.name)
-	if err := plugin_util.MkdirAll(cachePath, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create dir %s: %w", cachePath, err)
+	if err := fileutil.MkdirAll(cachePath, 0755); err != nil {
+		return nil, merry.Errorf("failed to create dir %s: %w", cachePath, err)
 	}
 
 	repo, err := vcs.NewRepo(pi.source, cachePath)
@@ -41,13 +41,13 @@ func (d *VCSDownloader) fetch(_ context.Context, pi *pluginInfo) (vcs.Repo, erro
 
 	if repo.CheckLocal() {
 		if err := repo.Update(); err != nil {
-			return nil, fmt.Errorf("cannot update source repo: %w", err)
+			return nil, merry.Errorf("cannot update source repo: %w", err)
 		}
 	} else if err := repo.Get(); err != nil {
-		return nil, fmt.Errorf("cannot find source repo: %w", err)
+		return nil, merry.Errorf("cannot find source repo: %w", err)
 	}
 
-	return repo, plugin_util.LchownRToUser(cachePath)
+	return repo, fileutil.LchownRToUser(cachePath)
 }
 
 func (d *VCSDownloader) download(ctx context.Context, pi *pluginInfo) (*DownloadedPlugin, string, error) {
@@ -57,7 +57,7 @@ func (d *VCSDownloader) download(ctx context.Context, pi *pluginInfo) (*Download
 	}
 
 	if err := repo.UpdateVersion(ver.tag); err != nil {
-		return nil, "", fmt.Errorf("cannot update version of repo: %w", err)
+		return nil, "", merry.Errorf("cannot update version of repo: %w", err)
 	}
 
 	return &DownloadedPlugin{
@@ -80,7 +80,7 @@ func (d *VCSDownloader) matchingVersion(ctx context.Context, pi *pluginInfo, che
 
 	tags, err := repo.Tags()
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("cannot find repo or git error: %w", err)
+		return nil, nil, nil, merry.Errorf("cannot find repo or git error: %w", err)
 	}
 
 	checked := make(map[string]bool)

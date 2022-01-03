@@ -219,7 +219,7 @@ func planChangeInfo(header string, changes []*change) (info string, anyCritical 
 	return info, anyCritical
 }
 
-func planPrompt(log logger.Logger, deploy, dns []*change, approve, force bool) (empty, canceled bool) {
+func planPrompt(log logger.Logger, env string, deploy, dns []*change, approve, force bool) (empty, canceled bool) {
 	sort.Slice(deploy, func(i, j int) bool {
 		if deploy[i].app == nil && deploy[j].app != nil {
 			return false
@@ -232,7 +232,7 @@ func planPrompt(log logger.Logger, deploy, dns []*change, approve, force bool) (
 		return deploy[i].Name() < deploy[j].Name()
 	})
 
-	info := []string{"Outblocks will perform the following changes to your stack:"}
+	info := []string{fmt.Sprintf("Outblocks will perform the following changes to your '%s' environment:", pterm.Bold.Sprint(env))}
 	empty = true
 	critical := false
 

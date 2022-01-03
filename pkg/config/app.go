@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -209,7 +210,7 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 	}()
 
 	if err != nil {
-		return fmt.Errorf("%s config validation failed.\nfile: %s\n%s", a.Type(), a.yamlPath, err)
+		return merry.Errorf("%s config validation failed.\nfile: %s\n%s", a.Type(), a.yamlPath, err)
 	}
 
 	return nil
@@ -238,7 +239,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 	}
 
 	if a.deployPlugin == nil {
-		return fmt.Errorf("%s has no matching deployment plugin available.\nfile: %s", a.Type(), a.yamlPath)
+		return merry.Errorf("%s has no matching deployment plugin available.\nfile: %s", a.Type(), a.yamlPath)
 	}
 
 	// Check run plugin.
@@ -261,7 +262,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 	}
 
 	if a.runPlugin == nil && !strings.EqualFold(RunPluginDirect, runPlugin) {
-		return fmt.Errorf("%s has no matching run plugin available.\nfile: %s", a.Type(), a.yamlPath)
+		return merry.Errorf("%s has no matching run plugin available.\nfile: %s", a.Type(), a.yamlPath)
 	}
 
 	// Check dns plugin.
@@ -279,7 +280,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 }
 
 func (a *BasicApp) YAMLError(path, msg string) error {
-	return fmt.Errorf("file: %s\n%s", a.yamlPath, fileutil.YAMLError(path, msg, a.yamlData))
+	return merry.Errorf("file: %s\n%s", a.yamlPath, fileutil.YAMLError(path, msg, a.yamlData))
 }
 
 func (a *BasicApp) Type() string {

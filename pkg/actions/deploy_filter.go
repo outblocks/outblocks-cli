@@ -1,8 +1,7 @@
 package actions
 
 import (
-	"fmt"
-
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
@@ -110,13 +109,13 @@ func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipA
 	// If there are any left target/skip apps without definition, that's an error.
 	for app := range targetAppIDsMap {
 		if appsMap[app] == nil {
-			return nil, nil, false, fmt.Errorf("unknown target app specified: app with ID '%s' is missing definition", app)
+			return nil, nil, false, merry.Errorf("unknown target app specified: app with ID '%s' is missing definition", app)
 		}
 	}
 
 	for app := range skipAppIDsMap {
 		if appsMap[app] == nil {
-			return nil, nil, false, fmt.Errorf("unknown skip app specified: app with ID '%s' is missing definition", app)
+			return nil, nil, false, merry.Errorf("unknown skip app specified: app with ID '%s' is missing definition", app)
 		}
 	}
 

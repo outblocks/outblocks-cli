@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 
+	"github.com/ansel1/merry/v2"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
@@ -20,5 +21,5 @@ func (c *Client) ProjectInit(ctx context.Context, name string, deployPlugins, ru
 		Args:          plugin_util.MustNewStruct(args),
 	})
 
-	return res, c.mapError("project init error", err)
+	return res, c.mapError("project init error", merry.Wrap(err))
 }

@@ -2,9 +2,9 @@ package actions
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
@@ -38,7 +38,7 @@ func (f *ForceUnlock) Run(ctx context.Context, lockinfo string) error {
 	for _, l := range locks {
 		locksplit := strings.SplitN(l, "=", 2)
 		if len(locksplit) != 2 {
-			return fmt.Errorf("invalid lock format")
+			return merry.New("invalid lock format")
 		}
 
 		lockMap[locksplit[0]] = locksplit[1]

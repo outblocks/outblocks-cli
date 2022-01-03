@@ -34,6 +34,8 @@ func main() {
 	defer func() {
 		if r := recover(); r != nil {
 			exec.Log().Errorf("Critical Error! %q\n%s", r, debug.Stack())
+
+			os.Exit(1)
 		}
 	}()
 

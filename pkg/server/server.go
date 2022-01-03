@@ -3,11 +3,11 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"google.golang.org/grpc"
@@ -130,7 +130,7 @@ func (s *Server) Log(ctx context.Context, r *apiv1.LogRequest) (*apiv1.LogRespon
 	case apiv1.LogRequest_LEVEL_SUCCESS:
 		s.log.Successf(r.Message)
 	case apiv1.LogRequest_LEVEL_UNSPECIFIED:
-		return nil, fmt.Errorf("unknown level")
+		return nil, merry.New("unknown level")
 	}
 
 	return &apiv1.LogResponse{}, nil

@@ -10,10 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	plugin_go "github.com/outblocks/outblocks-plugin-go"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Client struct {
@@ -119,20 +121,20 @@ func (c *Client) init(ctx context.Context) error {
 	var handshake *plugin_go.Handshake
 
 	if err := json.Unmarshal(line, &handshake); err != nil {
-		return c.newPluginError("handshake error", err)
+		return c.newPluginError("handshake error", merry.Wrap(err))
 	}
 
 	if handshake == nil {
-		return c.newPluginError("handshake not returned by plugin", err)
+		return c.newPluginError("handshake not returned by plugin", merry.Wrap(err))
 	}
 
 	if err := ValidateHandshake(handshake); err != nil {
-		return c.newPluginError("invalid handshake", err)
+		return c.newPluginError("invalid handshake", merry.Wrap(err))
 	}
 
 	c.addr = handshake.Addr
 
-	c.conn, err = grpc.DialContext(ctx, c.addr, grpc.WithInsecure())
+	c.conn, err = grpc.DialContext(ctx, c.addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
 	}

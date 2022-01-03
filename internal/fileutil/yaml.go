@@ -1,11 +1,11 @@
 package fileutil
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/enescakir/emoji"
 	"github.com/goccy/go-yaml"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
@@ -127,13 +127,13 @@ func YAMLError(path, msg string, data []byte) error {
 	if err != nil {
 		idx := strings.LastIndex(path, ".")
 		if idx == -1 {
-			return fmt.Errorf("\n%s", msg)
+			return merry.Errorf("\n%s", msg)
 		}
 
 		return YAMLError(path[:idx], msg, data)
 	}
 
-	return fmt.Errorf("\n%s\n\n%s  %s", source, emoji.Warning, msg)
+	return merry.Errorf("\n%s\n\n%s  %s", source, emoji.Warning, msg)
 }
 
 func IsRelativeSubdir(parent, dir string) bool {

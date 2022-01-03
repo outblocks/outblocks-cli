@@ -10,12 +10,12 @@ import (
 	"strings"
 
 	"github.com/Masterminds/semver"
+	"github.com/ansel1/merry/v2"
 	"github.com/goccy/go-yaml"
 	"github.com/otiai10/copy"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
-	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 const (
@@ -167,27 +167,27 @@ func (l *Loader) selectDownloader(src string) Downloader {
 func (l *Loader) downloadPlugin(ctx context.Context, pi *pluginInfo) (string, *semver.Version, error) {
 	download, err := l.selectDownloader(pi.source).Download(ctx, pi)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to download plugin %s: %w", pi.name, err)
+		return "", nil, merry.Errorf("failed to download plugin %s: %w", pi.name, err)
 	}
 
 	destDir := filepath.Join(l.pluginsCacheDir, pi.author, pi.name, fmt.Sprintf("%s-%s", CurrentArch(), download.Version))
 
-	if err := plugin_util.MkdirAll(destDir, 0755); err != nil {
-		return "", nil, fmt.Errorf("failed to create dir %s: %w", destDir, err)
+	if err := fileutil.MkdirAll(destDir, 0755); err != nil {
+		return "", nil, merry.Errorf("failed to create dir %s: %w", destDir, err)
 	}
 
 	if err := copy.Copy(download.Dir, destDir); err != nil {
-		return "", nil, fmt.Errorf("failed to copy downloaded plugin %s: %w", destDir, err)
+		return "", nil, merry.Errorf("failed to copy downloaded plugin %s: %w", destDir, err)
 	}
 
-	if err := plugin_util.LchownRToUser(destDir); err != nil {
-		return "", nil, fmt.Errorf("failed to set permissions on downloaded plugin %s: %w", destDir, err)
+	if err := fileutil.LchownRToUser(destDir); err != nil {
+		return "", nil, merry.Errorf("failed to set permissions on downloaded plugin %s: %w", destDir, err)
 	}
 
 	if download.TempDir {
 		err = os.RemoveAll(download.Dir)
 		if err != nil {
-			return "", nil, fmt.Errorf("failed to remove downloaded plugin temp dir %s: %w", download.Dir, err)
+			return "", nil, merry.Errorf("failed to remove downloaded plugin temp dir %s: %w", download.Dir, err)
 		}
 	}
 
@@ -210,38 +210,38 @@ func (l *Loader) installCachedPlugin(pi *pluginInfo) (string, *semver.Version, e
 
 func (l *Loader) installPlugin(pi *pluginInfo, from string) error {
 	localDir := filepath.Join(l.baseDir, ".outblocks", "plugins", pi.author, pi.name)
-	if err := plugin_util.MkdirAll(localDir, 0755); err != nil {
-		return fmt.Errorf("failed to create dir %s: %w", localDir, err)
+	if err := fileutil.MkdirAll(localDir, 0755); err != nil {
+		return merry.Errorf("failed to create dir %s: %w", localDir, err)
 	}
 
 	dest := filepath.Join(localDir, filepath.Base(from))
 	_ = os.RemoveAll(dest)
 
-	if err := plugin_util.Symlink(from, dest); err != nil {
+	if err := fileutil.Symlink(from, dest); err != nil {
 		if err := copy.Copy(from, dest); err != nil {
-			return fmt.Errorf("failed to copy cached plugin %s: %w", from, err)
+			return merry.Errorf("failed to copy cached plugin %s: %w", from, err)
 		}
 	}
 
-	return plugin_util.LchownRToUser(dest)
+	return fileutil.LchownRToUser(dest)
 }
 
 func (l *Loader) loadPlugin(pi *pluginInfo, dir string, ver *semver.Version) (*Plugin, error) {
 	p := fileutil.FindYAML(filepath.Join(dir, "plugin"))
 	if p == "" {
-		return nil, fmt.Errorf("plugin yaml is missing in: %s", dir)
+		return nil, merry.Errorf("plugin yaml is missing in: %s", dir)
 	}
 
 	data, err := os.ReadFile(p)
 	if err != nil {
-		return nil, fmt.Errorf("cannot read yaml: %w", err)
+		return nil, merry.Errorf("cannot read yaml: %w", err)
 	}
 
 	cacheDir := filepath.Join(l.baseDir, ".outblocks", "cache", pi.name)
 
-	err = plugin_util.MkdirAll(cacheDir, 0755)
+	err = fileutil.MkdirAll(cacheDir, 0755)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create dir %s: %w", cacheDir, err)
+		return nil, merry.Errorf("failed to create dir %s: %w", cacheDir, err)
 	}
 
 	plugin := Plugin{
@@ -254,7 +254,7 @@ func (l *Loader) loadPlugin(pi *pluginInfo, dir string, ver *semver.Version) (*P
 	}
 
 	if err := yaml.UnmarshalWithOptions(data, &plugin, yaml.Validator(validator.DefaultValidator()), yaml.UseJSONUnmarshaler(), yaml.DisallowDuplicateKey()); err != nil {
-		return nil, fmt.Errorf("plugin config load failed.\nfile: %s\n%s", p, err)
+		return nil, merry.Errorf("plugin config load failed.\nfile: %s\n%s", p, err)
 	}
 
 	return &plugin, nil

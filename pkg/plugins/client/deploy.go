@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 
+	"github.com/ansel1/merry/v2"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
@@ -29,7 +30,7 @@ func (c *Client) Plan(ctx context.Context, state *types.StateData, apps []*apiv1
 		Verify:  verify,
 	})
 
-	return res, c.mapError("plan error", err)
+	return res, c.mapError("plan error", merry.Wrap(err))
 }
 
 func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*apiv1.AppPlan, deps []*apiv1.DependencyPlan, domains []*apiv1.DomainInfo, args map[string]interface{}, destroy bool, callback func(*apiv1.ApplyAction)) (*apiv1.ApplyDoneResponse, error) {
@@ -48,7 +49,7 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*apiv
 	})
 
 	if err != nil {
-		return nil, c.mapError("apply error", err)
+		return nil, c.mapError("apply error", merry.Wrap(err))
 	}
 
 	var done *apiv1.ApplyDoneResponse
@@ -56,7 +57,7 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*apiv
 	for {
 		res, err := stream.Recv()
 		if err != nil {
-			return done, c.mapError("apply error", err)
+			return done, c.mapError("apply error", merry.Wrap(err))
 		}
 
 		if r := res.GetAction(); r != nil {
@@ -75,6 +76,6 @@ func (c *Client) Apply(ctx context.Context, state *types.StateData, apps []*apiv
 			continue
 		}
 
-		return nil, c.newPluginError("unexpected response to apply request", err)
+		return nil, c.newPluginError("unexpected response to apply request", merry.Wrap(err))
 	}
 }

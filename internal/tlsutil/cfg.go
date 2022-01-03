@@ -4,8 +4,9 @@ package tlsutil
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"os"
+
+	"github.com/ansel1/merry/v2"
 )
 
 // Options represents configurable options used to create client and server TLS configurations.
@@ -28,10 +29,10 @@ func ClientConfig(opts Options) (cfg *tls.Config, err error) {
 	if opts.CertFile != "" || opts.KeyFile != "" {
 		if cert, err = CertFromFilePair(opts.CertFile, opts.KeyFile); err != nil {
 			if os.IsNotExist(err) {
-				return nil, fmt.Errorf("could not load x509 key pair (cert: %q, key: %q): %w", opts.CertFile, opts.KeyFile, err)
+				return nil, merry.Errorf("could not load x509 key pair (cert: %q, key: %q): %w", opts.CertFile, opts.KeyFile, err)
 			}
 
-			return nil, fmt.Errorf("could not read x509 key pair (cert: %q, key: %q): %w", opts.CertFile, opts.KeyFile, err)
+			return nil, merry.Errorf("could not read x509 key pair (cert: %q, key: %q): %w", opts.CertFile, opts.KeyFile, err)
 		}
 	}
 

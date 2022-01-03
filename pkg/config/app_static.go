@@ -1,9 +1,9 @@
 package config
 
 import (
-	"fmt"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/util"
@@ -44,7 +44,7 @@ func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
 	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
-		return nil, fmt.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
+		return nil, merry.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
 	out.yamlPath = path

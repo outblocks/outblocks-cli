@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/pkg/actions"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/spf13/cobra"
@@ -28,17 +28,17 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 			}
 
 			if len(opts.TargetApps) > 0 && len(opts.SkipApps) > 0 {
-				return fmt.Errorf("target-apps and skip-apps arguments are mutually exclusive modes")
+				return merry.New("target-apps and skip-apps arguments are mutually exclusive modes")
 			}
 
 			if opts.SkipAllApps && opts.Destroy {
-				return fmt.Errorf("skip-all-apps and destroy areare mutually exclusive modes")
+				return merry.New("skip-all-apps and destroy areare mutually exclusive modes")
 			}
 
 			for _, t := range targetApps {
 				tsplit := strings.SplitN(t, ".", 2)
 				if len(tsplit) != 2 {
-					return fmt.Errorf("wrong format for target '%s': specify in a form of <app type>.<name>, e.g.: static.website", t)
+					return merry.Errorf("wrong format for target '%s': specify in a form of <app type>.<name>, e.g.: static.website", t)
 				}
 
 				opts.TargetApps = append(opts.TargetApps, config.ComputeAppID(tsplit[0], tsplit[1]))
@@ -48,7 +48,7 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				for _, t := range skipApps {
 					tsplit := strings.SplitN(t, ".", 2)
 					if len(tsplit) != 2 {
-						return fmt.Errorf("wrong format for skip '%s': specify in a form of <app type>.<name>, e.g.: static.website", t)
+						return merry.Errorf("wrong format for skip '%s': specify in a form of <app type>.<name>, e.g.: static.website", t)
 					}
 
 					opts.SkipApps = append(opts.SkipApps, config.ComputeAppID(tsplit[0], tsplit[1]))

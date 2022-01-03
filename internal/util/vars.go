@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-plugin-go/util"
 )
 
@@ -31,7 +32,7 @@ func varEncoder(input interface{}) ([]byte, error) {
 		return []byte("%d"), nil
 	}
 
-	return nil, fmt.Errorf("unknown input type")
+	return nil, merry.New("unknown input type")
 }
 
 func (e *VarEvaluator) Expand(input string) (string, error) {

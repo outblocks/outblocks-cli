@@ -2,8 +2,8 @@ package run
 
 import (
 	"context"
-	"fmt"
 
+	"github.com/ansel1/merry/v2"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 )
 
@@ -38,10 +38,10 @@ func (l *LocalRunResult) Wait() error {
 		go func() {
 			err := a.Wait()
 			if err == nil {
-				err = fmt.Errorf("exited")
+				err = merry.New("exited")
 			}
 
-			err = fmt.Errorf("app %s %w", a.App.Name, err)
+			err = merry.Errorf("app %s %w", a.App.Name, err)
 
 			errCh <- err
 		}()

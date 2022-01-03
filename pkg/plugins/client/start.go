@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 
+	"github.com/ansel1/merry/v2"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
@@ -21,7 +22,7 @@ func (c *Client) Init(ctx context.Context) error {
 		})
 	})
 
-	return c.mapError("init error", err)
+	return c.mapError("init error", merry.Wrap(err))
 }
 
 func (c *Client) Start(ctx context.Context) error {
@@ -36,5 +37,5 @@ func (c *Client) Start(ctx context.Context) error {
 		})
 	})
 
-	return c.mapError("start error", err)
+	return c.mapError("start error", merry.Wrap(err))
 }

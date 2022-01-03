@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/ansel1/merry/v2"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -20,7 +21,7 @@ func (c *Client) AcquireLocks(ctx context.Context, props map[string]interface{},
 		Properties: plugin_util.MustNewStruct(props),
 	})
 
-	return c.mapError("acquire locks error", err)
+	return c.mapError("acquire locks error", merry.Wrap(err))
 }
 
 func (c *Client) ReleaseLocks(ctx context.Context, props map[string]interface{}, locks map[string]string) error {
@@ -33,5 +34,5 @@ func (c *Client) ReleaseLocks(ctx context.Context, props map[string]interface{},
 		Properties: plugin_util.MustNewStruct(props),
 	})
 
-	return c.mapError("release locks error", err)
+	return c.mapError("release locks error", merry.Wrap(err))
 }

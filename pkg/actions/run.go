@@ -15,6 +15,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ansel1/merry/v2"
+	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/actions/run"
@@ -107,8 +109,8 @@ func (d *Run) init() error {
 
 	backupHosts := clipath.DataDir("hosts.original")
 	if _, err := os.Stat(backupHosts); os.IsNotExist(err) {
-		if err = plugin_util.CopyFile(d.hosts.WriteFilePath, backupHosts, 0755); err != nil {
-			return fmt.Errorf("cannot backup hosts file: %w", err)
+		if err = fileutil.CopyFile(d.hosts.WriteFilePath, backupHosts, 0755); err != nil {
+			return merry.Errorf("cannot backup hosts file: %w", err)
 		}
 	}
 
@@ -503,7 +505,7 @@ func (d *Run) addAllHosts(runInfo *runInfo) (map[*url.URL]*url.URL, error) {
 
 	err := d.AddHosts(hostsList...)
 	if err != nil {
-		return nil, fmt.Errorf("are you running with sudo? or try running with hosts-routing disabled")
+		return nil, merry.New("are you running with sudo? or try running with hosts-routing disabled")
 	}
 
 	return routing, nil
@@ -536,7 +538,7 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 
 	total := len(localRets) + len(pluginRets)
 	if total == 0 {
-		return &wg, fmt.Errorf("nothing to run")
+		return &wg, merry.New("nothing to run")
 	}
 
 	wg.Add(total)

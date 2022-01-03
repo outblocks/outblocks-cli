@@ -6,9 +6,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-plugin-go/types"
-	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 const (
@@ -59,7 +59,7 @@ func (s *State) SaveLocal(d *types.StateData) error {
 		return err
 	}
 
-	return plugin_util.WriteFile(s.LocalPath(), data, 0644)
+	return fileutil.WriteFile(s.LocalPath(), data, 0644)
 }
 
 func (s *State) Normalize(cfg *Project) error {

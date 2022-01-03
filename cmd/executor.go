@@ -3,11 +3,11 @@ package cmd
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/pkg/cli"
@@ -96,12 +96,12 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 
 	pwd, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("cannot find current directory: %w", err)
+		return merry.Errorf("cannot find current directory: %w", err)
 	}
 
 	pwd, err = filepath.EvalSymlinks(pwd)
 	if err != nil {
-		return fmt.Errorf("cannot evaluate current directory: %w", err)
+		return merry.Errorf("cannot evaluate current directory: %w", err)
 	}
 
 	cfgPath := fileutil.FindYAMLGoingUp(pwd, config.ProjectYAMLName)
@@ -112,10 +112,13 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 			return nil
 		}
 
-		return fmt.Errorf("cannot load values files: %w", err)
+		return merry.Errorf("cannot load values files: %w", err)
 	}
 
-	vals := map[string]interface{}{"var": v}
+	vals := map[string]interface{}{
+		"var": v,
+		"env": e.opts.env,
+	}
 
 	// Load config file.
 	if err := e.loadProjectConfig(ctx, cfgPath, e.srv.Addr().String(), vals, skipLoadApps, skipLoadPlugins, skipCheckConfig); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
@@ -148,7 +151,7 @@ func (e *Executor) addPluginsCommands(cmd *cobra.Command) error {
 				arg.Name = strings.ToLower(arg.Name)
 
 				if flags.Lookup(arg.Name) != nil {
-					return fmt.Errorf("plugin tried to add already existing argument '%s' to command '%s'", arg, cmdName)
+					return merry.Errorf("plugin tried to add already existing argument '%s' to command '%s'", arg, cmdName)
 				}
 
 				switch arg.Type {

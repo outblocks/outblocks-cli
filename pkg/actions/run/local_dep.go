@@ -1,8 +1,7 @@
 package run
 
 import (
-	"fmt"
-
+	"github.com/ansel1/merry/v2"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/util/command"
 )
@@ -19,5 +18,5 @@ type LocalDependencyRunInfo struct {
 }
 
 func (d *LocalDependency) Run() (*LocalDependencyRunInfo, error) {
-	return nil, fmt.Errorf("unimplemented")
+	return nil, merry.New("unimplemented")
 }
