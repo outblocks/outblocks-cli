@@ -200,17 +200,12 @@ type appBuilder struct {
 	build func() error
 }
 
-func (d *Deploy) buildApps(ctx context.Context) error {
+func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppState) error {
 	appTypeMap := make(map[string]*apiv1.App)
 
 	if len(d.opts.TargetApps) != 0 || len(d.opts.SkipApps) != 0 {
 		// Get state apps as well.
-		state, _, err := getState(ctx, d.cfg, false, 0)
-		if err != nil {
-			return err
-		}
-
-		for _, appState := range state.Apps {
+		for _, appState := range stateApps {
 			appTypeMap[appState.App.Id] = appState.App
 		}
 	}

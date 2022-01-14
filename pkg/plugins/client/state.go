@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-func (c *Client) GetState(ctx context.Context, typ string, props map[string]interface{}, lock bool, lockWait time.Duration, yamlContext YAMLContext) (ret *apiv1.GetStateResponse_State, err error) {
+func (c *Client) GetState(ctx context.Context, typ string, props map[string]interface{}, lock bool, lockWait time.Duration, yamlContext *YAMLContext) (ret *apiv1.GetStateResponse_State, err error) {
 	if err := c.Start(ctx); err != nil {
 		return nil, err
 	}
@@ -32,12 +32,12 @@ func (c *Client) GetState(ctx context.Context, typ string, props map[string]inte
 	for {
 		res, err := stream.Recv()
 		if err != nil {
-			return state, c.mapErrorWithContext("get state error", merry.Wrap(err), &yamlContext)
+			return state, c.mapErrorWithContext("get state error", merry.Wrap(err), yamlContext)
 		}
 
 		switch r := res.Response.(type) {
 		case *apiv1.GetStateResponse_Waiting:
-			c.log.Infoln("Lock is acquired. Waiting for it to be free...")
+			c.log.Infoln("State lock is acquired. Waiting for it to be free...")
 		case *apiv1.GetStateResponse_State_:
 			state = r.State
 		}

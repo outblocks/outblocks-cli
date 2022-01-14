@@ -44,7 +44,7 @@ const (
 	ActionDeploy Action = iota
 	ActionRun
 	ActionDNS
-	ActionLocking
+	ActionLock
 	ActionState
 )
 
@@ -164,4 +164,12 @@ func (p *Plugin) CommandArgs(cmd string) map[string]interface{} {
 	}
 
 	return args
+}
+
+func ComputePluginID(name string) string {
+	return fmt.Sprintf("plugin_%s", name)
+}
+
+func (p *Plugin) ID() string {
+	return ComputePluginID(p.Name)
 }

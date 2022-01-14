@@ -44,7 +44,7 @@ func main() {
 	cancel()
 
 	if err != nil {
-		exec.Log().Errorln(err)
+		exec.Log().Errorln("Error occurred:", err)
 
 		os.Exit(1) // nolint: gocritic
 	}

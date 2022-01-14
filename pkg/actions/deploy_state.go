@@ -1,0 +1,239 @@
+package actions
+
+import (
+	"encoding/json"
+	"fmt"
+	"reflect"
+	"sort"
+
+	"github.com/ansel1/merry/v2"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
+	"github.com/outblocks/outblocks-plugin-go/registry"
+	"github.com/outblocks/outblocks-plugin-go/types"
+	"github.com/r3labs/diff/v2"
+)
+
+type stateDiff struct {
+	apps            diff.Changelog
+	deps            diff.Changelog
+	dnsRecords      diff.Changelog
+	pluginsRegistry diff.Changelog
+	pluginsState    diff.Changelog
+}
+
+func (s *stateDiff) IsEmpty() bool {
+	return len(s.apps) == 0 && len(s.deps) == 0 && len(s.dnsRecords) == 0 && len(s.pluginsRegistry) == 0 && len(s.pluginsState) == 0
+}
+
+func (s *stateDiff) Apply(state *types.StateData) error {
+	if state.Apps == nil {
+		state.Apps = make(map[string]*apiv1.AppState)
+	}
+
+	ret := diff.Patch(s.apps, &state.Apps)
+	if ret.HasErrors() {
+		return merry.New("error applying patch on state.apps")
+	}
+
+	if state.Dependencies == nil {
+		state.Dependencies = make(map[string]*apiv1.DependencyState)
+	}
+
+	ret = diff.Patch(s.deps, &state.Dependencies)
+	if ret.HasErrors() {
+		return merry.New("error applying patch on state.dependencies")
+	}
+
+	dnsRecords := dnsRecordsAsMap(state.DNSRecords)
+
+	ret = diff.Patch(s.dnsRecords, dnsRecords)
+	if ret.HasErrors() {
+		return merry.New("error applying patch on state.dnsrecords")
+	}
+
+	state.DNSRecords = make(types.DNSRecordMap)
+
+	for _, rec := range dnsRecords {
+		state.DNSRecords[rec.Key] = rec.Val
+	}
+
+	if state.Plugins == nil {
+		state.Plugins = make(map[string]*types.PluginState)
+	}
+
+	ret = diff.Patch(s.pluginsState, &state.Plugins)
+	if ret.HasErrors() {
+		return merry.New("error applying patch on state.plugins_state")
+	}
+
+	pluginRegistry, err := pluginsRegistryAsMap(state.Plugins)
+	if err != nil {
+		return err
+	}
+
+	ret = diff.Patch(s.pluginsRegistry, &pluginRegistry)
+	if ret.HasErrors() {
+		return merry.New("error applying patch on state.plugins registry")
+	}
+
+	for k, v := range pluginRegistry {
+		resources := make([]*registry.ResourceSerialized, 0, len(v))
+
+		for _, r := range v {
+			resources = append(resources, r)
+		}
+
+		sort.Slice(resources, func(i, j int) bool {
+			return resources[i].Less(&resources[j].ResourceID)
+		})
+
+		out, err := json.Marshal(resources)
+		if err != nil {
+			return err
+		}
+
+		state.Plugins[k].Registry = out
+	}
+
+	return nil
+}
+
+func formatIndentedJSON(i interface{}) string {
+	out, _ := json.MarshalIndent(i, "", "  ")
+	return string(out)
+}
+
+func (s *stateDiff) String() string {
+	var out string
+
+	if len(s.apps) != 0 {
+		out += fmt.Sprintf("Apps = %s\n", formatIndentedJSON(s.apps))
+	}
+
+	if len(s.deps) != 0 {
+		out += fmt.Sprintf("Deps = %s\n", formatIndentedJSON(s.deps))
+	}
+
+	if len(s.dnsRecords) != 0 {
+		out += fmt.Sprintf("DNS = %s\n", formatIndentedJSON(s.dnsRecords))
+	}
+
+	if len(s.pluginsRegistry) != 0 {
+		out += fmt.Sprintf("Registry = %s\n", formatIndentedJSON(s.pluginsRegistry))
+	}
+
+	if len(s.pluginsState) != 0 {
+		out += fmt.Sprintf("State = %s\n", formatIndentedJSON(s.pluginsState))
+	}
+
+	return out
+}
+
+func pluginsRegistryAsMap(plugins map[string]*types.PluginState) (map[string]map[string]*registry.ResourceSerialized, error) {
+	pluginRegistry := make(map[string]map[string]*registry.ResourceSerialized, len(plugins))
+
+	for k, v := range plugins {
+		var loaded []*registry.ResourceSerialized
+
+		err := json.Unmarshal(v.Registry, &loaded)
+		if err != nil {
+			return nil, err
+		}
+
+		out := make(map[string]*registry.ResourceSerialized, len(loaded))
+
+		for _, r := range loaded {
+			out[fmt.Sprintf("%s::%s::%s::%s", r.ResourceID.Source, r.ResourceID.Namespace, r.ResourceID.ID, r.ResourceID.Type)] = r
+		}
+
+		pluginRegistry[k] = out
+	}
+
+	return pluginRegistry, nil
+}
+
+type dnsRecordValue struct {
+	Val types.DNSRecordValue
+	Key types.DNSRecordKey
+}
+
+func dnsRecordsAsMap(records types.DNSRecordMap) map[string]dnsRecordValue {
+	ret := make(map[string]dnsRecordValue, len(records))
+
+	for k, v := range records {
+		ret[fmt.Sprintf("%s::%d", k.Record, k.Type)] = dnsRecordValue{
+			Key: k,
+			Val: v,
+		}
+	}
+
+	return ret
+}
+
+func pluginsStateWithoutRegistry(plugins map[string]*types.PluginState) map[string]*types.PluginState {
+	pluginRegistry := make(map[string]*types.PluginState, len(plugins))
+
+	for k, v := range plugins {
+		pluginRegistry[k] = &types.PluginState{
+			Other: v.Other,
+		}
+	}
+
+	return pluginRegistry
+}
+
+func diffOnlyExported(path []string, parent reflect.Type, field reflect.StructField) bool { // nolint:gocritic
+	return field.IsExported()
+}
+
+func computeDiff(in1, in2 interface{}) (diff.Changelog, error) {
+	return diff.Diff(in1, in2, diff.Filter(diffOnlyExported), diff.SliceOrdering(true), diff.FlattenEmbeddedStructs())
+}
+
+func computeStateDiff(state1, state2 *types.StateData) (*stateDiff, error) {
+	apps, err := computeDiff(state1.Apps, state2.Apps)
+	if err != nil {
+		return nil, err
+	}
+
+	deps, err := computeDiff(state1.Dependencies, state2.Dependencies)
+	if err != nil {
+		return nil, err
+	}
+
+	dnsRecords, err := computeDiff(dnsRecordsAsMap(state1.DNSRecords), dnsRecordsAsMap(state2.DNSRecords))
+	if err != nil {
+		return nil, err
+	}
+
+	state1PluginRegistry, err := pluginsRegistryAsMap(state1.Plugins)
+	if err != nil {
+		return nil, err
+	}
+
+	state2PluginRegistry, err := pluginsRegistryAsMap(state2.Plugins)
+	if err != nil {
+		return nil, err
+	}
+
+	pluginsRegistry, err := computeDiff(state1PluginRegistry, state2PluginRegistry)
+	if err != nil {
+		return nil, err
+	}
+
+	state1PluginState := pluginsStateWithoutRegistry(state1.Plugins)
+	state2PluginState := pluginsStateWithoutRegistry(state2.Plugins)
+
+	pluginsState, err := computeDiff(state1PluginState, state2PluginState)
+	if err != nil {
+		return nil, err
+	}
+
+	return &stateDiff{
+		apps:            apps,
+		deps:            deps,
+		dnsRecords:      dnsRecords,
+		pluginsRegistry: pluginsRegistry,
+		pluginsState:    pluginsState,
+	}, nil
+}

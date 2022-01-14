@@ -4,11 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
+	"time"
 
 	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
+	"github.com/outblocks/outblocks-plugin-go/types"
 	"google.golang.org/grpc/codes"
 )
 
@@ -48,14 +51,34 @@ func (c *Client) mapErrorWithContext(msg string, err error, yamlContext *YAMLCon
 		return c.newPluginError(msg, err)
 	}
 
+	if st.Code() == codes.FailedPrecondition && st.Message() == types.LockErrorMessage {
+		var locks, owners []string
+
+		ownersMap := make(map[string]time.Time)
+
+		for _, det := range st.Details() {
+			if r, ok := det.(*apiv1.LockError); ok {
+				if t, ok := ownersMap[r.Owner]; !ok || t.After(r.CreatedAt.AsTime()) {
+					ownersMap[r.Owner] = r.CreatedAt.AsTime()
+				}
+
+				locks = append(locks, fmt.Sprintf("%s=%s", r.LockName, r.LockInfo))
+			}
+		}
+
+		for o, t := range ownersMap {
+			owners = append(owners, fmt.Sprintf("%s at %s", o, t.Local()))
+		}
+
+		return merry.Errorf("some locks already acquired by:\n%s\nto force unlock run:\nok force-unlock --env %s %s",
+			strings.Join(owners, ", "), c.env, strings.Join(locks, ","))
+	}
+
 	for _, det := range st.Details() {
 		switch r := det.(type) {
-		case *apiv1.LockError:
-			return merry.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock --env %s %s=%s",
-				c.env, r.Owner, r.CreatedAt.AsTime(), r.LockName, r.LockInfo)
 		case *apiv1.StateLockError:
 			return merry.Errorf("lock already acquired by %s at %s, to force unlock run:\nok force-unlock --env %s %s",
-				c.env, r.Owner, r.CreatedAt.AsTime(), r.LockInfo)
+				r.Owner, r.CreatedAt.AsTime(), c.env, r.LockInfo)
 		case *apiv1.ValidationError:
 			return fileutil.YAMLError(yamlContext.Prefix+"."+r.Path, r.Message, yamlContext.Data)
 		}

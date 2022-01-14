@@ -10,11 +10,14 @@ import (
 
 var (
 	pluginTypes = map[string]Action{
-		"dns":     ActionDNS,
-		"deploy":  ActionDeploy,
-		"run":     ActionRun,
-		"locking": ActionLocking,
-		"state":   ActionState,
+		"dns":    ActionDNS,
+		"deploy": ActionDeploy,
+		"run":    ActionRun,
+		"lock":   ActionLock,
+		"state":  ActionState,
+	}
+	pluginTypesIgnored = map[string]struct{}{
+		"locking": {},
 	}
 )
 
@@ -24,7 +27,7 @@ func (p *Plugin) Normalize() error {
 
 		for i, typ := range p.Actions {
 			t, ok := pluginTypes[strings.ToLower(typ)]
-			if !ok {
+			if _, ignored := pluginTypesIgnored[typ]; !ok && !ignored {
 				return p.yamlError(fmt.Sprintf("$.actions[%d]", i), "plugin.action is invalid")
 			}
 

@@ -41,13 +41,13 @@ func (s *State) LoadLocal() (*types.StateData, error) {
 	data, err := os.ReadFile(s.LocalPath())
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return &types.StateData{}, nil
+			return types.NewStateData(), nil
 		}
 
 		return nil, err
 	}
 
-	d := &types.StateData{}
+	d := types.NewStateData()
 	err = json.Unmarshal(data, &d)
 
 	return d, err
