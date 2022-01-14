@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.54](https://github.com/outblocks/outblocks-cli/compare/v0.1.53...v0.1.54)
+
+> 2022-01-14
+
+### FEATURES
+
+[`a06e91d`](https://github.com/outblocks/outblocks-cli/commit/a06e91dcbae9d01ecca6eee8d81f66c356670128) multi locking full initial support, fixes
+
+
 ## [v0.1.53](https://github.com/outblocks/outblocks-cli/compare/v0.1.52...v0.1.53)
 
 > 2022-01-03
