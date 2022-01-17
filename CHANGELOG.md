@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.55](https://github.com/outblocks/outblocks-cli/compare/v0.1.54...v0.1.55)
+
+> 2022-01-17
+
+### FEATURES
+
+[`4fc62e2`](https://github.com/outblocks/outblocks-cli/commit/4fc62e286b88137e30674577cc3a7fd9ec335366) add support for skip-dns and domains in state, re-add skip all apps
+
+
 ## [v0.1.54](https://github.com/outblocks/outblocks-cli/compare/v0.1.53...v0.1.54)
 
 > 2022-01-14
