@@ -31,6 +31,10 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				return merry.New("target-apps and skip-apps arguments are mutually exclusive modes")
 			}
 
+			if opts.SkipAllApps && opts.Destroy {
+				return merry.New("skip-all-apps and destroy are mutually exclusive modes")
+			}
+
 			for _, t := range targetApps {
 				tsplit := strings.SplitN(t, ".", 2)
 				if len(tsplit) != 2 {
@@ -40,13 +44,15 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				opts.TargetApps = append(opts.TargetApps, config.ComputeAppID(tsplit[0], tsplit[1]))
 			}
 
-			for _, t := range skipApps {
-				tsplit := strings.SplitN(t, ".", 2)
-				if len(tsplit) != 2 {
-					return merry.Errorf("wrong format for skip '%s': specify in a form of <app type>.<name>, e.g.: static.website", t)
-				}
+			if !opts.SkipAllApps {
+				for _, t := range skipApps {
+					tsplit := strings.SplitN(t, ".", 2)
+					if len(tsplit) != 2 {
+						return merry.Errorf("wrong format for skip '%s': specify in a form of <app type>.<name>, e.g.: static.website", t)
+					}
 
-				opts.SkipApps = append(opts.SkipApps, config.ComputeAppID(tsplit[0], tsplit[1]))
+					opts.SkipApps = append(opts.SkipApps, config.ComputeAppID(tsplit[0], tsplit[1]))
+				}
 			}
 
 			if opts.Destroy {
@@ -67,6 +73,8 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 	f.BoolVar(&opts.ForceApprove, "force", false, "force approve even with critical changes")
 	f.StringSliceVarP(&targetApps, "target-apps", "t", nil, "target only specified apps, can specify multiple or separate values with comma in a form of <app type>.<name>, e.g.: static.website,service.api")
 	f.StringSliceVarP(&skipApps, "skip-apps", "s", nil, "skip specified apps (if they exist), can specify multiple or separate values with comma in a form of <app type>.<name>, e.g.: static.website,service.api")
+	f.BoolVar(&opts.SkipAllApps, "skip-all-apps", false, "skip all apps (if they exist)")
+	f.BoolVar(&opts.SkipDNS, "skip-dns", false, "skip DNS setup (including self managed certificates)")
 
 	return cmd
 }

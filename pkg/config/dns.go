@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -43,10 +44,14 @@ func (s *DNS) Match(d string) bool {
 }
 
 func (s *DNS) Normalize(i int, cfg *Project) error {
-	s.Domains = append(s.Domains, s.Domain)
-	for i, v := range s.Domains {
-		s.Domains[i] = strings.ToLower(v)
+	if s.Domain != "" {
+		s.Domains = append(s.Domains, s.Domain)
+		for i, v := range s.Domains {
+			s.Domains[i] = strings.ToLower(v)
+		}
 	}
+
+	sort.Strings(s.Domains)
 
 	if len(s.Domains) == 0 {
 		return cfg.yamlError(fmt.Sprintf("$.dns[%d]", i), "at least one domain has to be specified")

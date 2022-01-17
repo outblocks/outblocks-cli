@@ -70,7 +70,19 @@ func filterAppsDestroy(state *types.StateData, targetAppIDsMap, skipAppIDsMap ma
 	return appsMap, skipAppIDs
 }
 
-func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, destroy bool) (apps []*apiv1.AppState, retSkipAppIDs []string, retDestroy bool, err error) {
+func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps, destroy bool) (apps []*apiv1.AppState, retSkipAppIDs []string, retDestroy bool, err error) {
+	if skipAllApps {
+		retSkipAppIDs := make([]string, 0, len(state.Apps))
+		apps = make([]*apiv1.AppState, 0, len(state.Apps))
+
+		for _, appState := range state.Apps {
+			apps = append(apps, appState)
+			retSkipAppIDs = append(retSkipAppIDs, appState.App.Id)
+		}
+
+		return apps, retSkipAppIDs, destroy, nil
+	}
+
 	// In non target and non skip mode, use config apps and deps.
 	if len(skipAppIDs) == 0 && len(targetAppIDs) == 0 {
 		apps = make([]*apiv1.AppState, 0, len(cfg.Apps))
@@ -125,7 +137,16 @@ func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipA
 	return apps, skipAppIDs, false, err
 }
 
-func filterDependencies(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string) (deps []*apiv1.DependencyState) {
+func filterDependencies(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps bool) (deps []*apiv1.DependencyState) {
+	if skipAllApps {
+		deps = make([]*apiv1.DependencyState, 0, len(state.Dependencies))
+		for _, dep := range state.Dependencies {
+			deps = append(deps, dep)
+		}
+
+		return deps
+	}
+
 	// In non target and non skip mode, use config apps and deps.
 	if len(skipAppIDs) == 0 && len(targetAppIDs) == 0 {
 		deps = make([]*apiv1.DependencyState, 0, len(cfg.Dependencies))

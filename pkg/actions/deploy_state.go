@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/ansel1/merry/v2"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
@@ -19,6 +20,7 @@ type stateDiff struct {
 	dnsRecords      diff.Changelog
 	pluginsRegistry diff.Changelog
 	pluginsState    diff.Changelog
+	domainsInfo     diff.Changelog
 }
 
 func (s *stateDiff) IsEmpty() bool {
@@ -44,9 +46,24 @@ func (s *stateDiff) Apply(state *types.StateData) error {
 		return merry.New("error applying patch on state.dependencies")
 	}
 
+	// Domains info.
+	domainsInfo := domainsInfoAsMap(state.DomainsInfo)
+
+	ret = diff.Patch(s.domainsInfo, &domainsInfo)
+	if ret.HasErrors() {
+		return merry.New("error applying patch on state.domainsinfo")
+	}
+
+	state.DomainsInfo = make([]*apiv1.DomainInfo, 0, len(domainsInfo))
+
+	for _, d := range domainsInfo {
+		state.DomainsInfo = append(state.DomainsInfo, d)
+	}
+
+	// DNS Records.
 	dnsRecords := dnsRecordsAsMap(state.DNSRecords)
 
-	ret = diff.Patch(s.dnsRecords, dnsRecords)
+	ret = diff.Patch(s.dnsRecords, &dnsRecords)
 	if ret.HasErrors() {
 		return merry.New("error applying patch on state.dnsrecords")
 	}
@@ -57,6 +74,7 @@ func (s *stateDiff) Apply(state *types.StateData) error {
 		state.DNSRecords[rec.Key] = rec.Val
 	}
 
+	// Plugin state.
 	if state.Plugins == nil {
 		state.Plugins = make(map[string]*types.PluginState)
 	}
@@ -118,6 +136,10 @@ func (s *stateDiff) String() string {
 		out += fmt.Sprintf("DNS = %s\n", formatIndentedJSON(s.dnsRecords))
 	}
 
+	if len(s.domainsInfo) != 0 {
+		out += fmt.Sprintf("DomainsInfo = %s\n", formatIndentedJSON(s.domainsInfo))
+	}
+
 	if len(s.pluginsRegistry) != 0 {
 		out += fmt.Sprintf("Registry = %s\n", formatIndentedJSON(s.pluginsRegistry))
 	}
@@ -150,6 +172,16 @@ func pluginsRegistryAsMap(plugins map[string]*types.PluginState) (map[string]map
 	}
 
 	return pluginRegistry, nil
+}
+
+func domainsInfoAsMap(domains []*apiv1.DomainInfo) map[string]*apiv1.DomainInfo {
+	m := make(map[string]*apiv1.DomainInfo, len(domains))
+
+	for _, d := range domains {
+		m[strings.Join(d.Domains, ";")] = d
+	}
+
+	return m
 }
 
 type dnsRecordValue struct {
@@ -206,6 +238,14 @@ func computeStateDiff(state1, state2 *types.StateData) (*stateDiff, error) {
 		return nil, err
 	}
 
+	state1DomainsInfo := domainsInfoAsMap(state1.DomainsInfo)
+	state2DomainsInfo := domainsInfoAsMap(state2.DomainsInfo)
+
+	domainsInfo, err := computeDiff(state1DomainsInfo, state2DomainsInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	state1PluginRegistry, err := pluginsRegistryAsMap(state1.Plugins)
 	if err != nil {
 		return nil, err
@@ -233,6 +273,7 @@ func computeStateDiff(state1, state2 *types.StateData) (*stateDiff, error) {
 		apps:            apps,
 		deps:            deps,
 		dnsRecords:      dnsRecords,
+		domainsInfo:     domainsInfo,
 		pluginsRegistry: pluginsRegistry,
 		pluginsState:    pluginsState,
 	}, nil

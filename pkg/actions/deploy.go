@@ -53,6 +53,8 @@ type DeployOptions struct {
 	AutoApprove          bool
 	ForceApprove         bool
 	TargetApps, SkipApps []string
+	SkipAllApps          bool
+	SkipDNS              bool
 }
 
 func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
@@ -92,7 +94,7 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 
 	// Plan and apply.
 	stateBeforeStr, _ := json.Marshal(state)
-	empty, canceled, dur, _, err := d.planAndApply(ctx, verify, state, stateRes, nil)
+	empty, canceled, dur, _, err := d.planAndApply(ctx, verify, state, stateRes, nil, false)
 
 	// Proceed with saving.
 	stateAfterStr, _ := json.Marshal(state)
@@ -124,6 +126,10 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 }
 
 func (d *Deploy) lockIDs(state *types.StateData, partialLock bool) []string {
+	if d.opts.SkipAllApps {
+		return nil
+	}
+
 	targetAppIDsMap := util.StringArrayToSet(d.opts.TargetApps)
 	skipAppIDsMap := util.StringArrayToSet(d.opts.SkipApps)
 	lockIDsMap := make(map[string]struct{})
@@ -247,7 +253,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 		// Plan and apply.
 		stateBefore = state.DeepCopy()
 
-		empty, canceled, dur, missingLocks, err = d.planAndApply(ctx, verify, state, stateRes, acquiredLocks)
+		empty, canceled, dur, missingLocks, err = d.planAndApply(ctx, verify, state, stateRes, acquiredLocks, true)
 		if err != nil {
 			_ = statePlugin.Client().ReleaseLocks(ctx, d.cfg.State.Other, acquiredLocks)
 			return err
@@ -331,16 +337,22 @@ func (d *Deploy) Run(ctx context.Context) error {
 	return d.stateLockRun(ctx)
 }
 
-func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, stateRes *apiv1.GetStateResponse_State, acquiredLocks map[string]string) (canceled, empty bool, dur time.Duration, missingLocks []string, err error) {
-	domains := d.cfg.DomainInfoProto()
+func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, stateRes *apiv1.GetStateResponse_State, acquiredLocks map[string]string, checkLocks bool) (canceled, empty bool, dur time.Duration, missingLocks []string, err error) {
+	var domains []*apiv1.DomainInfo
+
+	if d.opts.SkipDNS {
+		domains = state.DomainsInfo
+	} else {
+		domains = d.cfg.DomainInfoProto()
+	}
 
 	// Plan and apply.
-	appStates, skipAppIDs, destroy, err := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.Destroy)
+	appStates, skipAppIDs, destroy, err := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps, d.opts.Destroy)
 	if err != nil {
 		return false, false, dur, nil, err
 	}
 
-	depStates := filterDependencies(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps)
+	depStates := filterDependencies(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
 
 	planMap, err := calculatePlanMap(d.cfg, appStates, depStates, d.opts.TargetApps, skipAppIDs)
 	if err != nil {
@@ -374,7 +386,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 
 	spinner.Stop()
 
-	if acquiredLocks != nil {
+	if checkLocks {
 		var missingLocks []string
 
 		for _, chg := range deployChanges {
@@ -425,6 +437,8 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 
 		state.Dependencies[depState.Dependency.Id] = &apiv1.DependencyState{Dependency: depState.Dependency}
 	}
+
+	state.DomainsInfo = domains
 
 	return empty, canceled, time.Since(start), nil, err
 }

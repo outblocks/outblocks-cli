@@ -741,8 +741,8 @@ github.com/otiai10/curr v1.0.0/go.mod h1:LskTG5wDwr8Rs+nNQ+1LlxRjAtTZZjtJW4rMXl6
 github.com/otiai10/mint v1.3.0/go.mod h1:F5AjcsTsWUqX+Na9fpHb52P8pcRX2CI6A3ctIT91xUo=
 github.com/otiai10/mint v1.3.3 h1:7JgpsBaN0uMkyju4tbYHu0mnM55hNKVYLsXmwr15NQI=
 github.com/otiai10/mint v1.3.3/go.mod h1:/yxELlJQ0ufhjUwhshSj+wFjZ78CnZ48/1wtmBH1OTc=
-github.com/outblocks/outblocks-plugin-go v0.0.0-20220114122950-1c90ed7fa3e7 h1:vEb/7U8i+8wzPKnpuRmUtdto1COijVaVLKYMguAtg44=
-github.com/outblocks/outblocks-plugin-go v0.0.0-20220114122950-1c90ed7fa3e7/go.mod h1:MAxYiF/O+9jcmjHdDg0S0PUV5VLzVcYALlO8VWL+zd0=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20220117144659-320323566af7 h1:X//GgYp4zCean+ypS8eFEZyejqtVysLhS9gp8G72KW4=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20220117144659-320323566af7/go.mod h1:MAxYiF/O+9jcmjHdDg0S0PUV5VLzVcYALlO8VWL+zd0=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pascaldekloe/goe v0.1.0/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
