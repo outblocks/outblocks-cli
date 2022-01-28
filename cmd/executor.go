@@ -155,10 +155,10 @@ func (e *Executor) addPluginsCommands() error {
 					},
 					RunE: func(cmd *cobra.Command, args []string) error {
 						return actions.NewCommand(e.log, e.cfg, &actions.CommandOptions{
-							Name:      cmdName,
+							Name:       cmdName,
 							InputTypes: cmdt.InputTypes(),
-							Plugin:    plug.Loaded(),
-							Args:      cmdt.Proto(args),
+							Plugin:     plug.Loaded(),
+							Args:       cmdt.Proto(args),
 						}).Run(cmd.Context())
 					},
 				}
