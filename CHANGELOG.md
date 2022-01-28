@@ -1,5 +1,18 @@
 # Outblocks CLI Changelog
 
+## [v0.1.56](https://github.com/outblocks/outblocks-cli/compare/v0.1.55...v0.1.56)
+
+> 2022-01-28
+
+### BUG FIXES
+
+[`33a705e`](https://github.com/outblocks/outblocks-cli/commit/33a705e1c851db4140472922e83833de4ca0cef0) lint
+
+### FEATURES
+
+[`96d5629`](https://github.com/outblocks/outblocks-cli/commit/96d5629ca33c2de7b7a0c190a4496eb0f1284168) support for custom commands, fix for diff library, add jsonschema prompt support
+
+
 ## [v0.1.55](https://github.com/outblocks/outblocks-cli/compare/v0.1.54...v0.1.55)
 
 > 2022-01-17
