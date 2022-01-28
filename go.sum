@@ -50,8 +50,12 @@ cloud.google.com/go/storage v1.8.0/go.mod h1:Wv1Oy7z6Yz3DshWRJFhqM/UCfaWIRTdp0RX
 cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9ullr3+Kg0=
 cloud.google.com/go/storage v1.14.0/go.mod h1:GrKmX003DSIwi9o29oFT7YDnHYwZoctc3fOKtUw0Xmo=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
+github.com/23doors/diff/v2 v2.14.6-0.20220128221633-f691f3fd0ec9 h1:xaF1eSNH87Pjhc267Vq5XL6u3YkfeRrZ0W7Wp3gt2PA=
+github.com/23doors/diff/v2 v2.14.6-0.20220128221633-f691f3fd0ec9/go.mod h1:I8noH9Fc2fjSaMxqF3G2lhDdC0b+JXCfyx85tWFM9kc=
 github.com/23doors/go-yaml v1.8.10-0.20210807205153-79a9d3b2c172 h1:U2WXyvc1WQgU4+aC7Fb3VY7ptPT6AxU43o5xSeB7yaM=
 github.com/23doors/go-yaml v1.8.10-0.20210807205153-79a9d3b2c172/go.mod h1:U/jl18uSupI5rdI2jmuCswEA2htH9eXfferR3KfscvA=
+github.com/23doors/jsonschema/v5 v5.0.1-0.20220120150455-3960be6116ea h1:31AWR/M1U5eOHLQ+ua5wHRTXmScfjVbZIUHbpVjIUhQ=
+github.com/23doors/jsonschema/v5 v5.0.1-0.20220120150455-3960be6116ea/go.mod h1:HlI8Q1/QgnFtMax3s9SxlUSaweCG82pEew24OidQ52o=
 github.com/AlecAivazis/survey/v2 v2.3.2 h1:TqTB+aDDCLYhf9/bD2TwSO8u8jDSmMUd2SUVO4gCnU8=
 github.com/AlecAivazis/survey/v2 v2.3.2/go.mod h1:TH2kPCDU3Kqq7pLbnCWwZXDBjnhZtmsCle5EiYDJ2fg=
 github.com/Azure/azure-sdk-for-go v16.2.1+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
@@ -741,8 +745,8 @@ github.com/otiai10/curr v1.0.0/go.mod h1:LskTG5wDwr8Rs+nNQ+1LlxRjAtTZZjtJW4rMXl6
 github.com/otiai10/mint v1.3.0/go.mod h1:F5AjcsTsWUqX+Na9fpHb52P8pcRX2CI6A3ctIT91xUo=
 github.com/otiai10/mint v1.3.3 h1:7JgpsBaN0uMkyju4tbYHu0mnM55hNKVYLsXmwr15NQI=
 github.com/otiai10/mint v1.3.3/go.mod h1:/yxELlJQ0ufhjUwhshSj+wFjZ78CnZ48/1wtmBH1OTc=
-github.com/outblocks/outblocks-plugin-go v0.0.0-20220117144659-320323566af7 h1:X//GgYp4zCean+ypS8eFEZyejqtVysLhS9gp8G72KW4=
-github.com/outblocks/outblocks-plugin-go v0.0.0-20220117144659-320323566af7/go.mod h1:MAxYiF/O+9jcmjHdDg0S0PUV5VLzVcYALlO8VWL+zd0=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20220128131448-48112c171012 h1:34TFwocw3OMKj5n5iSbHvEkn7XogKVFryRC9Rif29eA=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20220128131448-48112c171012/go.mod h1:MAxYiF/O+9jcmjHdDg0S0PUV5VLzVcYALlO8VWL+zd0=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pascaldekloe/goe v0.1.0/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=
@@ -803,8 +807,6 @@ github.com/pterm/pterm v0.12.30/go.mod h1:MOqLIyMOgmTDz9yorcYbcw+HsgoZo3BQfg2wtl
 github.com/pterm/pterm v0.12.31/go.mod h1:32ZAWZVXD7ZfG0s8qqHXePte42kdz8ECtRyEejaWgXU=
 github.com/pterm/pterm v0.12.33 h1:XiT50Pvdqn5O8FAiIqZMpXP6NkVEcmlUa+mkA1yWVCg=
 github.com/pterm/pterm v0.12.33/go.mod h1:x+h2uL+n7CP/rel9+bImHD5lF3nM9vJj80k9ybiiTTE=
-github.com/r3labs/diff/v2 v2.14.5 h1:JjhFb4SIVlU3/GJDFEuPCxf4YYTJxdUEnuQGNW0jjHI=
-github.com/r3labs/diff/v2 v2.14.5/go.mod h1:I8noH9Fc2fjSaMxqF3G2lhDdC0b+JXCfyx85tWFM9kc=
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=

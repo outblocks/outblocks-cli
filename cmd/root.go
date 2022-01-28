@@ -28,6 +28,7 @@ const (
 // Command groups.
 const (
 	cmdGroupMain   = "1-Main"
+	cmdGroupPlugin = "2-Plugin"
 	cmdGroupOthers = "5-Other"
 )
 

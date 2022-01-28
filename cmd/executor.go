@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/ansel1/merry/v2"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
+	"github.com/outblocks/outblocks-cli/pkg/actions"
 	"github.com/outblocks/outblocks-cli/pkg/cli"
 	"github.com/outblocks/outblocks-cli/pkg/cli/values"
 	"github.com/outblocks/outblocks-cli/pkg/clipath"
@@ -77,9 +79,9 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 
 	helpFlag := e.rootCmd.PersistentFlags().Lookup("help")
 	e.opts.env = e.v.GetString("env")
-	cmd, _, _ := e.rootCmd.Find(os.Args[1:])
+	cmd, _, err := e.rootCmd.Find(os.Args[1:])
 
-	if cmd != nil {
+	if err == nil {
 		skipLoadConfig = cmd.Annotations[cmdSkipLoadConfigAnnotation] == "1"
 		skipLoadApps = cmd.Annotations[cmdSkipLoadAppsAnnotation] == "1"
 		skipCheckConfig = cmd.Annotations[cmdSkipCheckConfigAnnotation] == "1"
@@ -125,14 +127,16 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 		return err
 	}
 
+	if skipLoadPlugins {
+		return nil
+	}
+
 	// Augment/load new commands.
-	return e.addPluginsCommands(cmd)
+	return e.addPluginsCommands()
 }
 
-func (e *Executor) addPluginsCommands(cmd *cobra.Command) error {
-	skipLoadPlugins := cmd.Annotations[cmdSkipLoadPluginsAnnotation] == "1"
-
-	if skipLoadPlugins || e.cfg == nil {
+func (e *Executor) addPluginsCommands() error {
+	if e.cfg == nil {
 		return nil
 	}
 
@@ -140,28 +144,45 @@ func (e *Executor) addPluginsCommands(cmd *cobra.Command) error {
 		for cmdName, cmdt := range plug.Loaded().Commands {
 			cmdName = strings.ToLower(cmdName)
 
-			// TODO: add possibility to add new commands
-			if !strings.EqualFold(cmdName, cmd.Use) {
-				continue
+			cmd, _, err := e.rootCmd.Find([]string{cmdName})
+			if err != nil {
+				cmd = &cobra.Command{
+					Use:   fmt.Sprintf("%s-%s", plug.Name, cmdName),
+					Short: cmdt.Short,
+					Long:  cmdt.Long,
+					Annotations: map[string]string{
+						cmdGroupAnnotation: cmdGroupPlugin,
+					},
+					RunE: func(cmd *cobra.Command, args []string) error {
+						return actions.NewCommand(e.log, e.cfg, &actions.CommandOptions{
+							Name:      cmdName,
+							InputTypes: cmdt.InputTypes(),
+							Plugin:    plug.Loaded(),
+							Args:      cmdt.Proto(args),
+						}).Run(cmd.Context())
+					},
+				}
+
+				e.rootCmd.AddCommand(cmd)
 			}
 
 			flags := cmd.Flags()
 
-			for _, arg := range cmdt.Args {
+			for _, arg := range cmdt.Flags {
 				arg.Name = strings.ToLower(arg.Name)
 
 				if flags.Lookup(arg.Name) != nil {
 					return merry.Errorf("plugin tried to add already existing argument '%s' to command '%s'", arg, cmdName)
 				}
 
-				switch arg.Type {
-				case plugins.CommandTypeBool:
+				switch arg.ValueType() {
+				case plugins.CommandValueTypeBool:
 					def, _ := arg.Default.(bool)
 					arg.Value = flags.Bool(arg.Name, def, arg.Usage)
-				case plugins.CommandTypeInt:
+				case plugins.CommandValueTypeInt:
 					def, _ := arg.Default.(int)
 					arg.Value = flags.Int(arg.Name, def, arg.Usage)
-				case plugins.CommandTypeString:
+				case plugins.CommandValueTypeString:
 					def, _ := arg.Default.(string)
 					arg.Value = flags.String(arg.Name, def, arg.Usage)
 				}

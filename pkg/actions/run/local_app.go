@@ -44,11 +44,6 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 }
 
 func (a *LocalAppRunInfo) Run(outputCh chan<- *apiv1.RunOutputResponse) error {
-	err := a.Cmd.Run()
-	if err != nil {
-		return err
-	}
-
 	a.wg.Add(2)
 
 	go func() {
@@ -84,6 +79,11 @@ func (a *LocalAppRunInfo) Run(outputCh chan<- *apiv1.RunOutputResponse) error {
 
 		a.wg.Done()
 	}()
+
+	err := a.Cmd.Run()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

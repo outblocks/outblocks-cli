@@ -27,6 +27,16 @@ func (s *stateDiff) IsEmpty() bool {
 	return len(s.apps) == 0 && len(s.deps) == 0 && len(s.dnsRecords) == 0 && len(s.pluginsRegistry) == 0 && len(s.pluginsState) == 0
 }
 
+func firstPatchLogError(plog diff.PatchLog) error {
+	for _, l := range plog {
+		if l.Errors != nil {
+			return l.Errors
+		}
+	}
+
+	return nil
+}
+
 func (s *stateDiff) Apply(state *types.StateData) error {
 	if state.Apps == nil {
 		state.Apps = make(map[string]*apiv1.AppState)
@@ -34,7 +44,7 @@ func (s *stateDiff) Apply(state *types.StateData) error {
 
 	ret := diff.Patch(s.apps, &state.Apps)
 	if ret.HasErrors() {
-		return merry.New("error applying patch on state.apps")
+		return merry.Errorf("error applying patch on state.apps: %w", firstPatchLogError(ret))
 	}
 
 	if state.Dependencies == nil {
@@ -43,7 +53,7 @@ func (s *stateDiff) Apply(state *types.StateData) error {
 
 	ret = diff.Patch(s.deps, &state.Dependencies)
 	if ret.HasErrors() {
-		return merry.New("error applying patch on state.dependencies")
+		return merry.Errorf("error applying patch on state.dependencies: %w", firstPatchLogError(ret))
 	}
 
 	// Domains info.
@@ -51,7 +61,7 @@ func (s *stateDiff) Apply(state *types.StateData) error {
 
 	ret = diff.Patch(s.domainsInfo, &domainsInfo)
 	if ret.HasErrors() {
-		return merry.New("error applying patch on state.domainsinfo")
+		return merry.Errorf("error applying patch on state.domainsinfo: %w", firstPatchLogError(ret))
 	}
 
 	state.DomainsInfo = make([]*apiv1.DomainInfo, 0, len(domainsInfo))
@@ -65,7 +75,7 @@ func (s *stateDiff) Apply(state *types.StateData) error {
 
 	ret = diff.Patch(s.dnsRecords, &dnsRecords)
 	if ret.HasErrors() {
-		return merry.New("error applying patch on state.dnsrecords")
+		return merry.Errorf("error applying patch on state.dnsrecords: %w", firstPatchLogError(ret))
 	}
 
 	state.DNSRecords = make(types.DNSRecordMap)
@@ -81,7 +91,7 @@ func (s *stateDiff) Apply(state *types.StateData) error {
 
 	ret = diff.Patch(s.pluginsState, &state.Plugins)
 	if ret.HasErrors() {
-		return merry.New("error applying patch on state.plugins_state")
+		return merry.Errorf("error applying patch on state.plugins_state: %w", firstPatchLogError(ret))
 	}
 
 	pluginRegistry, err := pluginsRegistryAsMap(state.Plugins)
@@ -91,7 +101,7 @@ func (s *stateDiff) Apply(state *types.StateData) error {
 
 	ret = diff.Patch(s.pluginsRegistry, &pluginRegistry)
 	if ret.HasErrors() {
-		return merry.New("error applying patch on state.plugins registry")
+		return merry.Errorf("error applying patch on state.plugins registry: %w", firstPatchLogError(ret))
 	}
 
 	for k, v := range pluginRegistry {
@@ -157,6 +167,10 @@ func pluginsRegistryAsMap(plugins map[string]*types.PluginState) (map[string]map
 	for k, v := range plugins {
 		var loaded []*registry.ResourceSerialized
 
+		if v == nil || v.Registry == nil {
+			continue
+		}
+
 		err := json.Unmarshal(v.Registry, &loaded)
 		if err != nil {
 			return nil, err
@@ -206,6 +220,10 @@ func pluginsStateWithoutRegistry(plugins map[string]*types.PluginState) map[stri
 	pluginRegistry := make(map[string]*types.PluginState, len(plugins))
 
 	for k, v := range plugins {
+		if v == nil {
+			continue
+		}
+
 		pluginRegistry[k] = &types.PluginState{
 			Other: v.Other,
 		}
@@ -219,23 +237,23 @@ func diffOnlyExported(path []string, parent reflect.Type, field reflect.StructFi
 }
 
 func computeDiff(in1, in2 interface{}) (diff.Changelog, error) {
-	return diff.Diff(in1, in2, diff.Filter(diffOnlyExported), diff.SliceOrdering(true), diff.FlattenEmbeddedStructs())
+	return diff.Diff(in1, in2, diff.Filter(diffOnlyExported), diff.SliceOrdering(true), diff.DisableStructValues(), diff.FlattenEmbeddedStructs())
 }
 
 func computeStateDiff(state1, state2 *types.StateData) (*stateDiff, error) {
 	apps, err := computeDiff(state1.Apps, state2.Apps)
 	if err != nil {
-		return nil, err
+		return nil, merry.Wrap(err)
 	}
 
 	deps, err := computeDiff(state1.Dependencies, state2.Dependencies)
 	if err != nil {
-		return nil, err
+		return nil, merry.Wrap(err)
 	}
 
 	dnsRecords, err := computeDiff(dnsRecordsAsMap(state1.DNSRecords), dnsRecordsAsMap(state2.DNSRecords))
 	if err != nil {
-		return nil, err
+		return nil, merry.Wrap(err)
 	}
 
 	state1DomainsInfo := domainsInfoAsMap(state1.DomainsInfo)
@@ -243,22 +261,22 @@ func computeStateDiff(state1, state2 *types.StateData) (*stateDiff, error) {
 
 	domainsInfo, err := computeDiff(state1DomainsInfo, state2DomainsInfo)
 	if err != nil {
-		return nil, err
+		return nil, merry.Wrap(err)
 	}
 
 	state1PluginRegistry, err := pluginsRegistryAsMap(state1.Plugins)
 	if err != nil {
-		return nil, err
+		return nil, merry.Wrap(err)
 	}
 
 	state2PluginRegistry, err := pluginsRegistryAsMap(state2.Plugins)
 	if err != nil {
-		return nil, err
+		return nil, merry.Wrap(err)
 	}
 
 	pluginsRegistry, err := computeDiff(state1PluginRegistry, state2PluginRegistry)
 	if err != nil {
-		return nil, err
+		return nil, merry.Wrap(err)
 	}
 
 	state1PluginState := pluginsStateWithoutRegistry(state1.Plugins)
@@ -266,7 +284,7 @@ func computeStateDiff(state1, state2 *types.StateData) (*stateDiff, error) {
 
 	pluginsState, err := computeDiff(state1PluginState, state2PluginState)
 	if err != nil {
-		return nil, err
+		return nil, merry.Wrap(err)
 	}
 
 	return &stateDiff{

@@ -80,7 +80,7 @@ func (c *Client) runPlugin() apiv1.RunPluginServiceClient {
 	return apiv1.NewRunPluginServiceClient(c.conn)
 }
 
-func (c *Client) commandPlugin() apiv1.CommandPluginServiceClient { // nolint:unused
+func (c *Client) commandPlugin() apiv1.CommandPluginServiceClient {
 	return apiv1.NewCommandPluginServiceClient(c.conn)
 }
 

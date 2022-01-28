@@ -79,7 +79,7 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 	}
 
 	if stateRes.StateCreated {
-		d.log.Infof("New state created: '%s' for env: %s\n", stateRes.StateName, d.cfg.State.Env())
+		d.log.Infof("New state created: '%s' for environment: %s\n", stateRes.StateName, d.cfg.State.Env())
 
 		verify = true
 	}
@@ -125,7 +125,71 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 	return d.showStateStatus(state.Apps, state.Dependencies, state.DNSRecords)
 }
 
-func (d *Deploy) lockIDs(state *types.StateData, partialLock bool) []string {
+func (d *Deploy) allLockIDs(state *types.StateData) []string {
+	lockIDsMap := make(map[string]struct{})
+
+	for _, app := range d.cfg.Apps {
+		lockIDsMap[app.ID()] = struct{}{}
+
+		dnsPlugin := app.DNSPlugin()
+		deployPlugin := app.DeployPlugin()
+
+		if dnsPlugin != nil {
+			lockIDsMap[dnsPlugin.ID()] = struct{}{}
+		}
+
+		if deployPlugin != nil {
+			lockIDsMap[deployPlugin.ID()] = struct{}{}
+		}
+	}
+
+	for key, app := range state.Apps {
+		lockIDsMap[key] = struct{}{}
+
+		if app == nil || app.App == nil {
+			continue
+		}
+
+		if app.App.DnsPlugin != "" {
+			lockIDsMap[plugins.ComputePluginID(app.App.DnsPlugin)] = struct{}{}
+		}
+
+		if app.App.DeployPlugin != "" {
+			lockIDsMap[plugins.ComputePluginID(app.App.DeployPlugin)] = struct{}{}
+		}
+	}
+
+	for _, dep := range d.cfg.Dependencies {
+		lockIDsMap[dep.ID()] = struct{}{}
+
+		deployPlugin := dep.DeployPlugin()
+
+		if deployPlugin != nil {
+			lockIDsMap[deployPlugin.ID()] = struct{}{}
+		}
+	}
+
+	for key, dep := range state.Dependencies {
+		lockIDsMap[key] = struct{}{}
+
+		if dep == nil || dep.Dependency == nil {
+			continue
+		}
+
+		if dep.Dependency.DeployPlugin != "" {
+			lockIDsMap[plugins.ComputePluginID(dep.Dependency.DeployPlugin)] = struct{}{}
+		}
+	}
+
+	locks := make([]string, 0, len(lockIDsMap))
+	for key := range lockIDsMap {
+		locks = append(locks, key)
+	}
+
+	return locks
+}
+
+func (d *Deploy) partialLockIDs(state *types.StateData) []string {
 	if d.opts.SkipAllApps {
 		return nil
 	}
@@ -159,36 +223,6 @@ func (d *Deploy) lockIDs(state *types.StateData, partialLock bool) []string {
 
 	lockIDsMap = lockIDsMapTemp
 
-	if !partialLock {
-		lockIDsMapTemp = make(map[string]struct{})
-
-		for key := range lockIDsMap {
-			lockIDsMapTemp[key] = struct{}{}
-
-			app := d.cfg.AppByID(key)
-			dnsPlugin := app.DNSPlugin()
-			deployPlugin := app.DeployPlugin()
-
-			if dnsPlugin != nil {
-				lockIDsMapTemp[dnsPlugin.ID()] = struct{}{}
-			}
-
-			if deployPlugin != nil {
-				lockIDsMapTemp[deployPlugin.ID()] = struct{}{}
-			}
-		}
-
-		lockIDsMap = lockIDsMapTemp
-
-		for _, dep := range d.cfg.Dependencies {
-			lockIDsMap[dep.ID()] = struct{}{}
-		}
-
-		for key := range state.Dependencies {
-			lockIDsMap[key] = struct{}{}
-		}
-	}
-
 	locks := make([]string, 0, len(lockIDsMap))
 	for key := range lockIDsMap {
 		locks = append(locks, key)
@@ -214,14 +248,19 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 	}
 
 	if stateRes.StateCreated {
-		d.log.Infof("New state created: '%s' for env: %s\n", stateRes.StateName, d.cfg.State.Env())
+		d.log.Infof("New state created: '%s' for environment: %s\n", stateRes.StateName, d.cfg.State.Env())
 
 		verify = true
 		partialLock = false
 	}
 
 	// Acquire necessary acquiredLocks.
-	locks := d.lockIDs(state, partialLock)
+	var locks []string
+	if partialLock {
+		locks = d.partialLockIDs(state)
+	} else {
+		locks = d.allLockIDs(state)
+	}
 
 	var (
 		acquiredLocks   map[string]string

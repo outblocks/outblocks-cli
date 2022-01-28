@@ -72,11 +72,6 @@ func (d *Deploy) dockerClient(ctx context.Context) (*dockerclient.Client, error)
 func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *command.Cmd, app *config.BasicApp) error {
 	prefix := fmt.Sprintf("APP:%s:%s:", app.Type(), app.Name())
 
-	err := cmd.Run()
-	if err != nil {
-		return merry.Errorf("error running build for %s app: %s: %w", app.Type(), app.Name(), err)
-	}
-
 	// Process stdout/stderr.
 	var wg sync.WaitGroup
 
@@ -101,6 +96,11 @@ func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *command.Cmd, app *
 
 		wg.Done()
 	}()
+
+	err := cmd.Run()
+	if err != nil {
+		return merry.Errorf("error running build for %s app: %s: %w", app.Type(), app.Name(), err)
+	}
 
 	select {
 	case <-ctx.Done():

@@ -23,11 +23,12 @@ import (
 
 const (
 	ProjectYAMLName = "project.outblocks"
-	AppYAMLName     = "outblocks"
 	LockfileName    = "outblocks.lock"
+	AppYAMLName     = "app.outblocks"
 )
 
 var (
+	AppYAMLNames      = []string{AppYAMLName, "outblocks"}
 	DefaultKnownTypes = map[string][]string{
 		AppTypeFunction: {"functions"},
 		AppTypeStatic:   {"statics"},
@@ -149,7 +150,7 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 }
 
 func (p *Project) LoadApps() error {
-	files := fileutil.FindYAMLFiles(p.Dir, AppYAMLName)
+	files := fileutil.FindYAMLFiles(p.Dir, AppYAMLNames...)
 
 	if err := p.LoadFiles(files); err != nil {
 		return err

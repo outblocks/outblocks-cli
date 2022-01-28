@@ -54,6 +54,7 @@ func (p *Plugin) Validate() error {
 		validation.Field(&p.Cmd, validation.Required, validation.Map(validation.Key("default", validation.Required)).AllowExtraKeys()),
 		validation.Field(&p.Actions, validation.Required),
 		validation.Field(&p.Hooks),
+		validation.Field(&p.Commands),
 		validation.Field(&p.SupportedTypes),
 	)
 }
@@ -157,13 +158,13 @@ func (p *Plugin) CommandArgs(cmd string) map[string]interface{} {
 		return nil
 	}
 
-	args := make(map[string]interface{})
+	flags := make(map[string]interface{})
 
-	for _, arg := range c.Args {
-		args[arg.Name] = arg.Val()
+	for _, flag := range c.Flags {
+		flags[flag.Name] = flag.Val()
 	}
 
-	return args
+	return flags
 }
 
 func ComputePluginID(name string) string {
