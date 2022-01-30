@@ -165,7 +165,7 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 		buildArgs[i] = strings.ReplaceAll(arg, "\"", "\\\"")
 	}
 
-	cmdStr := fmt.Sprintf("docker build --tag %s --pull --file %s --progress=plain", app.LocalDockerImage, app.Build.Dockerfile)
+	cmdStr := fmt.Sprintf("docker build --platform amd64 --tag %s --pull --file %s --progress=plain", app.LocalDockerImage, app.Build.Dockerfile)
 
 	// Add build args if needed.
 	if len(buildArgs) > 0 {
