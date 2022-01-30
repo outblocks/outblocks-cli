@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.57](https://github.com/outblocks/outblocks-cli/compare/v0.1.56...v0.1.57)
+
+> 2022-01-30
+
+### BUG FIXES
+
+[`073ed4c`](https://github.com/outblocks/outblocks-cli/commit/073ed4ce369b0a638e8264582c0e137f8291f5ec) build for amd64 platform
+
+
 ## [v0.1.56](https://github.com/outblocks/outblocks-cli/compare/v0.1.55...v0.1.56)
 
 > 2022-01-28
