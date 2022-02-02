@@ -12,14 +12,16 @@ state:
 
 # Main base domain for apps - loaded from values.yaml for easy override per environment.
 dns:
-  - domains:
-    - "*.${var.base_url}"
-    - ${var.base_url}
+{{.DNSTemplate | toYaml | indent 2 }}
+
+# Project dependencies.
+dependencies:
+{{.Dependencies | toYaml | indent 2 }}
 
 # Plugins that will be used for running, deployment etc.
 plugins:
-{{ .Plugins | toYaml | indent 2 -}}
+{{.Plugins | toYaml | indent 2 }}
 
 # Default settings and plugins used for applications.
 defaults:
-{{.Defaults | toYaml | indent 2 -}}
+{{.Defaults | toYaml | indent 2 }}

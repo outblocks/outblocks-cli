@@ -1,4 +1,14 @@
+{{- if .DNSDomain }}
 # Base DNS domain of environment.
-base_url: {{(index .DNS 0).Domain}}
+base_url: {{.DNSDomain}}
 
-{{ .Values | toYaml -}}
+{{ end -}}
+{{- if .TemplateValues -}}
+# Template values.
+{{ .TemplateValues | toString }}
+
+{{- end -}}
+{{- if .PluginValues }}
+# Plugin specific values
+{{- end }}
+{{ .PluginValues | toYaml }}

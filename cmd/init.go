@@ -9,21 +9,27 @@ func (e *Executor) newInitCmd() *cobra.Command {
 	opts := &actions.InitOptions{}
 
 	cmd := &cobra.Command{
-		Use:   "init",
+		Use:   "init [flags] <path>",
 		Short: "Initialize new config",
 		Long:  `Initialize new Outblocks project config with opinionated defaults.`,
 		Annotations: map[string]string{
 			cmdGroupAnnotation:          cmdGroupMain,
 			cmdSkipLoadConfigAnnotation: "1",
 		},
+		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) > 0 {
+				opts.Path = args[0]
+			}
+
 			return actions.NewInit(e.Log(), e.PluginsCacheDir(), e.srv.Addr().String(), opts).Run(cmd.Context())
 		},
 	}
 
 	f := cmd.Flags()
 	f.BoolVar(&opts.Overwrite, "overwrite", false, "do not ask if project file already exists")
+	f.StringVar(&opts.Template, "template", "", "path/url of template to use")
 	f.StringVar(&opts.Name, "name", "", "project name")
 	f.StringVar(&opts.DeployPlugin, "deploy-plugin", "", "deploy plugin to use (e.g. gcp)")
 	f.StringVar(&opts.RunPlugin, "run-plugin", "", "run plugin to use (e.g. docker)")

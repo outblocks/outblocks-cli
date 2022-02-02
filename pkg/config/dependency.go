@@ -13,8 +13,8 @@ import (
 type Dependency struct {
 	Name   string                 `json:"-"`
 	Type   string                 `json:"type"`
-	Deploy *DependencyDeploy      `json:"deploy"`
-	Run    *DependencyRun         `json:"run"`
+	Deploy *DependencyDeploy      `json:"deploy,omitempty"`
+	Run    *DependencyRun         `json:"run,omitempty"`
 	Other  map[string]interface{} `yaml:"-,remain"`
 
 	cfg          *Project

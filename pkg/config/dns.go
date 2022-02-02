@@ -23,8 +23,8 @@ type SSLInfo struct {
 }
 
 type DNS struct {
-	Domain  string   `json:"domain"`
-	Domains []string `json:"domains"`
+	Domain  string   `json:"domain,omitempty"`
+	Domains []string `json:"domains,omitempty"`
 	Plugin  string   `json:"plugin,omitempty"`
 	SSLInfo *SSLInfo `json:"ssl,omitempty"`
 

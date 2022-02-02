@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -56,7 +57,7 @@ func checkValidMulti(sch []*jsonschema.Schema, prop string, value interface{}) [
 	return valid
 }
 
-func processObjectAnyOneOf(prefix, key string, sch []*jsonschema.Schema, ret map[string]interface{}) error {
+func processObjectAnyOneOf(level int, prefix, key string, sch []*jsonschema.Schema, ret map[string]interface{}) error {
 	var opts []string
 
 	optsMap := make(map[string]*jsonschema.Schema)
@@ -81,7 +82,7 @@ func processObjectAnyOneOf(prefix, key string, sch []*jsonschema.Schema, ret map
 		return err
 	}
 
-	vals, err := processObject(prefix, key, optsMap[opt], ret)
+	vals, err := processObject(level, prefix, key, optsMap[opt], ret)
 	if err != nil {
 		return err
 	}
@@ -93,7 +94,7 @@ func processObjectAnyOneOf(prefix, key string, sch []*jsonschema.Schema, ret map
 	return nil
 }
 
-func processObjectDependencies(prefix, key string, sch *jsonschema.Schema, ret map[string]interface{}) (map[string]interface{}, error) {
+func processObjectDependencies(level int, prefix, key string, sch *jsonschema.Schema, ret map[string]interface{}) (map[string]interface{}, error) {
 	for dname, dep := range sch.Dependencies {
 		if _, ok := sch.Properties.Get(dname); !ok {
 			continue
@@ -115,7 +116,7 @@ func processObjectDependencies(prefix, key string, sch *jsonschema.Schema, ret m
 				props.Delete(dname)
 				vcopy.Properties = &props
 
-				vals, err := processObject(prefix, key, &vcopy, ret)
+				vals, err := processObject(level, prefix, key, &vcopy, ret)
 				if err != nil {
 					return nil, err
 				}
@@ -134,7 +135,7 @@ func processObjectDependencies(prefix, key string, sch *jsonschema.Schema, ret m
 			for _, propKey := range dep.Properties.Keys() {
 				prop, _ := dep.Properties.Get(propKey)
 
-				val, err := process(prefix, propKey, prop.(*jsonschema.Schema), depReq[propKey])
+				val, err := process(level, prefix, propKey, prop.(*jsonschema.Schema), depReq[propKey])
 				if err != nil {
 					return nil, err
 				}
@@ -147,7 +148,7 @@ func processObjectDependencies(prefix, key string, sch *jsonschema.Schema, ret m
 	return ret, nil
 }
 
-func processObjectAdditionalProperties(prefix, key string, sch *jsonschema.Schema, ret map[string]interface{}) (map[string]interface{}, error) {
+func processObjectAdditionalProperties(level int, prefix, key string, sch *jsonschema.Schema, ret map[string]interface{}) (map[string]interface{}, error) {
 	props, ok := sch.AdditionalProperties.(*jsonschema.Schema)
 	if !ok {
 		return ret, nil
@@ -204,7 +205,7 @@ func processObjectAdditionalProperties(prefix, key string, sch *jsonschema.Schem
 			return ret, nil
 		}
 
-		val, err := process(fmt.Sprintf("%s value: ", prefix), key, props, false)
+		val, err := process(level, fmt.Sprintf("%s value: ", prefix), key, props, false)
 		if err != nil {
 			if err == terminal.InterruptErr {
 				return ret, nil
@@ -219,9 +220,7 @@ func processObjectAdditionalProperties(prefix, key string, sch *jsonschema.Schem
 	return ret, nil
 }
 
-func processObject(prefix, key string, sch *jsonschema.Schema, values map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-
+func processObject(level int, prefix, key string, sch *jsonschema.Schema, values map[string]interface{}) (map[string]interface{}, error) {
 	sch = schema(sch)
 	req := toStringMap(sch.Required)
 
@@ -236,28 +235,32 @@ func processObject(prefix, key string, sch *jsonschema.Schema, values map[string
 	for _, k := range sch.Properties.Keys() {
 		val, _ := sch.Properties.Get(k)
 
-		ret[k], err = process(prefix, k, val.(*jsonschema.Schema), req[k])
+		v, err := process(level, prefix, k, val.(*jsonschema.Schema), req[k])
 		if err != nil {
 			return nil, err
+		}
+
+		if v != nil {
+			ret[k] = v
 		}
 	}
 
 	if len(sch.AnyOf) > 0 {
-		err = processObjectAnyOneOf(prefix, key, sch.AnyOf, ret)
+		err := processObjectAnyOneOf(level, prefix, key, sch.AnyOf, ret)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	if len(sch.OneOf) > 0 {
-		err = processObjectAnyOneOf(prefix, key, sch.OneOf, ret)
+		err := processObjectAnyOneOf(level, prefix, key, sch.OneOf, ret)
 		if err != nil {
 			return nil, err
 		}
 	}
 
 	for _, of := range sch.AllOf {
-		vals, err := processObject(prefix, key, of, ret)
+		vals, err := processObject(level, prefix, key, of, ret)
 		if err != nil {
 			return nil, err
 		}
@@ -267,18 +270,18 @@ func processObject(prefix, key string, sch *jsonschema.Schema, values map[string
 		}
 	}
 
-	ret, err = processObjectDependencies(prefix, key, sch, ret)
+	ret, err := processObjectDependencies(level, prefix, key, sch, ret)
 	if err != nil {
 		return nil, err
 	}
 
 	// Parse additional properties if they exist.
-	ret, err = processObjectAdditionalProperties(prefix, key, sch, ret)
+	ret, err = processObjectAdditionalProperties(level, prefix, key, sch, ret)
 
 	return ret, err
 }
 
-func promptArrayStandard(keyTitle, prefix, key string, arraySch, itemSch *jsonschema.Schema) ([]interface{}, error) {
+func promptArrayStandard(level int, keyTitle, prefix, key string, arraySch, itemSch *jsonschema.Schema) ([]interface{}, error) {
 	var ret []interface{}
 
 	itemSch = schema(itemSch)
@@ -308,7 +311,7 @@ func promptArrayStandard(keyTitle, prefix, key string, arraySch, itemSch *jsonsc
 		}
 
 		err := survey.AskOne(&survey.MultiSelect{
-			Message: keyTitle,
+			Message: addLevelPrefix(level, keyTitle),
 			Default: def,
 			Help:    arraySch.Description,
 			Options: selectOpts,
@@ -359,7 +362,7 @@ func promptArrayStandard(keyTitle, prefix, key string, arraySch, itemSch *jsonsc
 			break
 		}
 
-		val, err := process(fmt.Sprintf("%s: ", prefix), key, itemSch, false)
+		val, err := process(level, fmt.Sprintf("%s: ", prefix), key, itemSch, false)
 		if err != nil {
 			return nil, err
 		}
@@ -370,13 +373,13 @@ func promptArrayStandard(keyTitle, prefix, key string, arraySch, itemSch *jsonsc
 	return ret, nil
 }
 
-func promptArrayFixed(keyTitle, prefix, key string, arraySch *jsonschema.Schema, itemSch []*jsonschema.Schema) ([]interface{}, error) {
+func promptArrayFixed(level int, keyTitle, prefix, key string, arraySch *jsonschema.Schema, itemSch []*jsonschema.Schema) ([]interface{}, error) {
 	var ret []interface{}
 
 	for _, itm := range itemSch {
 		itm = schema(itm)
 
-		val, err := process(fmt.Sprintf("%s: ", prefix), key, itm, false)
+		val, err := process(level, fmt.Sprintf("%s: ", prefix), key, itm, false)
 		if err != nil {
 			return nil, err
 		}
@@ -402,7 +405,7 @@ func promptArrayFixed(keyTitle, prefix, key string, arraySch *jsonschema.Schema,
 				break
 			}
 
-			val, err := process(prefix, key, itm, false)
+			val, err := process(level, prefix, key, itm, false)
 			if err != nil {
 				return nil, err
 			}
@@ -414,7 +417,7 @@ func promptArrayFixed(keyTitle, prefix, key string, arraySch *jsonschema.Schema,
 	return ret, nil
 }
 
-func promptArray(key string, sch *jsonschema.Schema) ([]interface{}, error) {
+func promptArray(level int, key string, sch *jsonschema.Schema) ([]interface{}, error) {
 	sch = schema(sch)
 
 	prefix := "Array value"
@@ -430,11 +433,11 @@ func promptArray(key string, sch *jsonschema.Schema) ([]interface{}, error) {
 	switch itemSch := sch.Items.(type) {
 	case *jsonschema.Schema:
 		// Standard array.
-		return promptArrayStandard(keyTitle, prefix, key, sch, itemSch)
+		return promptArrayStandard(level, keyTitle, prefix, key, sch, itemSch)
 
 	case []*jsonschema.Schema:
 		// Fixed items array.
-		return promptArrayFixed(keyTitle, prefix, key, sch, itemSch)
+		return promptArrayFixed(level, keyTitle, prefix, key, sch, itemSch)
 	}
 
 	return nil, nil
@@ -471,7 +474,7 @@ func surveyPrompt(sch *jsonschema.Schema, msg string, def interface{}) survey.Pr
 	}
 }
 
-func Prompt(schema []byte) (interface{}, error) {
+func Prompt(level int, schema []byte) (interface{}, error) {
 	js := jsonschema.NewCompiler()
 	js.Draft = jsonschema.Draft7
 	js.ExtractAnnotations = true
@@ -486,10 +489,14 @@ func Prompt(schema []byte) (interface{}, error) {
 		return nil, err
 	}
 
-	return process("", "root", sch, false)
+	return process(level, "", "root", sch, false)
 }
 
-func process(prefix, key string, sch *jsonschema.Schema, required bool) (interface{}, error) { // nolint:gocyclo
+func addLevelPrefix(level int, msg string) string {
+	return fmt.Sprintf("%s %s", strings.Repeat("#", level+1), msg)
+}
+
+func process(level int, prefix, key string, sch *jsonschema.Schema, required bool) (interface{}, error) { // nolint:gocyclo
 	sch = schema(sch)
 
 	typ := getSchemaType(sch)
@@ -513,15 +520,19 @@ func process(prefix, key string, sch *jsonschema.Schema, required bool) (interfa
 	switch typ {
 	case "object":
 		for {
+			if key != "root" {
+				fmt.Println()
+			}
+
 			if sch.Title != "" {
-				pterm.FgYellow.Println(sch.Title)
+				pterm.FgYellow.Println(addLevelPrefix(level, sch.Title))
 			}
 
 			if sch.Description != "" {
-				pterm.FgGray.Println(sch.Description)
+				pterm.FgGray.Println(addLevelPrefix(level, sch.Description))
 			}
 
-			val, err := processObject(prefix, key, sch, nil)
+			val, err := processObject(level+1, prefix, key, sch, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -536,10 +547,6 @@ func process(prefix, key string, sch *jsonschema.Schema, required bool) (interfa
 				}
 
 				return nil, err
-			}
-
-			if key != "root" {
-				fmt.Println()
 			}
 
 			return val, nil
@@ -566,10 +573,6 @@ func process(prefix, key string, sch *jsonschema.Schema, required bool) (interfa
 		err := survey.AskOne(surveyPrompt(sch, keyTitle, def), &o, opts...)
 		if err != nil {
 			return nil, err
-		}
-
-		if o == "" {
-			return nil, nil
 		}
 
 		return o, nil
@@ -604,10 +607,6 @@ func process(prefix, key string, sch *jsonschema.Schema, required bool) (interfa
 		err := survey.AskOne(surveyPrompt(sch, keyTitle, def), &o, opts...)
 		if err != nil {
 			return nil, err
-		}
-
-		if o == "" {
-			return nil, nil
 		}
 
 		v, _ := strconv.ParseFloat(o, 64)
@@ -646,10 +645,6 @@ func process(prefix, key string, sch *jsonschema.Schema, required bool) (interfa
 			return nil, err
 		}
 
-		if o == "" {
-			return nil, nil
-		}
-
 		v, _ := strconv.Atoi(o)
 
 		return v, nil
@@ -685,15 +680,15 @@ func process(prefix, key string, sch *jsonschema.Schema, required bool) (interfa
 
 	case "array":
 		if sch.Title != "" && !sch.UniqueItems {
-			pterm.FgBlue.Println(sch.Title)
+			pterm.FgBlue.Println(addLevelPrefix(level, sch.Title))
 		}
 
 		if sch.Description != "" {
-			pterm.FgGray.Println(sch.Description)
+			pterm.FgGray.Println(addLevelPrefix(level, sch.Description))
 		}
 
 		for {
-			val, err := promptArray(key, sch)
+			val, err := promptArray(level+1, key, sch)
 			if err != nil {
 				return nil, err
 			}

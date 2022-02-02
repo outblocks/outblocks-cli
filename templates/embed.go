@@ -2,6 +2,7 @@ package templates
 
 import (
 	_ "embed"
+	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -33,7 +34,11 @@ func toYaml(v interface{}) string {
 		return ""
 	}
 
-	return string(data)
+	return strings.TrimRight(string(data), " \n")
+}
+
+func LoadTemplate(name string) *template.Template {
+	return template.New(name).Funcs(sprig.TxtFuncMap()).Funcs(funcMap())
 }
 
 func lazyInit(name, tmpl string) func() *template.Template {
@@ -41,7 +46,12 @@ func lazyInit(name, tmpl string) func() *template.Template {
 
 	return func() *template.Template {
 		if templ == nil {
-			templ = template.Must(template.New(name).Funcs(sprig.TxtFuncMap()).Funcs(funcMap()).Parse(tmpl))
+			var err error
+
+			templ, err = LoadTemplate(name).Parse(tmpl)
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		return templ

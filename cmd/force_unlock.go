@@ -8,7 +8,7 @@ import (
 
 func (e *Executor) newForceUnlockCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "force-unlock",
+		Use:   "force-unlock [flags] <lock>",
 		Short: "Force unlock",
 		Long:  `Release a stuck lock.`,
 		Annotations: map[string]string{
@@ -25,6 +25,8 @@ func (e *Executor) newForceUnlockCmd() *cobra.Command {
 			return actions.NewForceUnlock(e.Log(), e.cfg).Run(cmd.Context(), args[0])
 		},
 	}
+
+	cmd.UseLine()
 
 	return cmd
 }

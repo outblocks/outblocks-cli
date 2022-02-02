@@ -1,12 +1,16 @@
 package fileutil
 
 import (
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"syscall"
+
+	"github.com/ansel1/merry/v2"
+	"github.com/pkg/errors"
 )
 
 func ChownToUser(path string) error {
@@ -73,14 +77,149 @@ func WriteFile(filename string, data []byte, perm fs.FileMode) error {
 	return ChownToUser(filename)
 }
 
-// CopyFile that does Chown when needed to drop sudo privileges.
-func CopyFile(source, dest string, perm fs.FileMode) error {
+// CopyFileContents that copies file contents and does Chown when needed to drop sudo privileges.
+func CopyFileContents(source, dest string, perm fs.FileMode) error {
 	data, err := os.ReadFile(source)
 	if err != nil {
 		return err
 	}
 
 	return WriteFile(dest, data, perm)
+}
+
+// CopyDir recursively copies a directory tree, attempting to preserve permissions.
+// Source directory must exist.
+func CopyDir(src, dst string, filter func(path string, entry fs.DirEntry) bool) error {
+	src = filepath.Clean(src)
+	dst = filepath.Clean(dst)
+
+	fi, err := os.Lstat(src)
+	if err != nil {
+		return merry.Wrap(err)
+	}
+
+	if !fi.IsDir() {
+		return merry.New("source is not a directory")
+	}
+
+	_, err = os.Stat(dst)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err = os.MkdirAll(dst, fi.Mode()); err != nil {
+				return merry.Errorf("cannot mkdir %s: %w", dst, err)
+			}
+		} else {
+			return merry.Wrap(err)
+		}
+	}
+
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return merry.Errorf("cannot read directory %s: %w", dst, err)
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if filter != nil && !filter(srcPath, entry) {
+			continue
+		}
+
+		if entry.IsDir() {
+			if err = CopyDir(srcPath, dstPath, filter); err != nil {
+				return merry.Errorf("copying directory failed: %w", err)
+			}
+		} else {
+			// This will include symlinks, which is what we want when
+			// copying things.
+			if err = copyFile(srcPath, dstPath); err != nil {
+				return merry.Errorf("copying file failed: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// copyFile copies the contents of the file named src to the file named
+// by dst. The file will be created if it does not already exist. If the
+// destination file exists, all its contents will be replaced by the contents
+// of the source file. The file mode will be copied from the source.
+func copyFile(src, dst string) error {
+	sym, err := IsSymlink(src)
+	if err != nil {
+		return errors.Wrap(err, "symlink check failed")
+	}
+
+	if sym {
+		err := cloneSymlink(src, dst)
+		if err != nil && runtime.GOOS == "windows" {
+			// If cloning the symlink fails on Windows because the user
+			// does not have the required privileges, ignore the error and
+			// fall back to copying the file contents.
+			//
+			// ERROR_PRIVILEGE_NOT_HELD is 1314 (0x522):
+			// https://msdn.microsoft.com/en-us/library/windows/desktop/ms681385(v=vs.85).aspx
+			if lerr, ok := err.(*os.LinkError); ok && lerr.Err != syscall.Errno(1314) {
+				return err
+			}
+		}
+
+		return err
+	}
+
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+
+	if _, err = io.Copy(out, in); err != nil {
+		out.Close()
+		return err
+	}
+
+	// Check for write errors on Close
+	if err := out.Close(); err != nil {
+		return err
+	}
+
+	si, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	err = os.Chmod(dst, si.Mode())
+
+	return err
+}
+
+// IsSymlink determines if the given path is a symbolic link.
+func IsSymlink(path string) (bool, error) {
+	l, err := os.Lstat(path)
+	if err != nil {
+		return false, err
+	}
+
+	return l.Mode()&os.ModeSymlink == os.ModeSymlink, nil
+}
+
+// cloneSymlink will create a new symlink that points to the resolved path of sl.
+// If sl is a relative symlink, dst will also be a relative symlink.
+func cloneSymlink(sl, dst string) error {
+	resolved, err := os.Readlink(sl)
+	if err != nil {
+		return err
+	}
+
+	return os.Symlink(resolved, dst)
 }
 
 // MkdirAll that does Chown when needed to drop sudo privileges.

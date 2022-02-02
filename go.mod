@@ -14,12 +14,14 @@ require (
 	github.com/goccy/go-yaml v1.9.4
 	github.com/google/go-github/v35 v35.3.0
 	github.com/gookit/color v1.5.0
+	github.com/goreleaser/fileglob v1.2.0
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
 	github.com/outblocks/outblocks-plugin-go v0.0.0-20220128131448-48112c171012
+	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.33
-	github.com/r3labs/diff/v2 v2.14.5
+	github.com/r3labs/diff/v2 v2.14.6
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
@@ -46,6 +48,7 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-playground/validator/v10 v10.10.0 // indirect
+	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
@@ -74,7 +77,6 @@ require (
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
 	github.com/pierrec/lz4/v4 v4.1.12 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
@@ -102,8 +104,6 @@ require (
 replace github.com/santhosh-tekuri/jsonschema/v5 => github.com/23doors/jsonschema/v5 v5.0.1-0.20220120150455-3960be6116ea
 
 replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.20210807205153-79a9d3b2c172
-
-replace github.com/r3labs/diff/v2 => github.com/23doors/diff/v2 v2.14.6-0.20220128221633-f691f3fd0ec9
 
 // replace github.com/goccy/go-yaml => ../go-yaml
 

@@ -21,7 +21,6 @@ import (
 const (
 	DefaultPluginSourceFmt = "https://github.com/outblocks/cli-plugin-%s"
 	DefaultAuthor          = "outblocks"
-	A                      = runtime.GOOS + "_" + runtime.GOARCH
 )
 
 func CurrentArch() string {

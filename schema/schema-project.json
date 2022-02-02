@@ -59,8 +59,17 @@
             "$ref": "#/definitions/SSL"
           }
         },
-        "required": [
-          "domain"
+        "oneOf": [
+          {
+            "required": [
+              "domain"
+            ]
+          },
+          {
+            "required": [
+              "domains"
+            ]
+          }
         ]
       }
     },
