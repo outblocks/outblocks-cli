@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.59](https://github.com/outblocks/outblocks-cli/compare/v0.1.58...v0.1.59)
+
+> 2022-02-02
+
+### BUG FIXES
+
+[`d2f71c2`](https://github.com/outblocks/outblocks-cli/commit/d2f71c25b24a229ad89d827ec7d9ee3efd44585b) use nil if empty
+
+
 ## [v0.1.58](https://github.com/outblocks/outblocks-cli/compare/v0.1.57...v0.1.58)
 
 > 2022-02-02
