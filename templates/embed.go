@@ -38,7 +38,7 @@ func toYaml(v interface{}) string {
 }
 
 func LoadTemplate(name string) *template.Template {
-	return template.New(name).Funcs(sprig.TxtFuncMap()).Funcs(funcMap())
+	return template.New(name).Funcs(sprig.TxtFuncMap()).Funcs(funcMap()).Option("missingkey=zero")
 }
 
 func lazyInit(name, tmpl string) func() *template.Template {

@@ -575,6 +575,10 @@ func process(level int, prefix, key string, sch *jsonschema.Schema, required boo
 			return nil, err
 		}
 
+		if o == "" {
+			return nil, nil
+		}
+
 		return o, nil
 
 	case "number":
@@ -607,6 +611,10 @@ func process(level int, prefix, key string, sch *jsonschema.Schema, required boo
 		err := survey.AskOne(surveyPrompt(sch, keyTitle, def), &o, opts...)
 		if err != nil {
 			return nil, err
+		}
+
+		if o == "" {
+			return nil, nil
 		}
 
 		v, _ := strconv.ParseFloat(o, 64)
@@ -643,6 +651,10 @@ func process(level int, prefix, key string, sch *jsonschema.Schema, required boo
 		err := survey.AskOne(surveyPrompt(sch, keyTitle, def), &o, opts...)
 		if err != nil {
 			return nil, err
+		}
+
+		if o == "" {
+			return nil, nil
 		}
 
 		v, _ := strconv.Atoi(o)
