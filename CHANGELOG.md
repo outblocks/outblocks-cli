@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.58](https://github.com/outblocks/outblocks-cli/compare/v0.1.57...v0.1.58)
+
+> 2022-02-02
+
+### FEATURES
+
+[`0779aa8`](https://github.com/outblocks/outblocks-cli/commit/0779aa831b80dc6a7ec4621c79afe602353930f9) project templates
+
+
 ## [v0.1.57](https://github.com/outblocks/outblocks-cli/compare/v0.1.56...v0.1.57)
 
 > 2022-01-30
