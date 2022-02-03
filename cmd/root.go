@@ -184,16 +184,18 @@ func rootCmdUsageFunc(log logger.Logger, cmd *cobra.Command) error {
 		log.Printf("  %s [command]\n", pterm.Green(cmd.CommandPath()))
 	}
 
-	log.Println()
+	if len(cmd.Commands()) != 0 {
+		log.Println()
 
-	var usage string
-	if cmd.Root() == cmd {
-		usage = helpCommandsGrouped(cmd)
-	} else {
-		usage = helpCommands(cmd)
+		var usage string
+		if cmd.Root() == cmd {
+			usage = helpCommandsGrouped(cmd)
+		} else {
+			usage = helpCommands(cmd)
+		}
+
+		log.Printf(usage)
 	}
-
-	log.Printf(usage)
 
 	if len(cmd.Aliases) != 0 {
 		log.Println()

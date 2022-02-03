@@ -33,6 +33,7 @@ type App interface {
 	Check(cfg *Project) error
 	Type() string
 	Proto() *apiv1.App
+	BuildProto() *apiv1.AppBuild
 	RunInfo() *AppRunInfo
 	DeployInfo() *AppDeployInfo
 	SupportsLocal() bool
@@ -84,7 +85,7 @@ type AppNeed struct {
 func (n *AppNeed) Normalize(name string, cfg *Project, data []byte) error {
 	dep := cfg.DependencyByName(name)
 	if dep == nil {
-		return fileutil.YAMLError(fmt.Sprintf("$.needs.%s", name), "object not found in project dependencies", data)
+		return fileutil.YAMLError(fmt.Sprintf("$.needs.%s", name), fmt.Sprintf("'%s' not found in project dependencies", name), data)
 	}
 
 	n.dep = dep

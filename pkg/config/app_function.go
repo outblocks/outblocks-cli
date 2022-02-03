@@ -4,6 +4,7 @@ import (
 	"github.com/ansel1/merry/v2"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/validator"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 )
 
 const (
@@ -34,4 +35,8 @@ func LoadFunctionAppData(path string, data []byte) (App, error) {
 
 func (s *FunctionApp) SupportsLocal() bool {
 	return false
+}
+
+func (s *FunctionApp) BuildProto() *apiv1.AppBuild {
+	return nil
 }

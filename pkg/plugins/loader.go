@@ -171,7 +171,7 @@ func (l *Loader) downloadPlugin(ctx context.Context, pi *pluginInfo) (string, *s
 
 	destDir := filepath.Join(l.pluginsCacheDir, pi.author, pi.name, fmt.Sprintf("%s-%s", CurrentArch(), download.Version))
 
-	if err := fileutil.MkdirAll(destDir, 0755); err != nil {
+	if err := fileutil.MkdirAll(destDir, 0o755); err != nil {
 		return "", nil, merry.Errorf("failed to create dir %s: %w", destDir, err)
 	}
 
@@ -209,7 +209,7 @@ func (l *Loader) installCachedPlugin(pi *pluginInfo) (string, *semver.Version, e
 
 func (l *Loader) installPlugin(pi *pluginInfo, from string) error {
 	localDir := filepath.Join(l.baseDir, ".outblocks", "plugins", pi.author, pi.name)
-	if err := fileutil.MkdirAll(localDir, 0755); err != nil {
+	if err := fileutil.MkdirAll(localDir, 0o755); err != nil {
 		return merry.Errorf("failed to create dir %s: %w", localDir, err)
 	}
 
@@ -238,7 +238,7 @@ func (l *Loader) loadPlugin(pi *pluginInfo, dir string, ver *semver.Version) (*P
 
 	cacheDir := filepath.Join(l.baseDir, ".outblocks", "cache", pi.name)
 
-	err = fileutil.MkdirAll(cacheDir, 0755)
+	err = fileutil.MkdirAll(cacheDir, 0o755)
 	if err != nil {
 		return nil, merry.Errorf("failed to create dir %s: %w", cacheDir, err)
 	}

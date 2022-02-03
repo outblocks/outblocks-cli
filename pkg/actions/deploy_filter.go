@@ -9,8 +9,8 @@ import (
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
-func filterAppsNormal(cfg *config.Project, state *types.StateData, targetAppIDsMap, skipAppIDsMap map[string]bool) map[string]*apiv1.AppState {
-	appsMap := make(map[string]*apiv1.AppState, len(state.Apps))
+func filterAppsNormal(cfg *config.Project, state *types.StateData, targetAppIDsMap, skipAppIDsMap map[string]bool) map[string]*apiv1.AppPlan {
+	appsMap := make(map[string]*apiv1.AppPlan, len(state.Apps))
 
 	// Use state apps as base unless skip mode is enabled and they are NOT to be skipped.
 	for key, app := range state.Apps {
@@ -18,7 +18,9 @@ func filterAppsNormal(cfg *config.Project, state *types.StateData, targetAppIDsM
 			continue
 		}
 
-		appsMap[key] = app
+		appsMap[key] = &apiv1.AppPlan{
+			State: app,
+		}
 	}
 
 	// Overwrite definition of non-skipped or target apps from project definition.
@@ -37,17 +39,19 @@ func filterAppsNormal(cfg *config.Project, state *types.StateData, targetAppIDsM
 		appType.Properties = plugin_util.MustNewStruct(mergedProps)
 		appType.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, appType.Env, app.DeployInfo().Env)
 
-		appsMap[app.ID()] = &apiv1.AppState{
-			App: appType,
+		appsMap[app.ID()] = &apiv1.AppPlan{
+			State: &apiv1.AppState{
+				App: appType,
+			},
 		}
 	}
 
 	return appsMap
 }
 
-func filterAppsDestroy(state *types.StateData, targetAppIDsMap, skipAppIDsMap map[string]bool) (appsMap map[string]*apiv1.AppState, skipAppIDs []string) {
+func filterAppsDestroy(state *types.StateData, targetAppIDsMap, skipAppIDsMap map[string]bool) (appsMap map[string]*apiv1.AppPlan, skipAppIDs []string) {
 	skipAppIDs = make([]string, 0, len(state.Apps))
-	appsMap = make(map[string]*apiv1.AppState, len(state.Apps))
+	appsMap = make(map[string]*apiv1.AppPlan, len(state.Apps))
 
 	// Use state apps as base unless skip mode is enabled and they are NOT to be skipped or they are targeted.
 	for key, app := range state.Apps {
@@ -64,19 +68,24 @@ func filterAppsDestroy(state *types.StateData, targetAppIDsMap, skipAppIDsMap ma
 			continue
 		}
 
-		appsMap[key] = app
+		appsMap[key] = &apiv1.AppPlan{
+			State: app,
+		}
 	}
 
 	return appsMap, skipAppIDs
 }
 
-func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps, destroy bool) (apps []*apiv1.AppState, retSkipAppIDs []string, retDestroy bool, err error) {
+func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps, destroy bool) (apps []*apiv1.AppPlan, retSkipAppIDs []string, retDestroy bool, err error) {
 	if skipAllApps {
 		retSkipAppIDs := make([]string, 0, len(state.Apps))
-		apps = make([]*apiv1.AppState, 0, len(state.Apps))
+		apps = make([]*apiv1.AppPlan, 0, len(state.Apps))
 
 		for _, appState := range state.Apps {
-			apps = append(apps, appState)
+			apps = append(apps, &apiv1.AppPlan{
+				State: appState,
+			})
+
 			retSkipAppIDs = append(retSkipAppIDs, appState.App.Id)
 		}
 
@@ -85,7 +94,7 @@ func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipA
 
 	// In non target and non skip mode, use config apps and deps.
 	if len(skipAppIDs) == 0 && len(targetAppIDs) == 0 {
-		apps = make([]*apiv1.AppState, 0, len(cfg.Apps))
+		apps = make([]*apiv1.AppPlan, 0, len(cfg.Apps))
 
 		for _, app := range cfg.Apps {
 			appType := app.Proto()
@@ -94,15 +103,18 @@ func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipA
 			appType.Properties = plugin_util.MustNewStruct(mergedProps)
 			appType.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, appType.Env, app.DeployInfo().Env)
 
-			apps = append(apps, &apiv1.AppState{
-				App: appType,
+			apps = append(apps, &apiv1.AppPlan{
+				State: &apiv1.AppState{
+					App: appType,
+				},
+				Build: app.BuildProto(),
 			})
 		}
 
 		return apps, nil, destroy, nil
 	}
 
-	var appsMap map[string]*apiv1.AppState
+	var appsMap map[string]*apiv1.AppPlan
 
 	targetAppIDsMap := util.StringArrayToSet(targetAppIDs)
 	skipAppIDsMap := util.StringArrayToSet(skipAppIDs)
@@ -129,7 +141,7 @@ func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipA
 	}
 
 	// Flatten maps to list.
-	apps = make([]*apiv1.AppState, 0, len(appsMap))
+	apps = make([]*apiv1.AppPlan, 0, len(appsMap))
 	for _, app := range appsMap {
 		apps = append(apps, app)
 	}
@@ -137,11 +149,13 @@ func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipA
 	return apps, skipAppIDs, false, err
 }
 
-func filterDependencies(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps bool) (deps []*apiv1.DependencyState) {
+func filterDependencies(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps bool) (deps []*apiv1.DependencyPlan) {
 	if skipAllApps {
-		deps = make([]*apiv1.DependencyState, 0, len(state.Dependencies))
+		deps = make([]*apiv1.DependencyPlan, 0, len(state.Dependencies))
 		for _, dep := range state.Dependencies {
-			deps = append(deps, dep)
+			deps = append(deps, &apiv1.DependencyPlan{
+				State: dep,
+			})
 		}
 
 		return deps
@@ -149,15 +163,17 @@ func filterDependencies(cfg *config.Project, state *types.StateData, targetAppID
 
 	// In non target and non skip mode, use config apps and deps.
 	if len(skipAppIDs) == 0 && len(targetAppIDs) == 0 {
-		deps = make([]*apiv1.DependencyState, 0, len(cfg.Dependencies))
+		deps = make([]*apiv1.DependencyPlan, 0, len(cfg.Dependencies))
 		for _, dep := range cfg.Dependencies {
-			deps = append(deps, &apiv1.DependencyState{Dependency: dep.Proto()})
+			deps = append(deps, &apiv1.DependencyPlan{
+				State: &apiv1.DependencyState{Dependency: dep.Proto()},
+			})
 		}
 
 		return deps
 	}
 
-	dependenciesMap := make(map[string]*apiv1.DependencyState, len(state.Dependencies))
+	dependenciesMap := make(map[string]*apiv1.DependencyPlan, len(state.Dependencies))
 
 	// Always merge with dependencies from state unless there is no app needing them.
 	needs := make(map[string]bool)
@@ -173,15 +189,19 @@ func filterDependencies(cfg *config.Project, state *types.StateData, targetAppID
 			continue
 		}
 
-		dependenciesMap[key] = dep
+		dependenciesMap[key] = &apiv1.DependencyPlan{
+			State: dep,
+		}
 	}
 
 	for _, dep := range cfg.Dependencies {
-		dependenciesMap[dep.ID()] = &apiv1.DependencyState{Dependency: dep.Proto()}
+		dependenciesMap[dep.ID()] = &apiv1.DependencyPlan{
+			State: &apiv1.DependencyState{Dependency: dep.Proto()},
+		}
 	}
 
 	// Flatten maps to list.
-	deps = make([]*apiv1.DependencyState, 0, len(dependenciesMap))
+	deps = make([]*apiv1.DependencyPlan, 0, len(dependenciesMap))
 	for _, dep := range dependenciesMap {
 		deps = append(deps, dep)
 	}

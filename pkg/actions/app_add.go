@@ -120,7 +120,7 @@ func (d *AppAdd) Run(ctx context.Context) error {
 
 	destFile := filepath.Join(path, config.AppYAMLName+".yaml")
 
-	err = fileutil.WriteFile(destFile, appYAML.Bytes(), 0644)
+	err = fileutil.WriteFile(destFile, appYAML.Bytes(), 0o644)
 	if err != nil {
 		return err
 	}
@@ -361,7 +361,7 @@ func (d *AppAdd) prompt() (interface{}, error) {
 
 	stat, err := os.Stat(d.opts.OutputDir)
 	if os.IsNotExist(err) {
-		err = fileutil.MkdirAll(d.opts.OutputDir, 0755)
+		err = fileutil.MkdirAll(d.opts.OutputDir, 0o755)
 		if err != nil {
 			return nil, merry.Errorf("failed to create dir %s: %w", d.opts.OutputDir, err)
 		}

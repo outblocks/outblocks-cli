@@ -109,7 +109,7 @@ func (d *Run) init() error {
 
 	backupHosts := clipath.DataDir("hosts.original")
 	if _, err := os.Stat(backupHosts); os.IsNotExist(err) {
-		if err = fileutil.CopyFileContents(d.hosts.WriteFilePath, backupHosts, 0755); err != nil {
+		if err = fileutil.CopyFileContents(d.hosts.WriteFilePath, backupHosts, 0o644); err != nil {
 			return merry.Errorf("cannot backup hosts file: %w", err)
 		}
 	}

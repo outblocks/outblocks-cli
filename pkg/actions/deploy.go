@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -386,14 +388,14 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	}
 
 	// Plan and apply.
-	appStates, skipAppIDs, destroy, err := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps, d.opts.Destroy)
+	apps, skipAppIDs, destroy, err := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps, d.opts.Destroy)
 	if err != nil {
 		return false, false, dur, nil, err
 	}
 
-	depStates := filterDependencies(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
+	deps := filterDependencies(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
 
-	planMap, err := calculatePlanMap(d.cfg, appStates, depStates, d.opts.TargetApps, skipAppIDs)
+	planMap, err := calculatePlanMap(d.cfg, apps, deps, d.opts.TargetApps, skipAppIDs)
 	if err != nil {
 		return false, false, dur, nil, err
 	}
@@ -461,20 +463,20 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	}
 
 	// Merge state with current apps/deps if needed (they might not have a state defined).
-	for _, appState := range appStates {
-		if _, ok := state.Apps[appState.App.Id]; ok {
+	for _, app := range apps {
+		if _, ok := state.Apps[app.State.App.Id]; ok {
 			continue
 		}
 
-		state.Apps[appState.App.Id] = &apiv1.AppState{App: appState.App}
+		state.Apps[app.State.App.Id] = &apiv1.AppState{App: app.State.App}
 	}
 
-	for _, depState := range depStates {
-		if _, ok := state.Dependencies[depState.Dependency.Id]; ok {
+	for _, dep := range deps {
+		if _, ok := state.Dependencies[dep.State.Dependency.Id]; ok {
 			continue
 		}
 
-		state.Dependencies[depState.Dependency.Id] = &apiv1.DependencyState{Dependency: depState.Dependency}
+		state.Dependencies[dep.State.Dependency.Id] = &apiv1.DependencyState{Dependency: dep.State.Dependency}
 	}
 
 	state.DomainsInfo = domains
@@ -503,7 +505,6 @@ func (d *Deploy) prepareAppSSLMap(appStates map[string]*apiv1.AppState) (map[str
 
 func (d *Deploy) showAppStates(appStates map[string]*apiv1.AppState, appNameStyle *pterm.Style) (allReady bool) {
 	appURLStyle := pterm.NewStyle(pterm.FgGreen, pterm.Underscore)
-	appURLErrorStyle := pterm.NewStyle(pterm.FgRed, pterm.Underscore)
 	appFailingStyle := pterm.NewStyle(pterm.FgRed, pterm.Bold)
 
 	var (
@@ -537,8 +538,10 @@ func (d *Deploy) showAppStates(appStates map[string]*apiv1.AppState, appNameStyl
 		for _, appState := range readyApps {
 			app := appState.App
 
+			var appInfo []string
+
 			if app.Url != "" {
-				d.log.Printf("%s %s %s (%s)\n", appURLStyle.Sprint(app.Url), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type)
+				appInfo = append(appInfo, pterm.Gray("URL"), appURLStyle.Sprint(app.Url))
 			} else if appState.Dns != nil {
 				var privateURL string
 
@@ -551,14 +554,20 @@ func (d *Deploy) showAppStates(appStates map[string]*apiv1.AppState, appNameStyl
 					continue
 				}
 
-				d.log.Printf("%s %s %s %s (%s)\n", pterm.Gray("private ==>"), appURLStyle.Sprint(privateURL), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type)
+				appInfo = append(appInfo, pterm.Gray("private"), appURLStyle.Sprint(privateURL))
+			}
+
+			d.log.Printf("%s (%s)\n  %s\n", appNameStyle.Sprint(app.Name), app.Type, strings.Join(appInfo, " "))
+
+			if appState.Dns.CloudUrl != "" {
+				fmt.Printf("  %s %s\n", pterm.Gray("cloud URL"), appURLStyle.Sprint(appState.Dns.CloudUrl))
 			}
 		}
 
 		for _, appState := range unreadyApps {
 			app := appState.App
 
-			d.log.Printf("%s %s %s (%s) %s\n", appURLErrorStyle.Sprint(app.Url), pterm.Gray("==>"), appNameStyle.Sprint(app.Name), app.Type, appFailingStyle.Sprint("FAILING"))
+			d.log.Printf("%s (%s) %s %s\n", appNameStyle.Sprint(app.Name), app.Type, pterm.Gray("==>"), appFailingStyle.Sprint("FAILING"))
 			d.log.Errorln(appState.Deployment.Message)
 		}
 	}
@@ -620,7 +629,7 @@ func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependenc
 				first = false
 			}
 
-			d.log.Printf("%s %s %s (%s)\n", pterm.Green(depState.Dns.ConnectionInfo), pterm.Gray("==>"), appNameStyle.Sprint(dep.Name), dep.Type)
+			d.log.Printf("%s (%s) %s %s\n", appNameStyle.Sprint(dep.Name), dep.Type, pterm.Gray("==>"), pterm.Green(depState.Dns.ConnectionInfo))
 		}
 	}
 
@@ -696,13 +705,13 @@ func getState(ctx context.Context, state *config.State, lock bool, lockWait time
 	return stateData, ret, err
 }
 
-func calculatePlanMap(cfg *config.Project, appStates []*apiv1.AppState, depStates []*apiv1.DependencyState, targetAppIDs, skipAppIDs []string) (map[*plugins.Plugin]*planParams, error) {
+func calculatePlanMap(cfg *config.Project, apps []*apiv1.AppPlan, deps []*apiv1.DependencyPlan, targetAppIDs, skipAppIDs []string) (map[*plugins.Plugin]*planParams, error) {
 	planMap := make(map[*plugins.Plugin]*planParams)
 
-	for _, appState := range appStates {
-		deployPlugin := cfg.FindLoadedPlugin(appState.App.DeployPlugin)
+	for _, app := range apps {
+		deployPlugin := cfg.FindLoadedPlugin(app.State.App.DeployPlugin)
 		if deployPlugin == nil {
-			return nil, merry.Errorf("missing deploy plugin: %s used for app: %s", appState.App.DeployPlugin, appState.App.Name)
+			return nil, merry.Errorf("missing deploy plugin: %s used for app: %s", app.State.App.DeployPlugin, app.State.App.Name)
 		}
 
 		if _, ok := planMap[deployPlugin]; !ok {
@@ -711,18 +720,14 @@ func calculatePlanMap(cfg *config.Project, appStates []*apiv1.AppState, depState
 			}
 		}
 
-		appReq := &apiv1.AppPlan{
-			State: appState,
-		}
-
-		planMap[deployPlugin].appPlans = append(planMap[deployPlugin].appPlans, appReq)
+		planMap[deployPlugin].appPlans = append(planMap[deployPlugin].appPlans, app)
 	}
 
 	// Process dependencies.
-	for _, depState := range depStates {
-		deployPlugin := cfg.FindLoadedPlugin(depState.Dependency.DeployPlugin)
+	for _, dep := range deps {
+		deployPlugin := cfg.FindLoadedPlugin(dep.State.Dependency.DeployPlugin)
 		if deployPlugin == nil {
-			return nil, merry.Errorf("missing deploy plugin: %s used for dependency: %s", depState.Dependency.DeployPlugin, depState.Dependency.Name)
+			return nil, merry.Errorf("missing deploy plugin: %s used for dependency: %s", dep.State.Dependency.DeployPlugin, dep.State.Dependency.Name)
 		}
 
 		if _, ok := planMap[deployPlugin]; !ok {
@@ -732,7 +737,7 @@ func calculatePlanMap(cfg *config.Project, appStates []*apiv1.AppState, depState
 		}
 
 		planMap[deployPlugin].depPlans = append(planMap[deployPlugin].depPlans, &apiv1.DependencyPlan{
-			State: depState,
+			State: dep.State,
 		})
 	}
 

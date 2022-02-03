@@ -19,6 +19,8 @@ const (
 type ServiceApp struct {
 	BasicApp                   `json:",inline"`
 	types.ServiceAppProperties `json:",inline"`
+
+	AppBuild *apiv1.AppBuild `json:"-"`
 }
 
 func LoadServiceAppData(path string, data []byte) (App, error) {
@@ -29,13 +31,14 @@ func LoadServiceAppData(path string, data []byte) (App, error) {
 				Dockerfile: "Dockerfile",
 			},
 		},
+		AppBuild: &apiv1.AppBuild{},
 	}
 
 	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, merry.Errorf("load service config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
-	out.LocalDockerImage = fmt.Sprintf("outblocks/%s", out.ID())
+	out.AppBuild.LocalDockerImage = fmt.Sprintf("outblocks/%s", out.ID())
 
 	out.yamlPath = path
 	out.yamlData = data
@@ -65,4 +68,8 @@ func (s *ServiceApp) Proto() *apiv1.App {
 	base.Properties = plugin_util.MustNewStruct(mergedProps)
 
 	return base
+}
+
+func (s *ServiceApp) BuildProto() *apiv1.AppBuild {
+	return s.AppBuild
 }

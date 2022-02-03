@@ -73,7 +73,7 @@ func (e *Executor) saveLockfile() error {
 		return merry.Errorf("marshaling lockfile error: %w", err)
 	}
 
-	if err := fileutil.WriteFile(filepath.Join(e.cfg.Dir, config.LockfileName), data, 0755); err != nil {
+	if err := fileutil.WriteFile(filepath.Join(e.cfg.Dir, config.LockfileName), data, 0o644); err != nil {
 		return merry.Errorf("writing lockfile error: %w", err)
 	}
 

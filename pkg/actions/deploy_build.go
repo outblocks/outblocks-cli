@@ -165,7 +165,7 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 		buildArgs[i] = strings.ReplaceAll(arg, "\"", "\\\"")
 	}
 
-	cmdStr := fmt.Sprintf("docker build --platform=linux/amd64 --tag %s --pull --file %s --progress=plain", app.LocalDockerImage, app.Build.Dockerfile)
+	cmdStr := fmt.Sprintf("docker build --platform=linux/amd64 --tag %s --pull --file %s --progress=plain", app.AppBuild.LocalDockerImage, app.Build.Dockerfile)
 
 	// Add build args if needed.
 	if len(buildArgs) > 0 {
@@ -185,12 +185,12 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 		return err
 	}
 
-	insp, _, err := cli.ImageInspectWithRaw(ctx, app.LocalDockerImage)
+	insp, _, err := cli.ImageInspectWithRaw(ctx, app.AppBuild.LocalDockerImage)
 	if err != nil {
 		return merry.Errorf("error inspecting created image for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
 
-	app.LocalDockerHash = insp.ID
+	app.AppBuild.LocalDockerHash = insp.ID
 
 	return nil
 }

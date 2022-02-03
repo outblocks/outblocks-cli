@@ -50,8 +50,8 @@ cloud.google.com/go/storage v1.8.0/go.mod h1:Wv1Oy7z6Yz3DshWRJFhqM/UCfaWIRTdp0RX
 cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9ullr3+Kg0=
 cloud.google.com/go/storage v1.14.0/go.mod h1:GrKmX003DSIwi9o29oFT7YDnHYwZoctc3fOKtUw0Xmo=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
-github.com/23doors/go-yaml v1.8.10-0.20210807205153-79a9d3b2c172 h1:U2WXyvc1WQgU4+aC7Fb3VY7ptPT6AxU43o5xSeB7yaM=
-github.com/23doors/go-yaml v1.8.10-0.20210807205153-79a9d3b2c172/go.mod h1:U/jl18uSupI5rdI2jmuCswEA2htH9eXfferR3KfscvA=
+github.com/23doors/go-yaml v1.8.10-0.20220202183938-703c5fcb6bdf h1:ajxaRsJsoy+Ib701qDYYNp8AeU9zD52zqrdbQ7iS6DI=
+github.com/23doors/go-yaml v1.8.10-0.20220202183938-703c5fcb6bdf/go.mod h1:U/jl18uSupI5rdI2jmuCswEA2htH9eXfferR3KfscvA=
 github.com/23doors/jsonschema/v5 v5.0.1-0.20220120150455-3960be6116ea h1:31AWR/M1U5eOHLQ+ua5wHRTXmScfjVbZIUHbpVjIUhQ=
 github.com/23doors/jsonschema/v5 v5.0.1-0.20220120150455-3960be6116ea/go.mod h1:HlI8Q1/QgnFtMax3s9SxlUSaweCG82pEew24OidQ52o=
 github.com/AlecAivazis/survey/v2 v2.3.2 h1:TqTB+aDDCLYhf9/bD2TwSO8u8jDSmMUd2SUVO4gCnU8=
@@ -750,8 +750,8 @@ github.com/otiai10/curr v1.0.0/go.mod h1:LskTG5wDwr8Rs+nNQ+1LlxRjAtTZZjtJW4rMXl6
 github.com/otiai10/mint v1.3.0/go.mod h1:F5AjcsTsWUqX+Na9fpHb52P8pcRX2CI6A3ctIT91xUo=
 github.com/otiai10/mint v1.3.3 h1:7JgpsBaN0uMkyju4tbYHu0mnM55hNKVYLsXmwr15NQI=
 github.com/otiai10/mint v1.3.3/go.mod h1:/yxELlJQ0ufhjUwhshSj+wFjZ78CnZ48/1wtmBH1OTc=
-github.com/outblocks/outblocks-plugin-go v0.0.0-20220128131448-48112c171012 h1:34TFwocw3OMKj5n5iSbHvEkn7XogKVFryRC9Rif29eA=
-github.com/outblocks/outblocks-plugin-go v0.0.0-20220128131448-48112c171012/go.mod h1:MAxYiF/O+9jcmjHdDg0S0PUV5VLzVcYALlO8VWL+zd0=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20220202220952-f2673b00e3ac h1:aGTzPCwEJxxBm8eqS+I4CO3vWFrpdQu6D3xvX4wpz0s=
+github.com/outblocks/outblocks-plugin-go v0.0.0-20220202220952-f2673b00e3ac/go.mod h1:MAxYiF/O+9jcmjHdDg0S0PUV5VLzVcYALlO8VWL+zd0=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pascaldekloe/goe v0.1.0/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=

@@ -30,7 +30,7 @@ type vcsVersionInfo struct {
 
 func (d *VCSDownloader) fetch(_ context.Context, pi *pluginInfo) (vcs.Repo, error) {
 	cachePath := clipath.CacheDir("plugins", pi.author, pi.name)
-	if err := fileutil.MkdirAll(cachePath, 0755); err != nil {
+	if err := fileutil.MkdirAll(cachePath, 0o755); err != nil {
 		return nil, merry.Errorf("failed to create dir %s: %w", cachePath, err)
 	}
 

@@ -87,3 +87,7 @@ func (s *StaticApp) Normalize(cfg *Project) error {
 func (s *StaticApp) SupportsLocal() bool {
 	return true
 }
+
+func (s *StaticApp) BuildProto() *apiv1.AppBuild {
+	return nil
+}

@@ -79,7 +79,7 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 	}
 
 	dest := clipath.CacheDir("plugin-release", pi.author, pi.name, filepath.Base(matchingAsset.GetName()))
-	if err := fileutil.MkdirAll(filepath.Dir(dest), 0755); err != nil {
+	if err := fileutil.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return nil, merry.Errorf("failed to create dir %s: %w", dest, err)
 	}
 
@@ -93,7 +93,7 @@ func (d *GitHubDownloader) Download(ctx context.Context, pi *pluginInfo) (*Downl
 		return nil, merry.Errorf("downloading file error: %w", err)
 	}
 
-	err = fileutil.WriteFile(dest, b.Bytes(), 0755)
+	err = fileutil.WriteFile(dest, b.Bytes(), 0o644)
 	if err != nil {
 		return nil, merry.Errorf("writing downloaded file error: %w", err)
 	}

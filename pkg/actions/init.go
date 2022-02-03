@@ -163,7 +163,7 @@ func (d *Init) promptEnv(ctx context.Context, cfg *projectInit, env string) erro
 		return err
 	}
 
-	err = fileutil.WriteFile(filepath.Join(d.opts.Path, fmt.Sprintf("%s.values.yaml", env)), valuesYAML.Bytes(), 0644)
+	err = fileutil.WriteFile(filepath.Join(d.opts.Path, fmt.Sprintf("%s.values.yaml", env)), valuesYAML.Bytes(), 0o644)
 
 	return err
 }
@@ -309,7 +309,7 @@ func (d *Init) runPrompt(ctx context.Context, cfg *projectInit) error {
 	}
 
 	if !plugin_util.DirExists(d.opts.Path) {
-		err := fileutil.MkdirAll(d.opts.Path, 0755)
+		err := fileutil.MkdirAll(d.opts.Path, 0o755)
 		if err != nil {
 			return merry.Errorf("failed to create dir %s: %w", d.opts.Path, err)
 		}
@@ -339,24 +339,25 @@ func (d *Init) runPrompt(ctx context.Context, cfg *projectInit) error {
 }
 
 func (d *Init) Run(ctx context.Context) error {
-	if d.opts.Path == "" {
-		curDir, err := os.Getwd()
-		if err != nil {
-			return merry.Errorf("can't get current working dir: %w", err)
-		}
-
-		d.opts.Path = curDir
-	} else {
-		d.opts.Path = filepath.Clean(d.opts.Path)
+	curDir, err := os.Getwd()
+	if err != nil {
+		return merry.Errorf("can't get current working dir: %w", err)
 	}
 
-	cfg := &config.Project{}
+	if d.opts.Path == "" {
+		d.opts.Path = curDir
+	}
+
+	d.opts.Path, err = filepath.Abs(d.opts.Path)
+	if err != nil {
+		return err
+	}
 
 	initCfg := &projectInit{
-		Project: cfg,
+		Project: &config.Project{},
 	}
 
-	err := d.runPrompt(ctx, initCfg)
+	err = d.runPrompt(ctx, initCfg)
 	if errors.Is(err, errInitCanceled) || errors.Is(err, terminal.InterruptErr) {
 		d.log.Println("Init canceled.")
 		return nil
@@ -376,7 +377,7 @@ func (d *Init) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = fileutil.WriteFile(filepath.Join(d.opts.Path, config.ProjectYAMLName+".yaml"), projectYAML.Bytes(), 0644)
+	err = fileutil.WriteFile(filepath.Join(d.opts.Path, config.ProjectYAMLName+".yaml"), projectYAML.Bytes(), 0o644)
 	if err != nil {
 		return err
 	}

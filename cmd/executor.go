@@ -81,9 +81,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	e.opts.env = e.v.GetString("env")
 	cmd, _, err := e.rootCmd.Find(os.Args[1:])
 
-	if cmd == e.rootCmd {
-		return nil
-	}
+	isHelp := helpFlag.Changed || (len(os.Args) > 0 && strings.EqualFold(os.Args[1], "help"))
 
 	if err == nil {
 		skipLoadConfig = cmd.Annotations[cmdSkipLoadConfigAnnotation] == "1"
@@ -114,7 +112,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 
 	v, err := e.opts.valueOpts.MergeValues(ctx, filepath.Dir(cfgPath), getter.All())
 	if err != nil {
-		if helpFlag.Changed {
+		if isHelp {
 			return nil
 		}
 
@@ -172,23 +170,27 @@ func (e *Executor) addPluginsCommands() error {
 
 			flags := cmd.Flags()
 
-			for _, arg := range cmdt.Flags {
-				arg.Name = strings.ToLower(arg.Name)
+			for _, f := range cmdt.Flags {
+				f.Name = strings.ToLower(f.Name)
 
-				if flags.Lookup(arg.Name) != nil {
-					return merry.Errorf("plugin tried to add already existing argument '%s' to command '%s'", arg, cmdName)
+				if flags.Lookup(f.Name) != nil {
+					return merry.Errorf("plugin tried to add already existing argument '%s' to command '%s'", f, cmdName)
 				}
 
-				switch arg.ValueType() {
+				switch f.ValueType() {
 				case plugins.CommandValueTypeBool:
-					def, _ := arg.Default.(bool)
-					arg.Value = flags.Bool(arg.Name, def, arg.Usage)
+					def, _ := f.Default.(bool)
+					f.Value = flags.Bool(f.Name, def, f.Usage)
 				case plugins.CommandValueTypeInt:
-					def, _ := arg.Default.(int)
-					arg.Value = flags.Int(arg.Name, def, arg.Usage)
+					def, _ := f.Default.(int)
+					f.Value = flags.Int(f.Name, def, f.Usage)
 				case plugins.CommandValueTypeString:
-					def, _ := arg.Default.(string)
-					arg.Value = flags.String(arg.Name, def, arg.Usage)
+					def, _ := f.Default.(string)
+					f.Value = flags.String(f.Name, def, f.Usage)
+				}
+
+				if f.Required {
+					_ = cmd.MarkFlagRequired(f.Name)
 				}
 			}
 		}

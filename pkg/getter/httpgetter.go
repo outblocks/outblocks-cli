@@ -29,7 +29,7 @@ func (g *HTTPGetter) Get(ctx context.Context, href string, options ...Option) (*
 }
 
 func (g *HTTPGetter) get(ctx context.Context, href string) (*bytes.Buffer, error) {
-	buf := bytes.NewBuffer(nil)
+	buf := &bytes.Buffer{}
 
 	// Set a helm specific user agent so that a repo server and metrics can
 	// separate helm calls from other tools interacting with repos.
@@ -81,8 +81,7 @@ func NewHTTPGetter(options ...Option) (Getter, error) {
 
 func (g *HTTPGetter) httpClient() (*http.Client, error) {
 	transport := &http.Transport{
-		DisableCompression: true,
-		Proxy:              http.ProxyFromEnvironment,
+		Proxy: http.ProxyFromEnvironment,
 	}
 
 	if (g.opts.certFile != "" && g.opts.keyFile != "") || g.opts.caFile != "" {

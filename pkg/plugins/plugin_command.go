@@ -80,11 +80,12 @@ func (p *PluginCommand) InputTypes() []CommandInputType {
 }
 
 type PluginCommandFlag struct {
-	Name    string      `json:"name"`
-	Usage   string      `json:"usage"`
-	Type    string      `json:"type"`
-	Default interface{} `json:"default"`
-	Value   interface{} `json:"-"`
+	Name     string      `json:"name"`
+	Usage    string      `json:"usage"`
+	Type     string      `json:"type"`
+	Default  interface{} `json:"default"`
+	Required bool        `json:"required"`
+	Value    interface{} `json:"-"`
 
 	typ CommandValueType
 }

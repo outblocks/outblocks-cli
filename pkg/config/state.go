@@ -59,7 +59,7 @@ func (s *State) SaveLocal(d *types.StateData) error {
 		return err
 	}
 
-	return fileutil.WriteFile(s.LocalPath(), data, 0644)
+	return fileutil.WriteFile(s.LocalPath(), data, 0o644)
 }
 
 func (s *State) Normalize(cfg *Project) error {

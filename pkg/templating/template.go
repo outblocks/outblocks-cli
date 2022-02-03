@@ -188,7 +188,17 @@ func (t *Template) ParseProjectTemplate(projectName string) error {
 		return merry.Errorf("load project template error: \n%s", yaml.FormatErrorDefault(err))
 	}
 
-	files, err := fileglob.Glob(filepath.Join(t.dir, fmt.Sprintf("{%s}", strings.Join(t.TemplateFiles, ","))))
+	curDir, err := os.Getwd()
+	if err != nil {
+		return merry.Errorf("can't get current working dir: %w", err)
+	}
+
+	path, err := filepath.Rel(curDir, t.dir)
+	if err != nil {
+		return merry.Errorf("can't create relative path: %w", err)
+	}
+
+	files, err := fileglob.Glob(filepath.Join(path, fmt.Sprintf("{%s}", strings.Join(t.TemplateFiles, ","))))
 	if err != nil {
 		return merry.Errorf("error matching template files: %w", err)
 	}
