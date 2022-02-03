@@ -21,7 +21,7 @@ require (
 	github.com/outblocks/outblocks-plugin-go v0.0.0-20220202220952-f2673b00e3ac
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.33
-	github.com/r3labs/diff/v2 v2.14.6
+	github.com/r3labs/diff/v2 v2.14.7
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
 	github.com/spf13/cobra v1.3.0
 	github.com/spf13/pflag v1.0.5
@@ -109,4 +109,4 @@ replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.2022020
 
 // replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go
 
-replace github.com/r3labs/diff/v2 => github.com/23doors/diff/v2 v2.14.6-0.20220203164715-fdebcb15451d
+// replace github.com/r3labs/diff/v2 => github.com/23doors/diff/v2 v2.14.6-0.20220203164715-fdebcb15451d
