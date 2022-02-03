@@ -81,7 +81,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	e.opts.env = e.v.GetString("env")
 	cmd, _, err := e.rootCmd.Find(os.Args[1:])
 
-	isHelp := helpFlag.Changed || (len(os.Args) > 0 && strings.EqualFold(os.Args[1], "help"))
+	isHelp := helpFlag.Changed || (len(os.Args) > 1 && strings.EqualFold(os.Args[1], "help"))
 
 	if err == nil {
 		skipLoadConfig = cmd.Annotations[cmdSkipLoadConfigAnnotation] == "1"
