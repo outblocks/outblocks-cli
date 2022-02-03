@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.60](https://github.com/outblocks/outblocks-cli/compare/v0.1.59...v0.1.60)
+
+> 2022-02-03
+
+### FEATURES
+
+[`67feb21`](https://github.com/outblocks/outblocks-cli/commit/67feb21a1ff727d2b8099eab132bbd5042393244) build separation, custom command, cloudrun url
+
+
 ## [v0.1.59](https://github.com/outblocks/outblocks-cli/compare/v0.1.58...v0.1.59)
 
 > 2022-02-02
