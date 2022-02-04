@@ -1,8 +1,17 @@
 # Outblocks CLI Changelog
 
+## [v0.1.62](https://github.com/outblocks/outblocks-cli/compare/v0.1.61...v0.1.62)
+
+> 2022-02-04
+
+### BUG FIXES
+
+[`07dda4e`](https://github.com/outblocks/outblocks-cli/commit/07dda4eaf79b50a4f3f26becb5789780eb9e77cd) state diff
+
+
 ## [v0.1.61](https://github.com/outblocks/outblocks-cli/compare/v0.1.60...v0.1.61)
 
-> 2022-02-03
+> 2022-02-04
 
 ### BUG FIXES
 
