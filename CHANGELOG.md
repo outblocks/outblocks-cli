@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.63](https://github.com/outblocks/outblocks-cli/compare/v0.1.62...v0.1.63)
+
+> 2022-02-04
+
+### BUG FIXES
+
+[`c413617`](https://github.com/outblocks/outblocks-cli/commit/c4136176d2bc61715b76721d254ddc4f45e4d21d) proper go.mod dependency
+
+
 ## [v0.1.62](https://github.com/outblocks/outblocks-cli/compare/v0.1.61...v0.1.62)
 
 > 2022-02-04
