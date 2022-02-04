@@ -50,8 +50,8 @@ cloud.google.com/go/storage v1.8.0/go.mod h1:Wv1Oy7z6Yz3DshWRJFhqM/UCfaWIRTdp0RX
 cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9ullr3+Kg0=
 cloud.google.com/go/storage v1.14.0/go.mod h1:GrKmX003DSIwi9o29oFT7YDnHYwZoctc3fOKtUw0Xmo=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
-github.com/23doors/diff/v2 v2.14.6-0.20220203180704-2eb23ac5db4d h1:6tEihQ8r3nHj7SKhaHNaQoXWAbLGw2J6HFrRGf6u+oM=
-github.com/23doors/diff/v2 v2.14.6-0.20220203180704-2eb23ac5db4d/go.mod h1:I8noH9Fc2fjSaMxqF3G2lhDdC0b+JXCfyx85tWFM9kc=
+github.com/23doors/diff/v2 v2.14.6-0.20220204142500-e7153a22b875 h1:w7GpkNXVlVK1DWC6mIBgh4fcG4DJMfHGqtFr+mo1+Pw=
+github.com/23doors/diff/v2 v2.14.6-0.20220204142500-e7153a22b875/go.mod h1:I8noH9Fc2fjSaMxqF3G2lhDdC0b+JXCfyx85tWFM9kc=
 github.com/23doors/go-yaml v1.8.10-0.20220202183938-703c5fcb6bdf h1:ajxaRsJsoy+Ib701qDYYNp8AeU9zD52zqrdbQ7iS6DI=
 github.com/23doors/go-yaml v1.8.10-0.20220202183938-703c5fcb6bdf/go.mod h1:U/jl18uSupI5rdI2jmuCswEA2htH9eXfferR3KfscvA=
 github.com/23doors/jsonschema/v5 v5.0.1-0.20220120150455-3960be6116ea h1:31AWR/M1U5eOHLQ+ua5wHRTXmScfjVbZIUHbpVjIUhQ=

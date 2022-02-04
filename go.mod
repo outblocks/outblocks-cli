@@ -109,4 +109,4 @@ replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.2022020
 // replace github.com/r3labs/diff/v2 => ../diff
 // replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go
 
-replace github.com/r3labs/diff/v2 => github.com/23doors/diff/v2 v2.14.6-0.20220203180704-2eb23ac5db4d
+replace github.com/r3labs/diff/v2 => github.com/23doors/diff/v2 v2.14.6-0.20220204142500-e7153a22b875
