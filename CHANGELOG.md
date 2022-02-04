@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.61](https://github.com/outblocks/outblocks-cli/compare/v0.1.60...v0.1.61)
+
+> 2022-02-03
+
+### BUG FIXES
+
+[`3c836cd`](https://github.com/outblocks/outblocks-cli/commit/3c836cdd0fc822e2849fa362e5ec9e70e2acf331) help flag parsing, diff processing
+
+
 ## [v0.1.60](https://github.com/outblocks/outblocks-cli/compare/v0.1.59...v0.1.60)
 
 > 2022-02-03
