@@ -106,7 +106,7 @@ replace github.com/santhosh-tekuri/jsonschema/v5 => github.com/23doors/jsonschem
 replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.20220202183938-703c5fcb6bdf
 
 // replace github.com/goccy/go-yaml => ../go-yaml
-
+// replace github.com/r3labs/diff/v2 => ../diff
 // replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go
 
-// replace github.com/r3labs/diff/v2 => github.com/23doors/diff/v2 v2.14.6-0.20220203164715-fdebcb15451d
+replace github.com/r3labs/diff/v2 => github.com/23doors/diff/v2 v2.14.6-0.20220203180704-2eb23ac5db4d
