@@ -55,7 +55,7 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				}
 			}
 
-			if opts.Destroy {
+			if opts.Destroy || opts.SkipAllApps {
 				opts.SkipBuild = true
 			}
 

@@ -37,7 +37,7 @@ func firstPatchLogError(plog diff.PatchLog) error {
 	return nil
 }
 
-func (s *stateDiff) Apply(state *types.StateData) error {
+func (s *stateDiff) Apply(state *types.StateData) error { // nolint:gocyclo
 	if state.Apps == nil {
 		state.Apps = make(map[string]*apiv1.AppState)
 	}
@@ -89,7 +89,12 @@ func (s *stateDiff) Apply(state *types.StateData) error {
 		state.Plugins = make(map[string]*types.PluginState)
 	}
 
-	ret = diff.Patch(s.pluginsState, &state.Plugins)
+	pluginState, err := pluginsStateWithoutRegistry(state.Plugins)
+	if err != nil {
+		return err
+	}
+
+	ret = diff.Patch(s.pluginsState, pluginState)
 	if ret.HasErrors() {
 		return merry.Errorf("error applying patch on state.plugins_state: %w", firstPatchLogError(ret))
 	}
@@ -104,8 +109,27 @@ func (s *stateDiff) Apply(state *types.StateData) error {
 		return merry.Errorf("error applying patch on state.plugins registry: %w", firstPatchLogError(ret))
 	}
 
+	for k, v := range pluginState {
+		vals := make(map[string]json.RawMessage, len(v))
+
+		if _, ok := state.Plugins[k]; !ok {
+			state.Plugins[k] = &types.PluginState{}
+		}
+
+		for mapk, mapv := range v {
+			raw, _ := json.Marshal(mapv)
+			vals[mapk] = raw
+		}
+
+		state.Plugins[k].Other = vals
+	}
+
 	for k, v := range pluginRegistry {
 		resources := make([]*registry.ResourceSerialized, 0, len(v))
+
+		if _, ok := state.Plugins[k]; !ok {
+			state.Plugins[k] = &types.PluginState{}
+		}
 
 		for _, r := range v {
 			resources = append(resources, r)
@@ -117,7 +141,7 @@ func (s *stateDiff) Apply(state *types.StateData) error {
 
 		out, err := json.Marshal(resources)
 		if err != nil {
-			return err
+			return merry.Errorf("error marshaling plugin registry: %w", err)
 		}
 
 		state.Plugins[k].Registry = out
@@ -216,20 +240,29 @@ func dnsRecordsAsMap(records types.DNSRecordMap) map[string]dnsRecordValue {
 	return ret
 }
 
-func pluginsStateWithoutRegistry(plugins map[string]*types.PluginState) map[string]*types.PluginState {
-	pluginRegistry := make(map[string]*types.PluginState, len(plugins))
+func pluginsStateWithoutRegistry(plugins map[string]*types.PluginState) (map[string]map[string]interface{}, error) {
+	ret := make(map[string]map[string]interface{}, len(plugins))
 
 	for k, v := range plugins {
-		if v == nil {
+		if v == nil || len(v.Other) == 0 {
 			continue
 		}
 
-		pluginRegistry[k] = &types.PluginState{
-			Other: v.Other,
+		ret[k] = make(map[string]interface{}, len(v.Other))
+
+		for otherk, otherv := range v.Other {
+			var val interface{}
+			err := json.Unmarshal(otherv, &val)
+
+			if err != nil {
+				return nil, err
+			}
+
+			ret[k][otherk] = val
 		}
 	}
 
-	return pluginRegistry
+	return ret, nil
 }
 
 func diffOnlyExported(path []string, parent reflect.Type, field reflect.StructField) bool { // nolint:gocritic
@@ -279,8 +312,15 @@ func computeStateDiff(state1, state2 *types.StateData) (*stateDiff, error) {
 		return nil, merry.Wrap(err)
 	}
 
-	state1PluginState := pluginsStateWithoutRegistry(state1.Plugins)
-	state2PluginState := pluginsStateWithoutRegistry(state2.Plugins)
+	state1PluginState, err := pluginsStateWithoutRegistry(state1.Plugins)
+	if err != nil {
+		return nil, merry.Wrap(err)
+	}
+
+	state2PluginState, err := pluginsStateWithoutRegistry(state2.Plugins)
+	if err != nil {
+		return nil, merry.Wrap(err)
+	}
 
 	pluginsState, err := computeDiff(state1PluginState, state2PluginState)
 	if err != nil {
