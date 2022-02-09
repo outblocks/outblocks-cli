@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.64](https://github.com/outblocks/outblocks-cli/compare/v0.1.63...v0.1.64)
+
+> 2022-02-10
+
+### BUG FIXES
+
+[`b2309a1`](https://github.com/outblocks/outblocks-cli/commit/b2309a1c64a63db749162c9616aed04fd52178ee) state merging
+
+
 ## [v0.1.63](https://github.com/outblocks/outblocks-cli/compare/v0.1.62...v0.1.63)
 
 > 2022-02-04
