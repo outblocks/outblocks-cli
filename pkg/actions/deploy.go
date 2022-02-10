@@ -371,7 +371,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 }
 
 func (d *Deploy) Run(ctx context.Context) error {
-	if d.opts.Lock && d.cfg.State.Plugin().HasAction(plugins.ActionLock) {
+	if d.opts.Lock && d.cfg.State.Plugin().HasAction(plugins.ActionLock) && false {
 		return d.multilockRun(ctx)
 	}
 
