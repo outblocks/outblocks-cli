@@ -43,6 +43,7 @@ func filterAppsNormal(cfg *config.Project, state *types.StateData, targetAppIDsM
 			State: &apiv1.AppState{
 				App: appType,
 			},
+			Build: app.BuildProto(),
 		}
 	}
 
