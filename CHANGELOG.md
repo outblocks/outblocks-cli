@@ -1,5 +1,10 @@
 # Outblocks CLI Changelog
 
+## [v0.1.66](https://github.com/outblocks/outblocks-cli/compare/v0.1.65...v0.1.66)
+
+> 2022-02-10
+
+
 ## [v0.1.65](https://github.com/outblocks/outblocks-cli/compare/v0.1.64...v0.1.65)
 
 > 2022-02-10
