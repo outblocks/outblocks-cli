@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.67](https://github.com/outblocks/outblocks-cli/compare/v0.1.66...v0.1.67)
+
+> 2022-02-18
+
+### FEATURES
+
+[`b973203`](https://github.com/outblocks/outblocks-cli/commit/b9732034f2261ef53c2d093be1e073b830fcb87c) periodic update check, obsolete dns check, prompt with input, support for short flag custom command, new state diff
+
+
 ## [v0.1.66](https://github.com/outblocks/outblocks-cli/compare/v0.1.65...v0.1.66)
 
 > 2022-02-10
