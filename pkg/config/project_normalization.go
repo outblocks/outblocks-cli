@@ -1,11 +1,32 @@
 package config
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 )
+
+func (p *Project) normalizeDNS() error {
+	domains := make(map[string]struct{})
+
+	for i, dns := range p.DNS {
+		if err := dns.Normalize(i, p); err != nil {
+			return err
+		}
+
+		for _, d := range dns.Domains {
+			if _, ok := domains[d]; ok {
+				return p.yamlError(fmt.Sprintf("$.dns[%d]", i), "domain '%s' is duplicated")
+			}
+
+			domains[d] = struct{}{}
+		}
+	}
+
+	return nil
+}
 
 // Initial first pass validation.
 func (p *Project) Normalize() error {
@@ -33,10 +54,8 @@ func (p *Project) Normalize() error {
 			}
 		}
 
-		for i, dns := range p.DNS {
-			if err := dns.Normalize(i, p); err != nil {
-				return err
-			}
+		if err := p.normalizeDNS(); err != nil {
+			return err
 		}
 
 		// Default to local statefile.

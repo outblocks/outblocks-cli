@@ -60,3 +60,19 @@ func (e *VarEvaluator) ExpandStringMap(input map[string]string) (map[string]stri
 
 	return out, nil
 }
+
+func MapLookupPath(m map[string]interface{}, keys ...string) map[string]interface{} {
+	for _, k := range keys {
+		v, ok := m[k]
+		if !ok {
+			return nil
+		}
+
+		m, ok = v.(map[string]interface{})
+		if !ok {
+			return nil
+		}
+	}
+
+	return m
+}

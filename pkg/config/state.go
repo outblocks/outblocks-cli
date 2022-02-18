@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-plugin-go/types"
@@ -56,7 +57,7 @@ func (s *State) LoadLocal() (*types.StateData, error) {
 func (s *State) SaveLocal(d *types.StateData) error {
 	data, err := json.Marshal(d)
 	if err != nil {
-		return err
+		return merry.Errorf("error marshaling state: %w", err)
 	}
 
 	return fileutil.WriteFile(s.LocalPath(), data, 0o644)

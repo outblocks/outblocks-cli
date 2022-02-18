@@ -15,7 +15,9 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
+	"github.com/outblocks/outblocks-cli/pkg/cli/values"
 	"github.com/outblocks/outblocks-cli/pkg/config"
+	"github.com/outblocks/outblocks-cli/pkg/getter"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/pkg/templating"
@@ -34,6 +36,7 @@ type Init struct {
 	pluginCacheDir string
 	hostAddr       string
 	opts           *InitOptions
+	input          map[string]interface{}
 
 	template *templating.Template
 }
@@ -42,11 +45,12 @@ type InitOptions struct {
 	Overwrite bool
 	Path      string
 
-	Name         string
-	DeployPlugin string
-	RunPlugin    string
-	DNSDomain    string
-	Template     string
+	Name              string
+	DeployPlugin      string
+	RunPlugin         string
+	DNSDomain         string
+	Template          string
+	TemplateValueOpts *values.Options
 
 	GCP struct {
 		Project string
@@ -87,10 +91,10 @@ type valuesInit struct {
 	PluginValues   map[string]interface{}
 }
 
-func (d *Init) promptEnv(ctx context.Context, cfg *projectInit, env string) error {
+func (d *Init) promptEnv(ctx context.Context, cfg *projectInit, env string, input map[string]interface{}) error {
 	d.log.Section().Printf("%s environment configuration", strings.Title(env))
 
-	values := &valuesInit{
+	vals := &valuesInit{
 		projectInit:  cfg,
 		PluginValues: make(map[string]interface{}),
 	}
@@ -101,7 +105,7 @@ func (d *Init) promptEnv(ctx context.Context, cfg *projectInit, env string) erro
 	)
 
 	if d.template != nil {
-		values.TemplateValues, err = d.processValuesTemplate()
+		vals.TemplateValues, err = d.processValuesTemplate(input)
 		if err != nil {
 			return err
 		}
@@ -115,20 +119,20 @@ func (d *Init) promptEnv(ctx context.Context, cfg *projectInit, env string) erro
 			},
 		}
 
-		values.DNSDomain = d.opts.DNSDomain
+		vals.DNSDomain = d.opts.DNSDomain
 	}
 
 	if len(cfg.DNSTemplate) == 0 {
-		if values.DNSDomain == "" {
+		if vals.DNSDomain == "" {
 			err := survey.AskOne(&survey.Input{
 				Message: "Main domain you plan to use for deployments:",
 				Default: "example.com",
-			}, &values.DNSDomain)
+			}, &vals.DNSDomain)
 			if err != nil {
 				return err
 			}
 		} else {
-			d.log.Printf("%s %s\n", pterm.Bold.Sprint("Main domain you plan to use for deployments"), pterm.Cyan(values.DNSDomain))
+			d.log.Printf("%s %s\n", pterm.Bold.Sprint("Main domain you plan to use for deployments"), pterm.Cyan(vals.DNSDomain))
 		}
 	}
 
@@ -147,7 +151,7 @@ func (d *Init) promptEnv(ctx context.Context, cfg *projectInit, env string) erro
 
 			for k, v := range plug.Other {
 				valueKey := fmt.Sprintf("%s_%s", plug.Name, k)
-				values.PluginValues[valueKey] = v
+				vals.PluginValues[valueKey] = v
 				plug.Other[k] = fmt.Sprintf("${var.%s}", valueKey)
 			}
 		}
@@ -158,7 +162,7 @@ func (d *Init) promptEnv(ctx context.Context, cfg *projectInit, env string) erro
 
 	var valuesYAML bytes.Buffer
 
-	err = tmpl.Execute(&valuesYAML, values)
+	err = tmpl.Execute(&valuesYAML, vals)
 	if err != nil {
 		return err
 	}
@@ -198,13 +202,13 @@ func (d *Init) installTemplate() error {
 	return nil
 }
 
-func (d *Init) processProjectTemplate(cfg *projectInit) error {
+func (d *Init) processProjectTemplate(cfg *projectInit, input map[string]interface{}) error {
 	if d.template.HasProjectPrompt() {
 		d.log.Println("Parsing project template...")
 		fmt.Println()
 	}
 
-	err := d.template.ParseProjectTemplate(d.opts.Name)
+	err := d.template.ParseProjectTemplate(d.opts.Name, input)
 	if err != nil {
 		return err
 	}
@@ -224,19 +228,19 @@ func (d *Init) processProjectTemplate(cfg *projectInit) error {
 	return nil
 }
 
-func (d *Init) processValuesTemplate() ([]byte, error) {
+func (d *Init) processValuesTemplate(input map[string]interface{}) ([]byte, error) {
 	if d.template.HasValuesPrompt() {
 		d.log.Println("Parsing values template...")
 		fmt.Println()
 	}
 
-	return d.template.ParseValuesTemplate()
+	return d.template.ParseValuesTemplate(input)
 }
 
 func (d *Init) promptBasicInfo() error {
 	var qs []*survey.Question
 
-	d.log.Section().Printf("Project set up")
+	d.log.Section().Printf("Project setup")
 
 	if d.opts.Name == "" {
 		qs = append(qs, &survey.Question{
@@ -258,7 +262,7 @@ func (d *Init) promptBasicInfo() error {
 	return err
 }
 
-func (d *Init) runPrompt(ctx context.Context, cfg *projectInit) error {
+func (d *Init) runPrompt(ctx context.Context, cfg *projectInit) error { // nolint: gocyclo
 	if d.opts.Template != "" && plugin_util.DirExists(d.opts.Path) && !d.opts.Overwrite {
 		proceed := false
 		prompt := &survey.Confirm{
@@ -302,7 +306,7 @@ func (d *Init) runPrompt(ctx context.Context, cfg *projectInit) error {
 	}
 
 	if d.template != nil {
-		err := d.processProjectTemplate(cfg)
+		err := d.processProjectTemplate(cfg, util.MapLookupPath(d.input, "project"))
 		if err != nil {
 			return err
 		}
@@ -320,19 +324,30 @@ func (d *Init) runPrompt(ctx context.Context, cfg *projectInit) error {
 		return err
 	}
 
-	err = d.promptEnv(ctx, cfg, "dev")
-	if err != nil {
-		return err
+	vals := util.MapLookupPath(d.input, "values")
+
+	for k := range vals {
+		err = d.promptEnv(ctx, cfg, k, util.MapLookupPath(vals, k))
+		if err != nil {
+			return err
+		}
 	}
 
-	var addProd bool
+	if len(vals) == 0 {
+		err = d.promptEnv(ctx, cfg, "dev", nil)
+		if err != nil {
+			return err
+		}
 
-	_ = survey.AskOne(&survey.Confirm{
-		Message: "Do you want to add production config as well? You can add it later on by creating production.values.yaml based on dev.values.yaml.",
-	}, addProd)
+		var addProd bool
 
-	if addProd {
-		err = d.promptEnv(ctx, cfg, "production")
+		_ = survey.AskOne(&survey.Confirm{
+			Message: "Do you want to add production config as well? You can add it later on by creating production.values.yaml based on dev.values.yaml.",
+		}, addProd)
+
+		if addProd {
+			err = d.promptEnv(ctx, cfg, "production", nil)
+		}
 	}
 
 	return err
@@ -356,6 +371,23 @@ func (d *Init) Run(ctx context.Context) error {
 	initCfg := &projectInit{
 		Project: &config.Project{},
 	}
+
+	v, err := d.opts.TemplateValueOpts.MergeValues(ctx, curDir, getter.All())
+	if err != nil {
+		return merry.Errorf("error getting template values: %w", err)
+	}
+
+	d.input = v
+
+	d.opts.Name = getMapStringVal(d.input, d.opts.Name, "project", "name")
+	d.opts.DeployPlugin = getMapStringVal(d.input, d.opts.DeployPlugin, "project", "deploy_plugin")
+	d.opts.RunPlugin = getMapStringVal(d.input, d.opts.RunPlugin, "project", "run_plugin")
+	d.opts.defaultDeployPlugin = getMapStringVal(d.input, d.opts.defaultDeployPlugin, "project", "default_deploy_plugin")
+	d.opts.defaultRunPlugin = getMapStringVal(d.input, d.opts.defaultRunPlugin, "project", "default_run_plugin")
+	d.opts.statePlugin = getMapStringVal(d.input, d.opts.statePlugin, "project", "state_plugin")
+
+	d.opts.GCP.Project = getMapStringVal(d.input, d.opts.GCP.Project, "project", "gcp", "project")
+	d.opts.GCP.Region = getMapStringVal(d.input, d.opts.GCP.Region, "project", "gcp", "region")
 
 	err = d.runPrompt(ctx, initCfg)
 	if errors.Is(err, errInitCanceled) || errors.Is(err, terminal.InterruptErr) {
@@ -418,17 +450,17 @@ func (d *Init) promptPlugins(cfg *projectInit) error {
 		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Run plugin to be used:"), pterm.Cyan(d.opts.RunPlugin))
 	}
 
-	cfg.Plugins = []*config.Plugin{
-		{Name: d.opts.DeployPlugin, Version: ""},
-		{Name: d.opts.RunPlugin, Version: ""},
-	}
-
 	// Ask questions.
 	if len(qs) != 0 {
 		err := survey.Ask(qs, d.opts)
 		if err != nil {
 			return err
 		}
+	}
+
+	cfg.Plugins = []*config.Plugin{
+		{Name: d.opts.DeployPlugin, Version: ""},
+		{Name: d.opts.RunPlugin, Version: ""},
 	}
 
 	return nil
@@ -562,4 +594,26 @@ func (d *Init) prompt(ctx context.Context, cfg *projectInit) error { // nolint:g
 	}
 
 	return nil
+}
+
+func getMapStringVal(m map[string]interface{}, def string, keys ...string) string {
+	if len(keys) < 1 {
+		return ""
+	}
+
+	if len(keys) > 1 {
+		m = util.MapLookupPath(m, keys[:len(keys)-1]...)
+	}
+
+	v, ok := m[keys[len(keys)-1]]
+	if !ok {
+		return def
+	}
+
+	vs, ok := v.(string)
+	if !ok {
+		return def
+	}
+
+	return vs
 }

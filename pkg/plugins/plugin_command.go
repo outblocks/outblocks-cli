@@ -81,6 +81,7 @@ func (p *PluginCommand) InputTypes() []CommandInputType {
 
 type PluginCommandFlag struct {
 	Name     string      `json:"name"`
+	Short    string      `json:"short"`
 	Usage    string      `json:"usage"`
 	Type     string      `json:"type"`
 	Default  interface{} `json:"default"`

@@ -138,6 +138,27 @@ func (a *BasicApp) Validate() error {
 	)
 }
 
+func ParseAppURL(u string) (*url.URL, error) {
+	if u == "" {
+		return nil, nil
+	}
+
+	if !strings.HasPrefix(u, "http") {
+		u = "https://" + u
+	}
+
+	parsed, err := url.Parse(u)
+	if err != nil {
+		return nil, err
+	}
+
+	if parsed.Path == "" {
+		parsed.Path = "/"
+	}
+
+	return parsed, nil
+}
+
 func (a *BasicApp) Normalize(cfg *Project) error {
 	var err error
 
@@ -177,21 +198,9 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 	a.AppRun.Plugin = strings.ToLower(a.AppRun.Plugin)
 	a.AppURL = strings.ToLower(a.AppURL)
 
-	if a.AppURL != "" {
-		if !strings.HasPrefix(a.AppURL, "http") {
-			a.AppURL = "https://" + a.AppURL
-		}
-
-		var err error
-
-		a.url, err = url.Parse(a.AppURL)
-		if err != nil {
-			return a.YAMLError("$.url", "url is invalid")
-		}
-
-		if a.url.Path == "" {
-			a.url.Path = "/"
-		}
+	a.url, err = ParseAppURL(a.AppURL)
+	if err != nil {
+		return a.YAMLError("$.url", "url is invalid")
 	}
 
 	err = func() error {

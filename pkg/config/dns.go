@@ -29,6 +29,7 @@ type DNS struct {
 	SSLInfo *SSLInfo `json:"ssl,omitempty"`
 
 	domainsRegex []*regexp.Regexp
+	used         bool
 
 	plugin *plugins.Plugin
 }
@@ -41,6 +42,14 @@ func (s *DNS) Match(d string) bool {
 	}
 
 	return false
+}
+
+func (s *DNS) MarkAsUsed() {
+	s.used = true
+}
+
+func (s *DNS) IsUsed() bool {
+	return s.used
 }
 
 func (s *DNS) Normalize(i int, cfg *Project) error {
@@ -59,8 +68,8 @@ func (s *DNS) Normalize(i int, cfg *Project) error {
 
 	s.domainsRegex = make([]*regexp.Regexp, len(s.Domains))
 
-	for _, v := range s.Domains {
-		s.domainsRegex[i] = plugin_util.DomainRegex(v)
+	for k, v := range s.Domains {
+		s.domainsRegex[k] = plugin_util.DomainRegex(v)
 	}
 
 	if s.SSLInfo == nil {

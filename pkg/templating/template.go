@@ -124,8 +124,8 @@ func LoadTemplate(dir string) (*Template, error) {
 	return t, nil
 }
 
-func promptData(path string, d []byte) (map[string]interface{}, error) {
-	data, err := jsonschemaform.Prompt(1, d)
+func promptData(path string, d []byte, input map[string]interface{}) (map[string]interface{}, error) {
+	data, err := jsonschemaform.Prompt(1, d, input)
 	if err != nil {
 		return nil, merry.Errorf("error processing jsonschema file %s: %w", path, err)
 	}
@@ -142,7 +142,7 @@ func (t *Template) HasProjectPrompt() bool {
 	return len(t.projectPrompt) != 0
 }
 
-func (t *Template) ParseProjectTemplate(projectName string) error {
+func (t *Template) ParseProjectTemplate(projectName string, input map[string]interface{}) error {
 	t.Project = &TemplateProject{
 		values: map[string]interface{}{
 			"project": map[string]interface{}{
@@ -158,7 +158,7 @@ func (t *Template) ParseProjectTemplate(projectName string) error {
 	)
 
 	if len(t.projectPrompt) != 0 {
-		data, err = promptData(filepath.Join(t.dir, TemplateProjectJSON), t.projectPrompt)
+		data, err = promptData(filepath.Join(t.dir, TemplateProjectJSON), t.projectPrompt, input)
 		if err != nil {
 			return err
 		}
@@ -229,7 +229,7 @@ func (t *Template) HasValuesPrompt() bool {
 	return len(t.valuesPrompt) != 0
 }
 
-func (t *Template) ParseValuesTemplate() ([]byte, error) {
+func (t *Template) ParseValuesTemplate(input map[string]interface{}) ([]byte, error) {
 	t.Values = &TemplateValues{}
 
 	// Prompt data.
@@ -239,7 +239,7 @@ func (t *Template) ParseValuesTemplate() ([]byte, error) {
 	)
 
 	if len(t.valuesPrompt) != 0 {
-		data, err = promptData(filepath.Join(t.dir, TemplateValuesJSON), t.valuesPrompt)
+		data, err = promptData(filepath.Join(t.dir, TemplateValuesJSON), t.valuesPrompt, input)
 		if err != nil {
 			return nil, err
 		}

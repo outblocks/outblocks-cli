@@ -89,3 +89,13 @@ func IsTermDumb() bool {
 
 	return false
 }
+
+var newline = regexp.MustCompile(`\n`)
+
+func IndentString(s, indent string) string {
+	if s == "" {
+		return s
+	}
+
+	return fmt.Sprintf("%s%s", indent, newline.ReplaceAllString(s, fmt.Sprintf("\n%s", indent)))
+}

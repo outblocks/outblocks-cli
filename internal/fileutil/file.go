@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/ansel1/merry/v2"
 	"github.com/pkg/errors"
@@ -285,4 +286,26 @@ func Symlink(oldname, newname string) error {
 	}
 
 	return ChownToUser(newname)
+}
+
+func GetModTimeFromFile(path string) time.Time {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return time.Time{}
+	}
+
+	return fi.ModTime()
+}
+
+func Touch(path string) error {
+	n := time.Now()
+
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+
+	_ = f.Close()
+
+	return os.Chtimes(path, n, n)
 }

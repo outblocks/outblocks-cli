@@ -2,6 +2,7 @@
 package templating
 
 import (
+	"io/fs"
 	"path/filepath"
 
 	"github.com/ansel1/merry/v2"
@@ -19,6 +20,10 @@ func NewLocalInstaller(source string) (*LocalInstaller, error) {
 
 	i := &LocalInstaller{
 		base: newBase(source, src),
+	}
+
+	i.filter = func(path string, entry fs.DirEntry) bool {
+		return entry.Name() != ".git"
 	}
 
 	return i, nil

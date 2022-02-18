@@ -12,6 +12,9 @@ import (
 
 	"github.com/ansel1/merry/v2"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/parser"
+	"github.com/outblocks/outblocks-cli/internal/statediff"
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
@@ -67,6 +70,10 @@ func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Dep
 	}
 }
 
+func (d *Deploy) preChecks(state *types.StateData) error {
+	return d.checkIfDNSAreUsed(state.Apps)
+}
+
 func (d *Deploy) stateLockRun(ctx context.Context) error {
 	verify := d.opts.Verify
 	yamlContext := &client.YAMLContext{
@@ -96,7 +103,15 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 
 	// Plan and apply.
 	stateBeforeStr, _ := json.Marshal(state)
-	empty, canceled, dur, _, err := d.planAndApply(ctx, verify, state, stateRes, nil, false)
+
+	err = d.preChecks(state)
+	if err != nil {
+		_ = releaseStateLock(d.cfg, stateRes.LockInfo)
+
+		return err
+	}
+
+	empty, canceled, dur, _, err := d.planAndApply(ctx, verify, state, nil, false)
 
 	// Proceed with saving.
 	stateAfterStr, _ := json.Marshal(state)
@@ -233,6 +248,57 @@ func (d *Deploy) partialLockIDs(state *types.StateData) []string {
 	return locks
 }
 
+func (d *Deploy) checkIfDNSAreUsed(stateApps map[string]*apiv1.AppState) error {
+	var stateDomains []string
+
+	for _, app := range stateApps {
+		u, _ := config.ParseAppURL(strings.ToLower(app.App.Url))
+		if u != nil {
+			stateDomains = append(stateDomains, u.Host)
+		}
+	}
+
+	// Check state app domains as well.
+	for _, dns := range d.cfg.DNS {
+		if dns.IsUsed() {
+			continue
+		}
+
+		for _, d := range stateDomains {
+			if dns.Match(d) {
+				dns.MarkAsUsed()
+			}
+		}
+	}
+
+	for i, dns := range d.cfg.DNS {
+		if dns.IsUsed() {
+			continue
+		}
+
+		n, err := yaml.PathString(fmt.Sprintf("$.dns[%d]", i))
+		if err != nil {
+			return err
+		}
+
+		file, err := parser.ParseBytes(d.cfg.YAMLData(), 0)
+		if err != nil {
+			return err
+		}
+
+		node, err := n.FilterFile(file)
+		if err != nil {
+			return err
+		}
+
+		d.log.Warnf("One or more project DNS configurations are unused!\nfile: %s, line: %d\n", d.cfg.YAMLPath(), node.GetToken().Position.Line)
+
+		return nil
+	}
+
+	return nil
+}
+
 func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 	verify := d.opts.Verify
 	first := true
@@ -284,7 +350,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 		if first && !d.opts.SkipBuild {
 			err = d.buildApps(ctx, state.Apps)
 			if err != nil {
-				_ = statePlugin.Client().ReleaseLocks(ctx, d.cfg.State.Other, acquiredLocks)
+				_ = releaseLocks(d.cfg, acquiredLocks)
 				return err
 			}
 
@@ -294,9 +360,15 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 		// Plan and apply.
 		stateBefore = state.DeepCopy()
 
-		empty, canceled, dur, missingLocks, err = d.planAndApply(ctx, verify, state, stateRes, acquiredLocks, true)
+		err = d.preChecks(state)
 		if err != nil {
-			_ = statePlugin.Client().ReleaseLocks(ctx, d.cfg.State.Other, acquiredLocks)
+			_ = releaseLocks(d.cfg, acquiredLocks)
+			return err
+		}
+
+		empty, canceled, dur, missingLocks, err = d.planAndApply(ctx, verify, state, acquiredLocks, true)
+		if err != nil {
+			_ = releaseLocks(d.cfg, acquiredLocks)
 			return err
 		}
 
@@ -306,7 +378,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 
 		locks = append(locks, missingLocks...)
 
-		err = statePlugin.Client().ReleaseLocks(ctx, d.cfg.State.Other, acquiredLocks)
+		err = releaseLocks(d.cfg, acquiredLocks)
 		if err != nil {
 			return err
 		}
@@ -320,13 +392,13 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 	// Proceed with saving.
 	stateAfter := state.DeepCopy()
 
-	stateDiff, err := computeStateDiff(stateBefore, stateAfter)
+	stateDiff, err := statediff.New(stateBefore, stateAfter)
 	if err != nil {
 		return merry.Errorf("computing state diff failed: %w", err)
 	}
 
 	if !stateDiff.IsEmpty() {
-		d.log.Debugf("State Diff: %s\n", stateDiff)
+		d.log.Debugf("State Diff\n%s\n", stateDiff)
 	}
 
 	shouldSave := !canceled && (!empty || !stateDiff.IsEmpty())
@@ -334,7 +406,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 	if shouldSave {
 		state, stateRes, err = getState(context.Background(), d.cfg.State, true, stateLockWait, yamlContext)
 		if err != nil {
-			_ = statePlugin.Client().ReleaseLocks(ctx, d.cfg.State.Other, acquiredLocks)
+			_ = releaseLocks(d.cfg, acquiredLocks)
 			return err
 		}
 
@@ -356,7 +428,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 	}
 
 	// Release locks.
-	if releaseErr := statePlugin.Client().ReleaseLocks(ctx, d.cfg.State.Other, acquiredLocks); err == nil {
+	if releaseErr := releaseLocks(d.cfg, acquiredLocks); err == nil {
 		err = releaseErr
 	}
 
@@ -371,14 +443,14 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 }
 
 func (d *Deploy) Run(ctx context.Context) error {
-	if d.opts.Lock && d.cfg.State.Plugin().HasAction(plugins.ActionLock) && false {
+	if d.opts.Lock && d.cfg.State.Plugin().HasAction(plugins.ActionLock) {
 		return d.multilockRun(ctx)
 	}
 
 	return d.stateLockRun(ctx)
 }
 
-func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, stateRes *apiv1.GetStateResponse_State, acquiredLocks map[string]string, checkLocks bool) (canceled, empty bool, dur time.Duration, missingLocks []string, err error) {
+func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, acquiredLocks map[string]string, checkLocks bool) (canceled, empty bool, dur time.Duration, missingLocks []string, err error) {
 	var domains []*apiv1.DomainInfo
 
 	if d.opts.SkipDNS {
@@ -417,8 +489,6 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	planRetMap, err := plan(ctx, state, planMap, domains, verify, destroy)
 	if err != nil {
 		spinner.Stop()
-
-		_ = releaseStateLock(d.cfg, stateRes.LockInfo)
 
 		return false, false, dur, nil, err
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/ansel1/merry/v2"
 	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
+	"github.com/outblocks/outblocks-cli/internal/version"
 	"github.com/outblocks/outblocks-cli/pkg/actions"
 	"github.com/outblocks/outblocks-cli/pkg/cli"
 	"github.com/outblocks/outblocks-cli/pkg/cli/values"
@@ -34,7 +35,8 @@ type Executor struct {
 
 	srv *server.Server
 
-	cfg *config.Project
+	cfg                 *config.Project
+	lastUpdateCheckFile string
 
 	opts struct {
 		env       string
@@ -81,7 +83,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	e.opts.env = e.v.GetString("env")
 	cmd, _, err := e.rootCmd.Find(os.Args[1:])
 
-	isHelp := helpFlag.Changed || (len(os.Args) > 1 && strings.EqualFold(os.Args[1], "help"))
+	isHelp := helpFlag.Changed || e.rootCmd == cmd || (len(os.Args) > 1 && strings.EqualFold(os.Args[1], "help"))
 
 	if err == nil {
 		skipLoadConfig = cmd.Annotations[cmdSkipLoadConfigAnnotation] == "1"
@@ -180,13 +182,13 @@ func (e *Executor) addPluginsCommands() error {
 				switch f.ValueType() {
 				case plugins.CommandValueTypeBool:
 					def, _ := f.Default.(bool)
-					f.Value = flags.Bool(f.Name, def, f.Usage)
+					f.Value = flags.BoolP(f.Name, f.Short, def, f.Usage)
 				case plugins.CommandValueTypeInt:
 					def, _ := f.Default.(int)
-					f.Value = flags.Int(f.Name, def, f.Usage)
+					f.Value = flags.IntP(f.Name, f.Short, def, f.Usage)
 				case plugins.CommandValueTypeString:
 					def, _ := f.Default.(string)
-					f.Value = flags.String(f.Name, def, f.Usage)
+					f.Value = flags.StringP(f.Name, f.Short, def, f.Usage)
 				}
 
 				if f.Required {
@@ -257,6 +259,11 @@ func (e *Executor) initConfig() error {
 		return err
 	}
 
+	err = fileutil.MkdirAll(clipath.ConfigDir(), 0o755)
+	if err != nil {
+		return err
+	}
+
 	e.v.AddConfigPath(dir)
 	e.v.AddConfigPath(clipath.ConfigDir())
 	e.v.SetConfigType("yaml")
@@ -269,6 +276,8 @@ func (e *Executor) initConfig() error {
 	if err := e.v.ReadInConfig(); err == nil {
 		e.log.Infoln("Using config file:", e.v.ConfigFileUsed())
 	}
+
+	e.lastUpdateCheckFile = clipath.ConfigDir(version.LastUpdateCheckFileName)
 
 	return nil
 }

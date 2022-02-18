@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/version"
 	"github.com/outblocks/outblocks-cli/pkg/cli/values"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
@@ -263,8 +264,27 @@ func (e *Executor) newRoot() *cobra.Command {
 		Short:         pterm.Sprintf("%s - %s", pterm.Bold.Sprintf("ok"), pterm.Italic.Sprint(version.Version())),
 		Long:          e.rootLongHelp(),
 		SilenceErrors: true,
-		Annotations: map[string]string{
-			cmdSkipLoadConfigAnnotation: "1",
+		Annotations:   map[string]string{},
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if version.ShouldRunUpdateCheck(e.lastUpdateCheckFile) {
+				v, err := version.CheckLatestCLI(cmd.Context())
+				if err != nil {
+					e.log.Debugf("Error checking latest CLI version: %s\n", err)
+
+					return
+				}
+
+				err = fileutil.Touch(e.lastUpdateCheckFile)
+				if err != nil {
+					e.log.Debugf("Error creating last update check file: %s\n", err)
+
+					return
+				}
+
+				if version.Semver().LessThan(v) {
+					e.log.Infof("New CLI version (v%s) is available for download!\n", v.String())
+				}
+			}
 		},
 		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
 			if e.cfg != nil {

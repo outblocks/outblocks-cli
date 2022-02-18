@@ -8,7 +8,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-const EnvPrefix = "OUTBLOCKS"
+const (
+	EnvPrefix = "OUTBLOCKS"
+)
 
 type Environment struct {
 	v *viper.Viper

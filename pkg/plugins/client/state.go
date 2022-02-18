@@ -51,7 +51,7 @@ func (c *Client) SaveState(ctx context.Context, state *types.StateData, typ stri
 
 	stateData, err := json.Marshal(state)
 	if err != nil {
-		return nil, err
+		return nil, merry.Errorf("error marshaling state: %w", err)
 	}
 
 	res, err := c.statePlugin().SaveState(ctx, &apiv1.SaveStateRequest{

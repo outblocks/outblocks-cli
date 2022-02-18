@@ -1,7 +1,9 @@
 package config
 
 import (
-	"github.com/goccy/go-yaml"
+	"bytes"
+	"encoding/json"
+
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
@@ -24,10 +26,14 @@ func (e *YAMLEvaluator) Expand(input []byte) ([]byte, error) {
 }
 
 func yamlVarEncoder(val interface{}) ([]byte, error) {
-	valOut, err := yaml.MarshalWithOptions(val, yaml.Flow(true))
+	valOut, err := json.Marshal(val)
+
 	if err != nil {
 		return nil, err
 	}
 
-	return valOut[:len(valOut)-1], nil
+	valOut = bytes.TrimPrefix(valOut, []byte{'"'})
+	valOut = bytes.TrimSuffix(valOut, []byte{'"'})
+
+	return valOut, nil
 }

@@ -299,9 +299,15 @@ func (p *Project) YAMLData() []byte {
 	return p.yamlData
 }
 
+func (p *Project) YAMLPath() string {
+	return p.yamlPath
+}
+
 func (p *Project) FindDNSPlugin(u *url.URL) *plugins.Plugin {
 	for _, dns := range p.DNS {
 		if dns.Match(u.Host) {
+			dns.MarkAsUsed()
+
 			return dns.plugin
 		}
 	}
