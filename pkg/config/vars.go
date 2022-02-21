@@ -1,14 +1,15 @@
 package config
 
 import (
-	"bytes"
 	"encoding/json"
 	"regexp"
 
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
-var quoteValues = regexp.MustCompile(`(\s*-\s+|\S:\s+)(\$\{var\.[^}]+})`)
+var (
+	checkQuotePrefix = regexp.MustCompile(`(\s*-\s+|\S:\s+)$`)
+)
 
 type YAMLEvaluator struct {
 	*plugin_util.BaseVarEvaluator
@@ -24,21 +25,27 @@ func NewYAMLEvaluator(vars map[string]interface{}) *YAMLEvaluator {
 }
 
 func (e *YAMLEvaluator) Expand(input []byte) ([]byte, error) {
-	input = quoteValues.ReplaceAll(input, []byte(`$1"$2"`))
 	format, _, err := e.ExpandRaw(input)
 
 	return format, err
 }
 
-func yamlVarEncoder(val interface{}) ([]byte, error) {
+func yamlVarEncoder(c *plugin_util.VarContext, val interface{}) ([]byte, error) {
 	valOut, err := json.Marshal(val)
-
 	if err != nil {
 		return nil, err
 	}
 
-	valOut = bytes.TrimPrefix(valOut, []byte{'"'})
-	valOut = bytes.TrimSuffix(valOut, []byte{'"'})
+	if valOut[0] == '"' && valOut[len(valOut)-1] == '"' {
+		switch valOut[1] {
+		case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"':
+			if len(valOut) > 2 && checkQuotePrefix.Match(c.Line[:c.TokenStart]) {
+				return valOut, nil
+			}
+		}
+
+		valOut = valOut[1 : len(valOut)-1]
+	}
 
 	return valOut, nil
 }

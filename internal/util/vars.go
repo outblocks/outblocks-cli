@@ -6,25 +6,25 @@ import (
 	"strings"
 
 	"github.com/ansel1/merry/v2"
-	"github.com/outblocks/outblocks-plugin-go/util"
+	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
 var escapePercent = regexp.MustCompile(`%([^{]|$)`)
 
 type VarEvaluator struct {
-	*util.BaseVarEvaluator
+	*plugin_util.BaseVarEvaluator
 }
 
 func NewVarEvaluator(vars map[string]interface{}) *VarEvaluator {
 	return &VarEvaluator{
-		BaseVarEvaluator: util.NewBaseVarEvaluator(vars).
+		BaseVarEvaluator: plugin_util.NewBaseVarEvaluator(vars).
 			WithEncoder(varEncoder).
 			WithVarChar('%').
 			WithIgnoreInvalid(true),
 	}
 }
 
-func varEncoder(input interface{}) ([]byte, error) {
+func varEncoder(c *plugin_util.VarContext, input interface{}) ([]byte, error) {
 	switch input.(type) {
 	case string:
 		return []byte("%s"), nil
