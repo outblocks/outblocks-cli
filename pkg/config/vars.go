@@ -3,9 +3,12 @@ package config
 import (
 	"bytes"
 	"encoding/json"
+	"regexp"
 
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
+
+var quoteValues = regexp.MustCompile(`(\s*-\s+|\S:\s+)(\$\{var\.[^}]+})`)
 
 type YAMLEvaluator struct {
 	*plugin_util.BaseVarEvaluator
@@ -21,7 +24,9 @@ func NewYAMLEvaluator(vars map[string]interface{}) *YAMLEvaluator {
 }
 
 func (e *YAMLEvaluator) Expand(input []byte) ([]byte, error) {
+	input = quoteValues.ReplaceAll(input, []byte(`$1"$2"`))
 	format, _, err := e.ExpandRaw(input)
+
 	return format, err
 }
 
