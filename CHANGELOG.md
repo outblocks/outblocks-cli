@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.69](https://github.com/outblocks/outblocks-cli/compare/v0.1.68...v0.1.69)
+
+> 2022-02-22
+
+### BUG FIXES
+
+[`a303b25`](https://github.com/outblocks/outblocks-cli/commit/a303b250938329579f668891041c0b56ba73ae58) yaml var substitution
+
+
 ## [v0.1.68](https://github.com/outblocks/outblocks-cli/compare/v0.1.67...v0.1.68)
 
 > 2022-02-21
