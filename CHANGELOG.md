@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.68](https://github.com/outblocks/outblocks-cli/compare/v0.1.67...v0.1.68)
+
+> 2022-02-21
+
+### BUG FIXES
+
+[`e0432ec`](https://github.com/outblocks/outblocks-cli/commit/e0432ece922d1518cd6b305f2ac2ece1cb0c580d) vars expansion
+
+
 ## [v0.1.67](https://github.com/outblocks/outblocks-cli/compare/v0.1.66...v0.1.67)
 
 > 2022-02-18
