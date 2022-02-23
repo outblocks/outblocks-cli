@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.71](https://github.com/outblocks/outblocks-cli/compare/v0.1.70...v0.1.71)
+
+> 2022-02-23
+
+### BUG FIXES
+
+[`f450a38`](https://github.com/outblocks/outblocks-cli/commit/f450a38e0f035a8bec82e9b7dd7ea4b330792119) domains diff, edge cases
+
+
 ## [v0.1.70](https://github.com/outblocks/outblocks-cli/compare/v0.1.69...v0.1.70)
 
 > 2022-02-23
