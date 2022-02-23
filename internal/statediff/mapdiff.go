@@ -84,6 +84,10 @@ func newMapDiff(m1, m2 interface{}, maxLevel, level int) (*MapDiff, error) {
 func (d *MapDiff) Apply(m interface{}) {
 	rv := reflect.ValueOf(m)
 
+	for rv.Kind() == reflect.Ptr {
+		rv = rv.Elem()
+	}
+
 	for k := range d.delete {
 		rv.SetMapIndex(reflect.ValueOf(k), reflect.Value{})
 	}

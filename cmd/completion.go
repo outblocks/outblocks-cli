@@ -50,6 +50,7 @@ func (e *Executor) newCompletionCmd() *cobra.Command {
 		Args:                  cobra.ExactValidArgs(1),
 		Annotations: map[string]string{
 			cmdSkipLoadConfigAnnotation: "1",
+			cmdSkipVersionCheck:         "1",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch args[0] {

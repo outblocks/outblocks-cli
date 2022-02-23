@@ -60,6 +60,8 @@ type DeployOptions struct {
 	TargetApps, SkipApps []string
 	SkipAllApps          bool
 	SkipDNS              bool
+	SkipDiff             bool
+	SkipApply            bool
 }
 
 func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
@@ -82,7 +84,7 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 	}
 
 	// Get state.
-	state, stateRes, err := getState(ctx, d.cfg.State, d.opts.Lock, d.opts.LockWait, yamlContext)
+	state, stateRes, err := getState(ctx, d.cfg.State, d.opts.Lock, d.opts.LockWait, false, yamlContext)
 	if err != nil {
 		return err
 	}
@@ -123,7 +125,7 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 		}
 	}
 
-	if !canceled && !empty && err == nil {
+	if !canceled && !empty && err == nil && !d.opts.SkipApply {
 		d.log.Printf("All changes applied in %s.\n", dur.Truncate(timeTruncate))
 	}
 
@@ -310,7 +312,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 	}
 
 	// Get state.
-	state, stateRes, err := getState(ctx, d.cfg.State, false, d.opts.LockWait, yamlContext)
+	state, stateRes, err := getState(ctx, d.cfg.State, false, d.opts.LockWait, false, yamlContext)
 	if err != nil {
 		return err
 	}
@@ -383,7 +385,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 			return err
 		}
 
-		state, _, err = getState(ctx, d.cfg.State, false, d.opts.LockWait, yamlContext)
+		state, _, err = getState(ctx, d.cfg.State, false, d.opts.LockWait, false, yamlContext)
 		if err != nil {
 			return err
 		}
@@ -404,7 +406,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 	shouldSave := !canceled && (!empty || !stateDiff.IsEmpty())
 
 	if shouldSave {
-		state, stateRes, err = getState(context.Background(), d.cfg.State, true, stateLockWait, yamlContext)
+		state, stateRes, err = getState(context.Background(), d.cfg.State, true, stateLockWait, false, yamlContext)
 		if err != nil {
 			_ = releaseLocks(d.cfg, acquiredLocks)
 			return err
@@ -450,7 +452,36 @@ func (d *Deploy) Run(ctx context.Context) error {
 	return d.stateLockRun(ctx)
 }
 
-func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, acquiredLocks map[string]string, checkLocks bool) (canceled, empty bool, dur time.Duration, missingLocks []string, err error) {
+func (d *Deploy) promptDiff(deployChanges []*change, acquiredLocks map[string]string, checkLocks bool) (empty, canceled bool, missingLocks []string) {
+	if checkLocks {
+		for _, chg := range deployChanges {
+			var lockID string
+
+			switch {
+			case chg.app != nil:
+				lockID = chg.app.Id
+			case chg.dep != nil:
+				lockID = chg.dep.Id
+			case chg.plugin != nil:
+				lockID = chg.plugin.ID()
+			}
+
+			if _, ok := acquiredLocks[lockID]; !ok {
+				missingLocks = append(missingLocks, lockID)
+			}
+		}
+
+		if len(missingLocks) > 0 {
+			return false, false, missingLocks
+		}
+	}
+
+	empty, canceled = planPrompt(d.log, d.cfg.Env(), deployChanges, nil, d.opts.AutoApprove, d.opts.ForceApprove)
+
+	return empty, canceled, missingLocks
+}
+
+func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, acquiredLocks map[string]string, checkLocks bool) (empty, canceled bool, dur time.Duration, missingLocks []string, err error) {
 	var domains []*apiv1.DomainInfo
 
 	if d.opts.SkipDNS {
@@ -480,7 +511,12 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 		}
 	}
 
-	spinner, _ := d.log.Spinner().Start("Planning...")
+	msg := "Planning..."
+	if d.opts.SkipApply {
+		msg = "Checking..."
+	}
+
+	spinner, _ := d.log.Spinner().Start(msg)
 
 	// Proceed with plan - reset state apps and deps.
 	oldState := *state
@@ -493,44 +529,24 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 		return false, false, dur, nil, err
 	}
 
-	deployChanges := computeChange(d.cfg, &oldState, state, planRetMap)
-
 	spinner.Stop()
 
-	if checkLocks {
-		var missingLocks []string
+	if !d.opts.SkipDiff {
+		deployChanges := computeChange(d.cfg, &oldState, state, planRetMap)
 
-		for _, chg := range deployChanges {
-			var lockID string
-
-			switch {
-			case chg.app != nil:
-				lockID = chg.app.Id
-			case chg.dep != nil:
-				lockID = chg.dep.Id
-			case chg.plugin != nil:
-				lockID = chg.plugin.ID()
-			}
-
-			if _, ok := acquiredLocks[lockID]; !ok {
-				missingLocks = append(missingLocks, lockID)
-			}
+		empty, canceled, missingLocks = d.promptDiff(deployChanges, acquiredLocks, checkLocks)
+		if len(missingLocks) != 0 {
+			return empty, canceled, dur, missingLocks, nil
 		}
 
-		if len(missingLocks) > 0 {
-			return false, false, dur, missingLocks, nil
+		// Apply if needed.
+		if !canceled && !empty && !d.opts.SkipApply {
+			callback := applyProgress(d.log, deployChanges, nil)
+			err = apply(context.Background(), state, planMap, domains, destroy, callback)
 		}
 	}
 
-	empty, canceled = planPrompt(d.log, d.cfg.Env(), deployChanges, nil, d.opts.AutoApprove, d.opts.ForceApprove)
-	shouldApply := !canceled && !empty
 	start := time.Now()
-
-	// Apply if needed.
-	if shouldApply {
-		callback := applyProgress(d.log, deployChanges, nil)
-		err = apply(context.Background(), state, planMap, domains, destroy, callback)
-	}
 
 	// Merge state with current apps/deps if needed (they might not have a state defined).
 	for _, app := range apps {
@@ -749,7 +765,7 @@ func saveState(cfg *config.Project, data *types.StateData) error {
 	return err
 }
 
-func getState(ctx context.Context, state *config.State, lock bool, lockWait time.Duration, yamlContext *client.YAMLContext) (stateData *types.StateData, stateRes *apiv1.GetStateResponse_State, err error) {
+func getState(ctx context.Context, state *config.State, lock bool, lockWait time.Duration, skipCreate bool, yamlContext *client.YAMLContext) (stateData *types.StateData, stateRes *apiv1.GetStateResponse_State, err error) {
 	plug := state.Plugin()
 
 	if state.IsLocal() {
@@ -761,7 +777,7 @@ func getState(ctx context.Context, state *config.State, lock bool, lockWait time
 		return stateData, &apiv1.GetStateResponse_State{}, nil
 	}
 
-	ret, err := plug.Client().GetState(ctx, state.Type, state.Other, lock, lockWait, yamlContext)
+	ret, err := plug.Client().GetState(ctx, state.Type, state.Other, lock, lockWait, skipCreate, yamlContext)
 	if err != nil {
 		return nil, nil, err
 	}

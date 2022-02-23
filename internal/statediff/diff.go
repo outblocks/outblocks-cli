@@ -3,7 +3,6 @@ package statediff
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/ansel1/merry/v2"
@@ -57,7 +56,14 @@ func (s *Diff) Apply(state *types.StateData) error {
 		state.DomainsInfo = make([]*apiv1.DomainInfo, 0)
 	}
 
-	s.DomainsInfo.Apply(state.DomainsInfo)
+	domainsInfoMap := domainsInfoAsMap(state.DomainsInfo)
+	s.DomainsInfo.Apply(domainsInfoMap)
+
+	state.DomainsInfo = make([]*apiv1.DomainInfo, len(domainsInfoMap))
+
+	for _, d := range domainsInfoMap {
+		state.DomainsInfo = append(state.DomainsInfo, d)
+	}
 
 	// Plugin state.
 	if state.Plugins == nil {
@@ -80,7 +86,7 @@ func (s *Diff) Apply(state *types.StateData) error {
 			state.Plugins[k] = &types.PluginState{}
 		}
 
-		v.Apply(state.Plugins[k])
+		v.Apply(state.Plugins[k].Other)
 	}
 
 	for k := range s.PluginsDelete {
@@ -128,8 +134,6 @@ func domainsInfoAsMap(domains []*apiv1.DomainInfo) map[string]*apiv1.DomainInfo 
 	m := make(map[string]*apiv1.DomainInfo, len(domains))
 
 	for _, d := range domains {
-		sort.Strings(d.Domains)
-
 		m[strings.Join(d.Domains, ";")] = d
 	}
 

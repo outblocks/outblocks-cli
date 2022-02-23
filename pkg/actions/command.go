@@ -38,7 +38,7 @@ func (c *Command) Run(ctx context.Context) error {
 	}
 
 	// Get state.
-	state, _, err := getState(ctx, c.cfg.State, false, 0, yamlContext)
+	state, _, err := getState(ctx, c.cfg.State, false, 0, true, yamlContext)
 	if err != nil {
 		return err
 	}

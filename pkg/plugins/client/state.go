@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
-func (c *Client) GetState(ctx context.Context, typ string, props map[string]interface{}, lock bool, lockWait time.Duration, yamlContext *YAMLContext) (ret *apiv1.GetStateResponse_State, err error) {
+func (c *Client) GetState(ctx context.Context, typ string, props map[string]interface{}, lock bool, lockWait time.Duration, skipCreate bool, yamlContext *YAMLContext) (ret *apiv1.GetStateResponse_State, err error) {
 	if err := c.Start(ctx); err != nil {
 		return nil, err
 	}
@@ -22,6 +22,7 @@ func (c *Client) GetState(ctx context.Context, typ string, props map[string]inte
 		Properties: plugin_util.MustNewStruct(props),
 		Lock:       lock,
 		LockWait:   durationpb.New(lockWait),
+		SkipCreate: skipCreate,
 	})
 	if err != nil {
 		return nil, c.mapError("get state error", merry.Wrap(err))

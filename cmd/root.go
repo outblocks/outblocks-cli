@@ -20,6 +20,7 @@ const (
 	cmdSkipCheckConfigAnnotation = "cmd_skip_check_config"
 	cmdSkipLoadAppsAnnotation    = "cmd_skip_load_apps"
 	cmdSkipLoadPluginsAnnotation = "cmd_skip_load_plugins"
+	cmdSkipVersionCheck          = "cmd_skip_version_check"
 	cmdGroupAnnotation           = "cmd_group"
 	cmdGroupDelimiter            = "-"
 
@@ -266,7 +267,7 @@ func (e *Executor) newRoot() *cobra.Command {
 		SilenceErrors: true,
 		Annotations:   map[string]string{},
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			if version.ShouldRunUpdateCheck(e.lastUpdateCheckFile) {
+			if _, ok := cmd.Annotations[cmdSkipVersionCheck]; ok && version.ShouldRunUpdateCheck(e.lastUpdateCheckFile) {
 				v, err := version.CheckLatestCLI(cmd.Context())
 				if err != nil {
 					e.log.Debugf("Error checking latest CLI version: %s\n", err)
@@ -320,6 +321,7 @@ func (e *Executor) newRoot() *cobra.Command {
 		e.newInitCmd(),
 		e.newAppsCmd(),
 		e.newVersionCmd(),
+		e.newStatusCmd(),
 	)
 
 	return cmd
