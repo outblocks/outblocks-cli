@@ -206,6 +206,10 @@ func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppS
 	if len(d.opts.TargetApps) != 0 || len(d.opts.SkipApps) != 0 {
 		// Get state apps as well.
 		for _, appState := range stateApps {
+			if appState.App == nil {
+				continue
+			}
+
 			appTypeMap[appState.App.Id] = appState.App
 		}
 	}

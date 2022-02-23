@@ -254,6 +254,10 @@ func (d *Deploy) checkIfDNSAreUsed(stateApps map[string]*apiv1.AppState) error {
 	var stateDomains []string
 
 	for _, app := range stateApps {
+		if app.App == nil {
+			continue
+		}
+
 		u, _ := config.ParseAppURL(strings.ToLower(app.App.Url))
 		if u != nil {
 			stateDomains = append(stateDomains, u.Host)
@@ -795,6 +799,10 @@ func calculatePlanMap(cfg *config.Project, apps []*apiv1.AppPlan, deps []*apiv1.
 	planMap := make(map[*plugins.Plugin]*planParams)
 
 	for _, app := range apps {
+		if app.State.App == nil {
+			continue
+		}
+
 		deployPlugin := cfg.FindLoadedPlugin(app.State.App.DeployPlugin)
 		if deployPlugin == nil {
 			return nil, merry.Errorf("missing deploy plugin: %s used for app: %s", app.State.App.DeployPlugin, app.State.App.Name)

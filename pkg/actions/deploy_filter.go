@@ -180,6 +180,10 @@ func filterDependencies(cfg *config.Project, state *types.StateData, targetAppID
 	needs := make(map[string]bool)
 
 	for _, appState := range state.Apps {
+		if appState.App == nil {
+			continue
+		}
+
 		for n := range appState.App.Needs {
 			needs[n] = true
 		}

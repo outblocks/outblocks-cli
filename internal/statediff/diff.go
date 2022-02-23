@@ -59,7 +59,7 @@ func (s *Diff) Apply(state *types.StateData) error {
 	domainsInfoMap := domainsInfoAsMap(state.DomainsInfo)
 	s.DomainsInfo.Apply(domainsInfoMap)
 
-	state.DomainsInfo = make([]*apiv1.DomainInfo, len(domainsInfoMap))
+	state.DomainsInfo = make([]*apiv1.DomainInfo, 0, len(domainsInfoMap))
 
 	for _, d := range domainsInfoMap {
 		state.DomainsInfo = append(state.DomainsInfo, d)
@@ -134,6 +134,10 @@ func domainsInfoAsMap(domains []*apiv1.DomainInfo) map[string]*apiv1.DomainInfo 
 	m := make(map[string]*apiv1.DomainInfo, len(domains))
 
 	for _, d := range domains {
+		if d == nil {
+			continue
+		}
+
 		m[strings.Join(d.Domains, ";")] = d
 	}
 
