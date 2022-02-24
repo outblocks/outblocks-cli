@@ -11,6 +11,7 @@ import (
 )
 
 type MapDiff struct {
+	nested   map[interface{}]*MapDiff
 	update   map[interface{}]interface{}
 	delete   map[interface{}]struct{}
 	maxLevel int
@@ -26,6 +27,7 @@ func newMapDiff(m1, m2 interface{}, maxLevel, level int) (*MapDiff, error) {
 	m2i := convertMap(m2)
 
 	ret := &MapDiff{
+		nested:   make(map[interface{}]*MapDiff),
 		update:   make(map[interface{}]interface{}),
 		delete:   make(map[interface{}]struct{}),
 		maxLevel: maxLevel,
@@ -52,7 +54,7 @@ func newMapDiff(m1, m2 interface{}, maxLevel, level int) (*MapDiff, error) {
 				continue
 			}
 
-			ret.update[k] = mdiff
+			ret.nested[k] = mdiff
 
 			continue
 		}
@@ -88,6 +90,10 @@ func (d *MapDiff) Apply(m interface{}) {
 		rv = rv.Elem()
 	}
 
+	if rv.Kind() != reflect.Map {
+		panic("invalid object type passed to map")
+	}
+
 	for k := range d.delete {
 		rv.SetMapIndex(reflect.ValueOf(k), reflect.Value{})
 	}
@@ -95,10 +101,20 @@ func (d *MapDiff) Apply(m interface{}) {
 	for k, v := range d.update {
 		rv.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(v))
 	}
+
+	for k, v := range d.nested {
+		i := rv.MapIndex(reflect.ValueOf(k)).Interface()
+		if i == nil {
+			i = make(map[string]interface{})
+		}
+
+		v.Apply(i)
+		rv.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(i))
+	}
 }
 
 func (d *MapDiff) IsEmpty() bool {
-	return len(d.delete) == 0 && len(d.update) == 0
+	return len(d.delete) == 0 && len(d.update) == 0 && len(d.nested) == 0
 }
 
 func (d *MapDiff) String() string {
@@ -117,6 +133,10 @@ func (d *MapDiff) String() string {
 
 		js, _ := json.MarshalIndent(v, "  ", "  ")
 		ret += fmt.Sprintf("~ update: %#v\n  to: %s\n", k, string(js))
+	}
+
+	for k, md := range d.nested {
+		ret += fmt.Sprintf("~ nested: %#v\n%s\n", k, util.IndentString(md.String(), "  "))
 	}
 
 	return strings.TrimRight(ret, "\n")

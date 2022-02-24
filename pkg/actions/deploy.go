@@ -457,6 +457,8 @@ func (d *Deploy) Run(ctx context.Context) error {
 }
 
 func (d *Deploy) promptDiff(deployChanges []*change, acquiredLocks map[string]string, checkLocks bool) (empty, canceled bool, missingLocks []string) {
+	missingLocksMap := make(map[string]struct{})
+
 	if checkLocks {
 		for _, chg := range deployChanges {
 			var lockID string
@@ -471,11 +473,15 @@ func (d *Deploy) promptDiff(deployChanges []*change, acquiredLocks map[string]st
 			}
 
 			if _, ok := acquiredLocks[lockID]; !ok {
-				missingLocks = append(missingLocks, lockID)
+				missingLocksMap[lockID] = struct{}{}
 			}
 		}
 
-		if len(missingLocks) > 0 {
+		if len(missingLocksMap) > 0 {
+			for k := range missingLocksMap {
+				missingLocks = append(missingLocks, k)
+			}
+
 			return false, false, missingLocks
 		}
 	}
