@@ -85,6 +85,8 @@ func (c *Client) commandPlugin() apiv1.CommandPluginServiceClient {
 }
 
 func (c *Client) init(ctx context.Context) error {
+	c.log.Debugf("Initializing connection to plugin: %s\n", c.name)
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -152,6 +154,8 @@ func (c *Client) Stop() error {
 	if cmd == nil || cmd.Process == nil {
 		return nil
 	}
+
+	c.log.Debugf("Stopping client of plugin: %s\n", c.name)
 
 	if c.conn != nil {
 		_ = c.conn.Close()

@@ -50,6 +50,8 @@ func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath, hostAddr stri
 }
 
 func (e *Executor) cleanupProject() error {
+	e.log.Debugln("Cleaning up.")
+
 	if e.cfg != nil {
 		for _, plug := range e.cfg.LoadedPlugins() {
 			if err := plug.Stop(); err != nil {
