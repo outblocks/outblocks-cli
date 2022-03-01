@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.73](https://github.com/outblocks/outblocks-cli/compare/v0.1.72...v0.1.73)
+
+> 2022-03-01
+
+### FEATURES
+
+[`d39eeb8`](https://github.com/outblocks/outblocks-cli/commit/d39eeb83149e70d93fc26bb4698d64b927cb7687) add debug lines, update plugin-go
+
+
 ## [v0.1.72](https://github.com/outblocks/outblocks-cli/compare/v0.1.71...v0.1.72)
 
 > 2022-02-24
