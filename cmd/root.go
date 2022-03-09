@@ -38,6 +38,14 @@ const (
 func helpCommandsGrouped(cmd *cobra.Command) string {
 	groups := map[string][]string{}
 
+	maxLen := 14
+
+	for _, c := range cmd.Commands() {
+		if len(c.Name()) > maxLen {
+			maxLen = len(c.Name())
+		}
+	}
+
 	for _, c := range cmd.Commands() {
 		groupName, ok := c.Annotations[cmdGroupAnnotation]
 		if !ok {
@@ -46,7 +54,7 @@ func helpCommandsGrouped(cmd *cobra.Command) string {
 
 		groupCmds := groups[groupName]
 		cmdName := c.Name()
-		rightPad := strings.Repeat(" ", 16-len(cmdName))
+		rightPad := strings.Repeat(" ", maxLen+2-len(cmdName))
 		groupCmds = append(groupCmds, fmt.Sprintf("  %s%s%s", pterm.Green(cmdName), rightPad, c.Short))
 		sort.Strings(groupCmds)
 
