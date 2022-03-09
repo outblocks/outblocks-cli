@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.74](https://github.com/outblocks/outblocks-cli/compare/v0.1.73...v0.1.74)
+
+> 2022-03-09
+
+### FEATURES
+
+[`60bbd0f`](https://github.com/outblocks/outblocks-cli/commit/60bbd0fe0d4f9021ddbff2dd3b9ce952a7264b1e) add support for basic auth and trailing slash removal
+
+
 ## [v0.1.73](https://github.com/outblocks/outblocks-cli/compare/v0.1.72...v0.1.73)
 
 > 2022-03-01
