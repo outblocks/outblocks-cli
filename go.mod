@@ -18,7 +18,7 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20220301143212-06c56dd4e540
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20220309204654-ca062f3d8224
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.37
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
@@ -38,7 +38,7 @@ require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/atomicgo/cursor v0.0.1 // indirect
-	github.com/containerd/containerd v1.6.0 // indirect
+	github.com/containerd/containerd v1.6.1 // indirect
 	github.com/creasty/defaults v1.5.2 // indirect
 	github.com/docker/distribution v2.8.0+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
@@ -92,7 +92,7 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20220228195345-15d65a4533f7 // indirect
+	google.golang.org/genproto v0.0.0-20220302033224-9aa15565e42a // indirect
 	gopkg.in/ini.v1 v1.66.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

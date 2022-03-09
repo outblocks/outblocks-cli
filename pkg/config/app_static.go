@@ -20,7 +20,8 @@ const (
 	StaticAppRoutingGatsby   = "gatsby"
 	StaticAppRoutingDisabled = "disabled"
 
-	DefaultStaticAppBuildDir = "build"
+	DefaultStaticAppBuildDir       = "build"
+	DefaultStaticAppBasicAuthRealm = "restricted"
 )
 
 var (
@@ -38,6 +39,9 @@ func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
 		StaticAppProperties: types.StaticAppProperties{
 			Build: &types.StaticAppBuild{
 				Dir: DefaultStaticAppBuildDir,
+			},
+			BasicAuth: &types.StaticAppBasicAuth{
+				Realm: DefaultStaticAppBasicAuthRealm,
 			},
 			Routing: StaticAppRoutingReact,
 		},

@@ -79,6 +79,14 @@
                   "disabled"
                 ]
               },
+              "remove_trailing_slash": {
+                "description": "Remove trailing slash with permanent redirect. Currently used only for deployments. Defaults to 'true' when gatsby routing is used, 'false' otherwise.",
+                "type": "boolean"
+              },
+              "basic_auth": {
+                "description": "Static application basic authentication config. Currently used only for deployments.",
+                "$ref": "#/definitions/StaticBasicAuth"
+              },
               "build": {
                 "description": "Static application build config used for deployment builds.",
                 "$ref": "#/definitions/StaticBuild"
@@ -224,6 +232,24 @@
       "properties": {
         "enabled": {
           "type": "boolean"
+        }
+      }
+    },
+    "StaticBasicAuth": {
+      "title": "Static app basic auth config",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "realm": {
+          "description": "Basic auth realm name, defaults to 'restricted'.",
+          "type": "string"
+        },
+        "users": {
+          "description": "Basic auth users in form of `user: password` where password is either in plain text or in a form of apr1 hash (used by htpasswd).",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
