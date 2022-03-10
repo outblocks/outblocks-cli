@@ -1,5 +1,19 @@
 # Outblocks CLI Changelog
 
+## [v0.1.75](https://github.com/outblocks/outblocks-cli/compare/v0.1.74...v0.1.75)
+
+> 2022-03-10
+
+### BUG FIXES
+
+[`c3f96aa`](https://github.com/outblocks/outblocks-cli/commit/c3f96aa2117f1f514aff4d8e43ff77f518fc8324) race with custom commands
+[`b128703`](https://github.com/outblocks/outblocks-cli/commit/b128703a8e000438aa219ab508ea46bfe15d6ba3) handle long custom commands
+
+### FEATURES
+
+[`c2215b9`](https://github.com/outblocks/outblocks-cli/commit/c2215b9898469c2a5ab5a3390d404ab0ca9b7940) add print log level, fix formatting in logging
+
+
 ## [v0.1.74](https://github.com/outblocks/outblocks-cli/compare/v0.1.73...v0.1.74)
 
 > 2022-03-09
