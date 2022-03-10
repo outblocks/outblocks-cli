@@ -122,13 +122,15 @@ func (s *Server) Log(ctx context.Context, r *apiv1.LogRequest) (*apiv1.LogRespon
 	case apiv1.LogRequest_LEVEL_ERROR:
 		s.log.Errorf(r.Message)
 	case apiv1.LogRequest_LEVEL_WARN:
-		s.log.Warnf(r.Message)
+		s.log.Warn(r.Message)
 	case apiv1.LogRequest_LEVEL_INFO:
-		s.log.Infof(r.Message)
+		s.log.Info(r.Message)
 	case apiv1.LogRequest_LEVEL_DEBUG:
-		s.log.Debugf(r.Message)
+		s.log.Debug(r.Message)
 	case apiv1.LogRequest_LEVEL_SUCCESS:
-		s.log.Successf(r.Message)
+		s.log.Success(r.Message)
+	case apiv1.LogRequest_LEVEL_PRINT:
+		s.log.Print(r.Message)
 	case apiv1.LogRequest_LEVEL_UNSPECIFIED:
 		return nil, merry.New("unknown level")
 	}

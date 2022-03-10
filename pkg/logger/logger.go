@@ -109,6 +109,14 @@ func (l *Log) Printo(a ...interface{}) {
 	pterm.Printo(a...)
 }
 
+func (l *Log) Debug(a ...interface{}) {
+	if l.logLevel > LogLevelDebug {
+		return
+	}
+
+	l.debug.Print(a...)
+}
+
 func (l *Log) Debugf(format string, a ...interface{}) {
 	if l.logLevel > LogLevelDebug {
 		return
@@ -125,6 +133,14 @@ func (l *Log) Debugln(a ...interface{}) {
 	l.debug.Println(a...)
 }
 
+func (l *Log) Info(a ...interface{}) {
+	if l.logLevel > LogLevelInfo {
+		return
+	}
+
+	l.info.Print(a...)
+}
+
 func (l *Log) Infof(format string, a ...interface{}) {
 	l.info.Printf(format, a...)
 }
@@ -133,12 +149,24 @@ func (l *Log) Infoln(a ...interface{}) {
 	l.info.Println(a...)
 }
 
+func (l *Log) Success(a ...interface{}) {
+	l.success.Print(a...)
+}
+
 func (l *Log) Successf(format string, a ...interface{}) {
 	l.success.Printf(format, a...)
 }
 
 func (l *Log) Successln(a ...interface{}) {
 	l.success.Println(a...)
+}
+
+func (l *Log) Warn(a ...interface{}) {
+	if l.logLevel > LogLevelWarn {
+		return
+	}
+
+	l.warn.Print(a...)
 }
 
 func (l *Log) Warnf(format string, a ...interface{}) {
@@ -175,6 +203,14 @@ func (l *Log) printStackTrace(a ...interface{}) {
 
 	_, fileName, line, _ := runtime.Caller(2)
 	pterm.Println(pterm.FgGray.Sprint("└ " + fmt.Sprintf("(%s:%d)", fileName, line)))
+}
+
+func (l *Log) Error(a ...interface{}) {
+	l.err.Print(a...)
+
+	if l.logLevel == LogLevelDebug {
+		l.printStackTrace(a...)
+	}
 }
 
 func (l *Log) Errorf(format string, a ...interface{}) {
