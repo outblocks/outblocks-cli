@@ -146,6 +146,9 @@ func (e *Executor) addPluginsCommands() error {
 
 	for _, plug := range e.cfg.Plugins {
 		for cmdName, cmdt := range plug.Loaded().Commands {
+			cmdName := cmdName
+			cmdt := cmdt
+
 			cmdName = strings.ToLower(cmdName)
 
 			cmd, _, err := e.rootCmd.Find([]string{cmdName})
