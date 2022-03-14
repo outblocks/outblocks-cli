@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.76](https://github.com/outblocks/outblocks-cli/compare/v0.1.75...v0.1.76)
+
+> 2022-03-14
+
+### BUG FIXES
+
+[`dfa12c3`](https://github.com/outblocks/outblocks-cli/commit/dfa12c3d3c21811c42cc61e2454377a6d4c069bb) state diff edge case
+
+
 ## [v0.1.75](https://github.com/outblocks/outblocks-cli/compare/v0.1.74...v0.1.75)
 
 > 2022-03-10
