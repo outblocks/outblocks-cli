@@ -86,6 +86,10 @@ func (s *Diff) Apply(state *types.StateData) error {
 			state.Plugins[k] = &types.PluginState{}
 		}
 
+		if state.Plugins[k].Other == nil {
+			state.Plugins[k].Other = make(map[string]json.RawMessage)
+		}
+
 		v.Apply(state.Plugins[k].Other)
 	}
 
