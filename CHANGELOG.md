@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.77](https://github.com/outblocks/outblocks-cli/compare/v0.1.76...v0.1.77)
+
+> 2022-03-15
+
+### FEATURES
+
+[`36ebf9e`](https://github.com/outblocks/outblocks-cli/commit/36ebf9eb9131dd4216a6d079459f4b54c3d2dc88) plugins-go update and skip row column
+
+
 ## [v0.1.76](https://github.com/outblocks/outblocks-cli/compare/v0.1.75...v0.1.76)
 
 > 2022-03-14
