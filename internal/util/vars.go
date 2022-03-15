@@ -20,7 +20,8 @@ func NewVarEvaluator(vars map[string]interface{}) *VarEvaluator {
 		BaseVarEvaluator: plugin_util.NewBaseVarEvaluator(vars).
 			WithEncoder(varEncoder).
 			WithVarChar('%').
-			WithIgnoreInvalid(true),
+			WithIgnoreInvalid(true).
+			WithSkipRowColumnInfo(true),
 	}
 }
 

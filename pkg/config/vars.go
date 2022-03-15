@@ -20,7 +20,8 @@ func NewYAMLEvaluator(vars map[string]interface{}) *YAMLEvaluator {
 		BaseVarEvaluator: plugin_util.NewBaseVarEvaluator(vars).
 			WithEncoder(yamlVarEncoder).
 			WithIgnoreComments(true).
-			WithVarChar('$'),
+			WithVarChar('$').
+			WithSkipRowColumnInfo(false),
 	}
 }
 
