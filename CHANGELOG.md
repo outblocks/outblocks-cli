@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.78](https://github.com/outblocks/outblocks-cli/compare/v0.1.77...v0.1.78)
+
+> 2022-03-16
+
+### BUG FIXES
+
+[`ded2e67`](https://github.com/outblocks/outblocks-cli/commit/ded2e677f05bd59d4d87a0f3146a917eb0b228e4) updating to unreleased plugins
+
+
 ## [v0.1.77](https://github.com/outblocks/outblocks-cli/compare/v0.1.76...v0.1.77)
 
 > 2022-03-15
