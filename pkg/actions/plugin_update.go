@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Masterminds/semver"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -48,8 +49,10 @@ func (d *PluginUpdate) Run(ctx context.Context) error {
 			continue
 		}
 
+		matchingConstr, _ := semver.NewConstraint(matching.String())
+
 		// Download new plugin version.
-		plug, err := d.loader.DownloadPlugin(ctx, p.Name, p.VerConstr(), p.Source, nil)
+		plug, err := d.loader.DownloadPlugin(ctx, p.Name, matchingConstr, p.Source, nil)
 		if err != nil {
 			return err
 		}
