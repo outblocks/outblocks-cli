@@ -1,5 +1,18 @@
 # Outblocks CLI Changelog
 
+## [v0.1.79](https://github.com/outblocks/outblocks-cli/compare/v0.1.78...v0.1.79)
+
+> 2022-03-17
+
+### BUG FIXES
+
+[`84c8ebe`](https://github.com/outblocks/outblocks-cli/commit/84c8ebe3c1501aa7d9b64a2b4d28f5d740742919) state diff merging
+
+### FEATURES
+
+[`dc39cd3`](https://github.com/outblocks/outblocks-cli/commit/dc39cd392a8251a9d356a2392d36de1470a2541a) skip apps loading where not needed
+
+
 ## [v0.1.78](https://github.com/outblocks/outblocks-cli/compare/v0.1.77...v0.1.78)
 
 > 2022-03-16
