@@ -93,6 +93,8 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 		if skipLoadConfig {
 			return nil
 		}
+	} else {
+		skipLoadApps = true
 	}
 
 	// Load values.

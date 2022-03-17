@@ -40,7 +40,7 @@ func yamlVarEncoder(c *plugin_util.VarContext, val interface{}) ([]byte, error) 
 	if valOut[0] == '"' && valOut[len(valOut)-1] == '"' {
 		switch valOut[1] {
 		case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"':
-			if len(valOut) > 2 && checkQuotePrefix.Match(c.Line[:c.TokenStart]) {
+			if len(valOut) > 2 && checkQuotePrefix.Match(c.Line[:c.TokenColumnStart]) {
 				return valOut, nil
 			}
 		}

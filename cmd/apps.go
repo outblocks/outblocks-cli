@@ -47,8 +47,7 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		Short:   "Delete an app",
 		Long:    `Delete an existing application config.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation:           cmdGroupMain,
-			cmdSkipLoadPluginsAnnotation: "1",
+			cmdGroupAnnotation: cmdGroupMain,
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

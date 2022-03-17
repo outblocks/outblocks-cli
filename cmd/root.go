@@ -273,7 +273,9 @@ func (e *Executor) newRoot() *cobra.Command {
 		Short:         pterm.Sprintf("%s - %s", pterm.Bold.Sprintf("ok"), pterm.Italic.Sprint(version.Version())),
 		Long:          e.rootLongHelp(),
 		SilenceErrors: true,
-		Annotations:   map[string]string{},
+		Annotations: map[string]string{
+			cmdSkipLoadAppsAnnotation: "1",
+		},
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if _, ok := cmd.Annotations[cmdSkipVersionCheck]; ok && version.ShouldRunUpdateCheck(e.lastUpdateCheckFile) {
 				v, err := version.CheckLatestCLI(cmd.Context())
