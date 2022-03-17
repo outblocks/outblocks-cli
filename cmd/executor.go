@@ -89,6 +89,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 		skipLoadConfig = cmd.Annotations[cmdSkipLoadConfigAnnotation] == "1"
 		skipLoadApps = cmd.Annotations[cmdSkipLoadAppsAnnotation] == "1"
 		skipCheckConfig = cmd.Annotations[cmdSkipCheckConfigAnnotation] == "1"
+		skipLoadPlugins = cmd.Annotations[cmdSkipLoadPluginsAnnotation] == "1"
 
 		if skipLoadConfig {
 			return nil
