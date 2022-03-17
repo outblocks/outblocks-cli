@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -104,7 +103,7 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 	}
 
 	// Plan and apply.
-	stateBeforeStr, _ := json.Marshal(state)
+	stateBefore := state.DeepCopy()
 
 	err = d.preChecks(state)
 	if err != nil {
@@ -116,10 +115,18 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 	empty, canceled, dur, _, err := d.planAndApply(ctx, verify, state, nil, false)
 
 	// Proceed with saving.
-	stateAfterStr, _ := json.Marshal(state)
-	shouldSave := !canceled && (!empty || !bytes.Equal(stateBeforeStr, stateAfterStr))
+	stateAfter := state
+
+	stateDiff, diffErr := statediff.New(stateBefore, stateAfter)
+	if diffErr != nil {
+		return merry.Errorf("computing state diff failed: %w", err)
+	}
+
+	shouldSave := !canceled && (!empty || !stateDiff.IsEmpty()) && !d.opts.SkipDiff
 
 	if shouldSave {
+		d.log.Debugln("Saving state.")
+
 		if saveErr := saveState(d.cfg, state); err == nil {
 			err = saveErr
 		}
@@ -305,10 +312,96 @@ func (d *Deploy) checkIfDNSAreUsed(stateApps map[string]*apiv1.AppState) error {
 	return nil
 }
 
-func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
-	verify := d.opts.Verify
+func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *types.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (stateDiff *statediff.Diff, shouldSave bool, acquiredLocks map[string]string, dur time.Duration, err error) {
+	var (
+		locks           []string
+		missingLocks    []string
+		stateBefore     *types.StateData
+		empty, canceled bool
+	)
+
+	// Acquire necessary acquiredLocks.
+	if partialLock {
+		locks = d.partialLockIDs(state)
+	} else {
+		locks = d.allLockIDs(state)
+	}
+
 	first := true
 	statePlugin := d.cfg.State.Plugin()
+
+	for {
+		acquiredLocks, err = statePlugin.Client().AcquireLocks(ctx, d.cfg.State.Other, locks, d.opts.LockWait, yamlContext)
+		if err != nil {
+			return nil, false, nil, dur, err
+		}
+
+		d.log.Debugf("Acquired locks: %s\n", acquiredLocks)
+
+		// Build apps.
+		if first && !d.opts.SkipBuild {
+			err = d.buildApps(ctx, state.Apps)
+			if err != nil {
+				_ = releaseLocks(d.cfg, acquiredLocks)
+				return nil, false, nil, dur, err
+			}
+
+			first = false
+		}
+
+		// Plan and apply.
+		stateBefore = state.DeepCopy()
+
+		err = d.preChecks(state)
+		if err != nil {
+			_ = releaseLocks(d.cfg, acquiredLocks)
+			return nil, false, nil, dur, err
+		}
+
+		empty, canceled, dur, missingLocks, err = d.planAndApply(ctx, verify, state, acquiredLocks, true)
+		if err != nil {
+			_ = releaseLocks(d.cfg, acquiredLocks)
+			acquiredLocks = nil
+
+			// Proceed to save partial work if needed.
+			break
+		}
+
+		if len(missingLocks) == 0 {
+			break
+		}
+
+		locks = append(locks, missingLocks...)
+
+		err = releaseLocks(d.cfg, acquiredLocks)
+		if err != nil {
+			return nil, false, nil, dur, err
+		}
+
+		state, _, err = getState(ctx, d.cfg.State, false, d.opts.LockWait, false, yamlContext)
+		if err != nil {
+			return nil, false, nil, dur, err
+		}
+	}
+
+	stateAfter := state
+
+	stateDiff, diffErr := statediff.New(stateBefore, stateAfter)
+	if diffErr != nil {
+		return nil, false, nil, dur, merry.Errorf("computing state diff failed: %w", err)
+	}
+
+	shouldSave = !canceled && (!empty || !stateDiff.IsEmpty()) && !d.opts.SkipDiff
+
+	if !stateDiff.IsEmpty() {
+		d.log.Debugf("State Diff (to apply: %t)\n%s\n", shouldSave, stateDiff)
+	}
+
+	return stateDiff, shouldSave, acquiredLocks, dur, err
+}
+
+func (d *Deploy) multilockRun(ctx context.Context) error {
+	verify := d.opts.Verify
 	partialLock := len(d.opts.TargetApps) > 0 || len(d.opts.SkipApps) > 0
 	yamlContext := &client.YAMLContext{
 		Prefix: "$.state",
@@ -328,94 +421,24 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 		partialLock = false
 	}
 
-	// Acquire necessary acquiredLocks.
-	var locks []string
-	if partialLock {
-		locks = d.partialLockIDs(state)
-	} else {
-		locks = d.allLockIDs(state)
-	}
-
-	var (
-		acquiredLocks   map[string]string
-		missingLocks    []string
-		stateBefore     *types.StateData
-		empty, canceled bool
-		dur             time.Duration
-	)
-
-	for {
-		acquiredLocks, err = statePlugin.Client().AcquireLocks(ctx, d.cfg.State.Other, locks, d.opts.LockWait, yamlContext)
-		if err != nil {
-			return err
-		}
-
-		d.log.Debugf("Acquired locks: %s\n", acquiredLocks)
-
-		// Build apps.
-		if first && !d.opts.SkipBuild {
-			err = d.buildApps(ctx, state.Apps)
-			if err != nil {
-				_ = releaseLocks(d.cfg, acquiredLocks)
-				return err
-			}
-
-			first = false
-		}
-
-		// Plan and apply.
-		stateBefore = state.DeepCopy()
-
-		err = d.preChecks(state)
-		if err != nil {
-			_ = releaseLocks(d.cfg, acquiredLocks)
-			return err
-		}
-
-		empty, canceled, dur, missingLocks, err = d.planAndApply(ctx, verify, state, acquiredLocks, true)
-		if err != nil {
-			_ = releaseLocks(d.cfg, acquiredLocks)
-			return err
-		}
-
-		if len(missingLocks) == 0 {
-			break
-		}
-
-		locks = append(locks, missingLocks...)
-
-		err = releaseLocks(d.cfg, acquiredLocks)
-		if err != nil {
-			return err
-		}
-
-		state, _, err = getState(ctx, d.cfg.State, false, d.opts.LockWait, false, yamlContext)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Proceed with saving.
-	stateAfter := state.DeepCopy()
-
-	stateDiff, err := statediff.New(stateBefore, stateAfter)
+	// Acquire locks and plan+apply.
+	stateDiff, shouldSave, acquiredLocks, dur, err := d.multilockPlanAndApply(ctx, state, partialLock, verify, yamlContext)
 	if err != nil {
-		return merry.Errorf("computing state diff failed: %w", err)
+		return err
 	}
-
-	if !stateDiff.IsEmpty() {
-		d.log.Debugf("State Diff\n%s\n", stateDiff)
-	}
-
-	shouldSave := !canceled && (!empty || !stateDiff.IsEmpty())
 
 	if shouldSave {
-		state, stateRes, err = getState(context.Background(), d.cfg.State, true, stateLockWait, false, yamlContext)
-		if err != nil {
+		d.log.Debugln("Saving state.")
+
+		var stateErr error
+
+		state, stateRes, stateErr = getState(context.Background(), d.cfg.State, true, stateLockWait, false, yamlContext)
+		if stateErr != nil {
 			_ = releaseLocks(d.cfg, acquiredLocks)
-			return err
+			return stateErr
 		}
 
+		// These are "less important" errors.
 		if e := stateDiff.Apply(state); err == nil {
 			err = e
 		}
@@ -429,7 +452,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 		}
 	}
 
-	if !canceled && !empty && err == nil {
+	if shouldSave && err == nil {
 		d.log.Printf("All changes applied in %s.\n", dur.Truncate(timeTruncate))
 	}
 
@@ -441,7 +464,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error { // nolint:gocyclo
 	switch {
 	case err != nil:
 		return err
-	case canceled:
+	case !shouldSave:
 		return nil
 	}
 
@@ -536,7 +559,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.Sta
 	if err != nil {
 		spinner.Stop()
 
-		return false, false, dur, nil, err
+		return false, true, dur, nil, err
 	}
 
 	spinner.Stop()

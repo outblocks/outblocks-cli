@@ -31,8 +31,10 @@ func (s *Diff) Apply(state *types.StateData) error {
 	}
 
 	apps := toJSONObject(state.Apps)
+	state.Apps = make(map[string]*apiv1.AppState)
 
 	s.Apps.Apply(apps)
+
 	fromJSONObject(apps, &state.Apps)
 
 	if state.Dependencies == nil {
@@ -40,8 +42,10 @@ func (s *Diff) Apply(state *types.StateData) error {
 	}
 
 	deps := toJSONObject(state.Dependencies)
+	state.Dependencies = make(map[string]*apiv1.DependencyState)
 
 	s.Dependencies.Apply(deps)
+
 	fromJSONObject(deps, &state.Dependencies)
 
 	// DNS Records.
