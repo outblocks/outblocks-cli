@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/ansel1/merry/v2"
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 )
@@ -15,7 +16,7 @@ type FunctionApp struct {
 	BasicApp `json:",inline"`
 }
 
-func LoadFunctionAppData(path string, data []byte) (App, error) {
+func LoadFunctionAppData(path string, n ast.Node) (App, error) {
 	out := &FunctionApp{
 		BasicApp: BasicApp{
 			AppRun:    &AppRunInfo{},
@@ -23,12 +24,12 @@ func LoadFunctionAppData(path string, data []byte) (App, error) {
 		},
 	}
 
-	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
+	if err := yaml.NodeToValue(n, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, merry.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
 	out.yamlPath = path
-	out.yamlData = data
+	out.yamlData = []byte(n.String())
 
 	return out, nil
 }

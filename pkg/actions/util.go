@@ -273,7 +273,7 @@ func planPrompt(log logger.Logger, env string, deploy, dns []*change, approve, f
 	}
 
 	if critical {
-		prompt.Message = fmt.Sprintf("%s Some changes are potentially destructive! Are you really sure you want to perform these actions?", pterm.Red("Warning!"))
+		prompt.Message = fmt.Sprintf("%s Some changes are potentially irreversibly destructive! Are you really sure you want to perform these actions?", pterm.Red("Warning!"))
 	}
 
 	_ = survey.AskOne(prompt, &proceed)

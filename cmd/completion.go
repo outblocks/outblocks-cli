@@ -49,8 +49,8 @@ func (e *Executor) newCompletionCmd() *cobra.Command {
 		ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 		Args:                  cobra.ExactValidArgs(1),
 		Annotations: map[string]string{
-			cmdSkipLoadConfigAnnotation: "1",
-			cmdSkipVersionCheck:         "1",
+			cmdProjectLoadModeAnnotation:  cmdLoadModeSkip,
+			cmdVersionCheckSkipAnnotation: "1",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch args[0] {

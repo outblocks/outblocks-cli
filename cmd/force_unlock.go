@@ -12,8 +12,9 @@ func (e *Executor) newForceUnlockCmd() *cobra.Command {
 		Short: "Force unlock",
 		Long:  `Release a stuck lock.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation:        cmdGroupMain,
-			cmdSkipLoadAppsAnnotation: "1",
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
+			cmdAppsLoadModeAnnotation:    cmdLoadModeSkip,
 		},
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),

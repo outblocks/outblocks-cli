@@ -13,8 +13,8 @@ func (e *Executor) newVersionCmd() *cobra.Command {
 		Short: "Show version",
 		Long:  `Show current build version.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation:          cmdGroupMain,
-			cmdSkipLoadConfigAnnotation: "1",
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdProjectLoadModeAnnotation: cmdLoadModeSkip,
 		},
 		SilenceUsage: true,
 		Run: func(cmd *cobra.Command, args []string) {

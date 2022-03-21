@@ -16,8 +16,8 @@ func (e *Executor) newInitCmd() *cobra.Command {
 		Short: "Initialize new config",
 		Long:  `Initialize new Outblocks project config with opinionated defaults.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation:          cmdGroupMain,
-			cmdSkipLoadConfigAnnotation: "1",
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdProjectLoadModeAnnotation: cmdLoadModeSkip,
 		},
 		Args:         cobra.MaximumNArgs(1),
 		SilenceUsage: true,

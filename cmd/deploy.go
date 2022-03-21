@@ -19,7 +19,9 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 		Short: "Deploy stack",
 		Long:  `Deploys Outblocks stack and dependencies.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation: cmdGroupMain,
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdProjectLoadModeAnnotation: cmdLoadModeFull,
+			cmdAppsLoadModeAnnotation:    cmdLoadModeFull,
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -16,8 +16,8 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		Short:   "App management",
 		Long:    `Applications management - list, add or delete.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation:          cmdGroupMain,
-			cmdSkipLoadConfigAnnotation: "1",
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdProjectLoadModeAnnotation: cmdLoadModeSkip,
 		},
 	}
 
@@ -28,7 +28,9 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		Short: "List apps",
 		Long:  `List configured applications.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation: cmdGroupMain,
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
+			cmdAppsLoadModeAnnotation:    cmdLoadModeEssential,
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -47,7 +49,9 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		Short:   "Delete an app",
 		Long:    `Delete an existing application config.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation: cmdGroupMain,
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
+			cmdAppsLoadModeAnnotation:    cmdLoadModeEssential,
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -67,7 +71,9 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		Short: "Add a new app",
 		Long:  `Add a new application (generates new config).`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation: cmdGroupMain,
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
+			cmdAppsLoadModeAnnotation:    cmdLoadModeSkip,
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -11,18 +11,22 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 )
 
-func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath, hostAddr string, vals map[string]interface{}, skipLoadApps, skipLoadPlugins, skipCheck bool) error {
-	cfg, err := config.LoadProjectConfig(cfgPath, vals, &config.ProjectOptions{
+type LoadProjectOptions struct {
+	Mode            config.LoadMode
+	SkipLoadPlugins bool
+	SkipCheck       bool
+}
+
+func (e *Executor) loadProject(ctx context.Context, cfgPath, hostAddr string, vals map[string]interface{}, loadProjectOpts LoadProjectOptions, loadAppsMode config.LoadMode) error {
+	cfg, err := config.LoadProjectConfig(cfgPath, vals, loadProjectOpts.Mode, &config.ProjectOptions{
 		Env: e.opts.env,
 	})
 	if err != nil {
 		return err
 	}
 
-	if !skipLoadApps {
-		if err := cfg.LoadApps(); err != nil {
-			return err
-		}
+	if err := cfg.LoadApps(loadAppsMode); err != nil {
+		return err
 	}
 
 	if err := cfg.Normalize(); err != nil {
@@ -32,18 +36,16 @@ func (e *Executor) loadProjectConfig(ctx context.Context, cfgPath, hostAddr stri
 	e.loader = plugins.NewLoader(cfg.Dir, e.PluginsCacheDir())
 	e.cfg = cfg
 
-	if !skipLoadPlugins {
+	if !loadProjectOpts.SkipLoadPlugins {
 		if err := cfg.LoadPlugins(ctx, e.log, e.loader, hostAddr); err != nil {
 			return err
 		}
 	}
 
-	if skipLoadPlugins || skipCheck {
-		return nil
-	}
-
-	if err := cfg.FullCheck(); err != nil {
-		return err
+	if !loadProjectOpts.SkipCheck {
+		if err := cfg.FullCheck(); err != nil {
+			return err
+		}
 	}
 
 	return nil

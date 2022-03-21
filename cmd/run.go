@@ -14,7 +14,9 @@ func (e *Executor) newRunCmd() *cobra.Command {
 		Short: "Runs stack locally",
 		Long:  `Runs Outblocks stack and dependencies locally.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation: cmdGroupMain,
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdProjectLoadModeAnnotation: cmdLoadModeFull,
+			cmdAppsLoadModeAnnotation:    cmdLoadModeFull,
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

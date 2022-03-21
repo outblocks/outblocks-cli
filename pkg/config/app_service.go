@@ -6,6 +6,7 @@ import (
 	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
@@ -23,7 +24,7 @@ type ServiceApp struct {
 	AppBuild *apiv1.AppBuild `json:"-"`
 }
 
-func LoadServiceAppData(path string, data []byte) (App, error) {
+func LoadServiceAppData(path string, n ast.Node) (App, error) {
 	out := &ServiceApp{
 		BasicApp: *NewBasicApp(),
 		ServiceAppProperties: types.ServiceAppProperties{
@@ -34,14 +35,14 @@ func LoadServiceAppData(path string, data []byte) (App, error) {
 		AppBuild: &apiv1.AppBuild{},
 	}
 
-	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
+	if err := yaml.NodeToValue(n, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, merry.Errorf("load service config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
 	out.AppBuild.LocalDockerImage = fmt.Sprintf("outblocks/%s", out.ID())
 
 	out.yamlPath = path
-	out.yamlData = data
+	out.yamlData = []byte(n.String())
 
 	return out, nil
 }

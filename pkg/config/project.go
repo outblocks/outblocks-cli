@@ -11,7 +11,10 @@ import (
 	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/parser"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
@@ -34,6 +37,19 @@ var (
 		AppTypeStatic:   {"statics"},
 		AppTypeService:  {"services"},
 	}
+
+	essentialProjectKeys    = []string{"name", "dependencies", "plugins", "state"}
+	essentialProjectKeysMap = util.StringArrayToSet(essentialProjectKeys)
+	essentialAppKeys        = []string{"name", "type", "dir", "url", "deploy.plugin", "run.plugin", "dns.plugin", "defaults.deploy.plugin", "defaults.run.plugin", "defaults.dns.plugin"}
+	essentialAppKeysMap     = util.StringArrayToSet(essentialAppKeys)
+)
+
+type LoadMode int
+
+const (
+	LoadModeFull LoadMode = iota
+	LoadModeEssential
+	LoadModeSkip
 )
 
 type DefaultsRun struct {
@@ -94,7 +110,11 @@ type ProjectOptions struct {
 	Env string
 }
 
-func LoadProjectConfig(cfgPath string, vars map[string]interface{}, opts *ProjectOptions) (*Project, error) {
+func LoadProjectConfig(cfgPath string, vars map[string]interface{}, mode LoadMode, opts *ProjectOptions) (*Project, error) {
+	if mode == LoadModeSkip {
+		return nil, nil
+	}
+
 	if cfgPath == "" {
 		return nil, ErrProjectConfigNotFound
 	}
@@ -115,7 +135,13 @@ func LoadProjectConfig(cfgPath string, vars map[string]interface{}, opts *Projec
 		}
 	}
 
-	p, err := LoadProjectConfigData(cfgPath, data, vars, opts, lock)
+	var reqKeys map[string]bool
+
+	if mode == LoadModeEssential {
+		reqKeys = essentialProjectKeysMap
+	}
+
+	p, err := LoadProjectConfigData(cfgPath, data, vars, reqKeys, opts, lock)
 	if err != nil {
 		return nil, err
 	}
@@ -123,17 +149,31 @@ func LoadProjectConfig(cfgPath string, vars map[string]interface{}, opts *Projec
 	return p, err
 }
 
-func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}, opts *ProjectOptions, lock *lockfile.Lockfile) (*Project, error) {
-	data, err := NewYAMLEvaluator(vars).Expand(data)
+func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}, essentialKeys map[string]bool, opts *ProjectOptions, lock *lockfile.Lockfile) (*Project, error) {
+	f, err := parser.ParseBytes(data, 0)
 	if err != nil {
-		return nil, merry.Errorf("load project config %s error: \n%w", path, err)
+		return nil, merry.Errorf("cannot read project yaml file: %s, cause: %w", path, err)
+	}
+
+	if len(f.Docs) != 1 {
+		return nil, merry.Errorf("multi-document yamls are unsupported, file: %s", path)
+	}
+
+	m, ok := f.Docs[0].Body.(*ast.MappingNode)
+	if !ok {
+		return nil, merry.Errorf("project file %s yaml is invalid", path)
+	}
+
+	err = traverseYAMLMapping(path, vars, m, essentialKeys, nil)
+	if err != nil {
+		return nil, err
 	}
 
 	out := &Project{
 		yamlPath: path,
+		yamlData: data,
 		env:      opts.Env,
 		Dir:      filepath.Dir(path),
-		yamlData: data,
 		lock:     lock,
 		vars:     vars,
 		State: &State{
@@ -142,26 +182,36 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 		Defaults: &Defaults{},
 	}
 
-	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
+	if err := yaml.NodeToValue(m, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, merry.Errorf("load project config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
 	return out, nil
 }
 
-func (p *Project) LoadApps() error {
+func (p *Project) LoadApps(mode LoadMode) error {
+	if mode == LoadModeSkip {
+		return nil
+	}
+
 	files := fileutil.FindYAMLFiles(p.Dir, AppYAMLNames...)
 
-	if err := p.LoadFiles(files); err != nil {
+	if err := p.LoadAppFiles(files, mode); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (p *Project) LoadFiles(files []string) error {
+func (p *Project) LoadAppFiles(files []string, mode LoadMode) error {
+	var reqKeys map[string]bool
+
+	if mode == LoadModeEssential {
+		reqKeys = essentialAppKeysMap
+	}
+
 	for _, f := range files {
-		if err := p.LoadFile(f); err != nil {
+		if err := p.LoadAppFile(f, reqKeys); err != nil {
 			return err
 		}
 	}
@@ -173,9 +223,10 @@ type fileType struct {
 	Type string
 }
 
-func DetectAppType(data []byte) (string, error) {
+func DetectAppType(n ast.Node) (string, error) {
 	var f fileType
-	if err := yaml.Unmarshal(data, &f); err != nil {
+
+	if err := yaml.NodeToValue(n, &f); err != nil {
 		return "", err
 	}
 
@@ -201,18 +252,27 @@ func KnownType(typ string) string {
 	return ""
 }
 
-func (p *Project) LoadFile(file string) error {
-	data, err := os.ReadFile(file)
+func (p *Project) LoadAppFile(file string, essentialKeys map[string]bool) error {
+	f, err := parser.ParseFile(file, 0)
 	if err != nil {
-		return merry.Errorf("cannot read yaml: %w", err)
+		return merry.Errorf("cannot read application yaml file: %s, cause: %w", file, err)
 	}
 
-	data, err = NewYAMLEvaluator(p.vars).Expand(data)
-	if err != nil {
-		return merry.Errorf("load application file %s error: \n%w", file, err)
+	if len(f.Docs) != 1 {
+		return merry.Errorf("multi-document yamls are unsupported, file: %s", file)
 	}
 
-	typ, err := DetectAppType(data)
+	m, ok := f.Docs[0].Body.(*ast.MappingNode)
+	if !ok {
+		return merry.Errorf("application file %s yaml is invalid", file)
+	}
+
+	err = traverseYAMLMapping(file, p.vars, m, essentialKeys, nil)
+	if err != nil {
+		return err
+	}
+
+	typ, err := DetectAppType(m)
 	if err != nil {
 		return err
 	}
@@ -230,13 +290,13 @@ func (p *Project) LoadFile(file string) error {
 
 	switch typ {
 	case AppTypeFunction:
-		app, err = LoadFunctionAppData(file, data)
+		app, err = LoadFunctionAppData(file, m)
 
 	case AppTypeService:
-		app, err = LoadServiceAppData(file, data)
+		app, err = LoadServiceAppData(file, m)
 
 	case AppTypeStatic:
-		app, err = LoadStaticAppData(file, data)
+		app, err = LoadStaticAppData(file, m)
 	}
 
 	if err != nil {

@@ -12,8 +12,9 @@ func (e *Executor) newStatusCmd() *cobra.Command {
 		Short: "Deploy status stack",
 		Long:  `Shows Outblocks stack status.`,
 		Annotations: map[string]string{
-			cmdGroupAnnotation:        cmdGroupMain,
-			cmdSkipLoadAppsAnnotation: "1",
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
+			cmdAppsLoadModeAnnotation:    cmdLoadModeSkip,
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

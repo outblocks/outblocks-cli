@@ -9,6 +9,7 @@ import (
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/version"
 	"github.com/outblocks/outblocks-cli/pkg/cli/values"
+	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
@@ -16,13 +17,13 @@ import (
 )
 
 const (
-	cmdSkipLoadConfigAnnotation  = "cmd_skip_load_config"
-	cmdSkipCheckConfigAnnotation = "cmd_skip_check_config"
-	cmdSkipLoadAppsAnnotation    = "cmd_skip_load_apps"
-	cmdSkipLoadPluginsAnnotation = "cmd_skip_load_plugins"
-	cmdSkipVersionCheck          = "cmd_skip_version_check"
-	cmdGroupAnnotation           = "cmd_group"
-	cmdGroupDelimiter            = "-"
+	cmdProjectLoadModeAnnotation        = "cmd_project_load_mode"
+	cmdProjectSkipCheckAnnotation       = "cmd_project_skip_check"
+	cmdProjectSkipLoadPluginsAnnotation = "cmd_project_skip_load_plugins"
+	cmdAppsLoadModeAnnotation           = "cmd_apps_load_mode"
+	cmdVersionCheckSkipAnnotation       = "cmd_version_check_skip"
+	cmdGroupAnnotation                  = "cmd_group"
+	cmdGroupDelimiter                   = "-"
 
 	defaultValuesYAML = "<env>.values.yaml"
 )
@@ -32,7 +33,24 @@ const (
 	cmdGroupMain   = "1-Main"
 	cmdGroupPlugin = "2-Plugin"
 	cmdGroupOthers = "5-Other"
+
+	cmdLoadModeFull      = "full"
+	cmdLoadModeEssential = "essential"
+	cmdLoadModeSkip      = "skip"
 )
+
+func loadModeFromAnnotation(val string) config.LoadMode {
+	switch val {
+	case "", cmdLoadModeFull:
+		return config.LoadModeFull
+	case cmdLoadModeEssential:
+		return config.LoadModeEssential
+	case cmdLoadModeSkip:
+		return config.LoadModeSkip
+	default:
+		panic(fmt.Sprintf("invalid annotation value: %s", val))
+	}
+}
 
 // Inspired by similar approach in: https://github.com/hitzhangjie/godbg (Apache 2.0 License).
 func helpCommandsGrouped(cmd *cobra.Command) string {
@@ -274,10 +292,11 @@ func (e *Executor) newRoot() *cobra.Command {
 		Long:          e.rootLongHelp(),
 		SilenceErrors: true,
 		Annotations: map[string]string{
-			cmdSkipLoadAppsAnnotation: "1",
+			cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
+			cmdAppsLoadModeAnnotation:    cmdLoadModeSkip,
 		},
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			if _, ok := cmd.Annotations[cmdSkipVersionCheck]; ok && version.ShouldRunUpdateCheck(e.lastUpdateCheckFile) {
+			if _, ok := cmd.Annotations[cmdVersionCheckSkipAnnotation]; ok && version.ShouldRunUpdateCheck(e.lastUpdateCheckFile) {
 				v, err := version.CheckLatestCLI(cmd.Context())
 				if err != nil {
 					e.log.Debugf("Error checking latest CLI version: %s\n", err)

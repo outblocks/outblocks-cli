@@ -6,6 +6,7 @@ import (
 	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/goccy/go-yaml"
+	"github.com/goccy/go-yaml/ast"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
@@ -33,7 +34,7 @@ type StaticApp struct {
 	types.StaticAppProperties `json:",inline"`
 }
 
-func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
+func LoadStaticAppData(path string, n ast.Node) (*StaticApp, error) {
 	out := &StaticApp{
 		BasicApp: *NewBasicApp(),
 		StaticAppProperties: types.StaticAppProperties{
@@ -47,12 +48,12 @@ func LoadStaticAppData(path string, data []byte) (*StaticApp, error) {
 		},
 	}
 
-	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator())); err != nil {
+	if err := yaml.NodeToValue(n, out, yaml.Validator(validator.DefaultValidator())); err != nil {
 		return nil, merry.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
 	out.yamlPath = path
-	out.yamlData = data
+	out.yamlData = []byte(n.String())
 
 	return out, nil
 }

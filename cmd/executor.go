@@ -65,11 +65,14 @@ func NewExecutor() *Executor {
 func setupEnvVars(env *cli.Environment) {
 	env.AddVarWithDefault("plugins_cache_dir", "plugins cache directory", clipath.DataDir("plugin-cache"))
 	env.AddVar("no_color", "disable color output")
-	env.AddVarWithDefault("log_level", "set logging level: debug | warn | error", "warn")
+	env.AddVarWithDefault("log_level", "set logging level: debug | info | warn | error", "info")
 }
 
 func (e *Executor) commandPreRun(ctx context.Context) error {
-	var skipLoadConfig, skipLoadApps, skipLoadPlugins, skipCheckConfig bool
+	var (
+		loadProjectOptions LoadProjectOptions
+		loadAppsMode       config.LoadMode
+	)
 
 	// Parse critical root flags.
 	e.rootCmd.PersistentFlags().ParseErrorsWhitelist.UnknownFlags = true
@@ -86,16 +89,17 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	isHelp := helpFlag.Changed || e.rootCmd == cmd || (len(os.Args) > 1 && strings.EqualFold(os.Args[1], "help"))
 
 	if err == nil {
-		skipLoadConfig = cmd.Annotations[cmdSkipLoadConfigAnnotation] == "1"
-		skipLoadApps = cmd.Annotations[cmdSkipLoadAppsAnnotation] == "1"
-		skipCheckConfig = cmd.Annotations[cmdSkipCheckConfigAnnotation] == "1"
-		skipLoadPlugins = cmd.Annotations[cmdSkipLoadPluginsAnnotation] == "1"
+		loadProjectOptions.Mode = loadModeFromAnnotation(cmd.Annotations[cmdProjectLoadModeAnnotation])
+		loadProjectOptions.SkipCheck = cmd.Annotations[cmdProjectSkipCheckAnnotation] == "1"
+		loadProjectOptions.SkipLoadPlugins = cmd.Annotations[cmdProjectSkipLoadPluginsAnnotation] == "1"
 
-		if skipLoadConfig {
+		loadAppsMode = loadModeFromAnnotation(cmd.Annotations[cmdAppsLoadModeAnnotation])
+
+		if loadProjectOptions.Mode == config.LoadModeSkip {
 			return nil
 		}
 	} else {
-		skipLoadApps = true
+		loadAppsMode = config.LoadModeSkip
 	}
 
 	// Load values.
@@ -130,11 +134,11 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	}
 
 	// Load config file.
-	if err := e.loadProjectConfig(ctx, cfgPath, e.srv.Addr().String(), vals, skipLoadApps, skipLoadPlugins, skipCheckConfig); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+	if err := e.loadProject(ctx, cfgPath, e.srv.Addr().String(), vals, loadProjectOptions, loadAppsMode); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
 		return err
 	}
 
-	if skipLoadPlugins {
+	if loadProjectOptions.SkipLoadPlugins {
 		return nil
 	}
 
@@ -161,7 +165,9 @@ func (e *Executor) addPluginsCommands() error {
 					Short: cmdt.Short,
 					Long:  cmdt.Long,
 					Annotations: map[string]string{
-						cmdGroupAnnotation: cmdGroupPlugin,
+						cmdGroupAnnotation:           cmdGroupPlugin,
+						cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
+						cmdAppsLoadModeAnnotation:    cmdLoadModeEssential,
 					},
 					RunE: func(cmd *cobra.Command, args []string) error {
 						return actions.NewCommand(e.log, e.cfg, &actions.CommandOptions{
