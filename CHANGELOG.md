@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.80](https://github.com/outblocks/outblocks-cli/compare/v0.1.79...v0.1.80)
+
+> 2022-03-21
+
+### FEATURES
+
+[`2262531`](https://github.com/outblocks/outblocks-cli/commit/2262531745537b3da5859cafe200e958379140d3) yaml evaluator with support for non essential keys
+
+
 ## [v0.1.79](https://github.com/outblocks/outblocks-cli/compare/v0.1.78...v0.1.79)
 
 > 2022-03-17
