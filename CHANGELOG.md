@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.82](https://github.com/outblocks/outblocks-cli/compare/v0.1.81...v0.1.82)
+
+> 2022-03-22
+
+### FEATURES
+
+[`1c25c5a`](https://github.com/outblocks/outblocks-cli/commit/1c25c5a4091ac369885e2fffcc77c1c7f96a800b) updated to go 1.18, lint fixes and updates
+
+
 ## [v0.1.81](https://github.com/outblocks/outblocks-cli/compare/v0.1.80...v0.1.81)
 
 > 2022-03-22
