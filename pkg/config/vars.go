@@ -30,78 +30,99 @@ func isPathInMap(path []string, m map[string]bool) bool {
 	return false
 }
 
-func traverseYAMLMapping(file string, vars map[string]interface{}, m *ast.MappingNode, essentialKeys map[string]bool, path []string) error {
-	for _, mv := range m.Values {
-		key := mv.Key.String()
-		curPath := path
+func expandYAMLString(n *ast.StringNode, file string, vars map[string]interface{}, essentialKeys map[string]bool, path []string) (ast.Node, error) {
+	tknCount := strings.Count(n.String(), "${")
+	if tknCount == 0 {
+		return n, nil
+	}
 
-		curPath = append(curPath, key)
+	output, _, err := plugin_util.NewBaseVarEvaluator(vars).
+		WithEncoder(func(c *plugin_util.VarContext, val interface{}) ([]byte, error) {
+			t := reflect.TypeOf(val)
 
-		switch val := mv.Value.(type) {
-		case *ast.MappingNode:
-			err := traverseYAMLMapping(file, vars, val, essentialKeys, curPath)
-			if err != nil {
-				return err
-			}
-		case *ast.StringNode:
-			// if indicator or multiple values here - that's an error
-			tknCount := strings.Count(val.String(), "${")
-			if tknCount == 0 {
-				continue
+			if t.Kind() == reflect.Slice || t.Kind() == reflect.Map {
+				if len(c.Input) != (c.TokenColumnEnd - c.TokenColumnStart + 1) {
+					return nil, fmt.Errorf("to substitute non-primitive value, it cannot be a part of a string and needs to be unquoted")
+				}
 			}
 
-			output, _, err := plugin_util.NewBaseVarEvaluator(vars).
-				WithEncoder(func(c *plugin_util.VarContext, val interface{}) ([]byte, error) {
-					t := reflect.TypeOf(val)
-
-					if t.Kind() == reflect.Slice || t.Kind() == reflect.Map {
-						if len(c.Input) != (c.TokenColumnEnd - c.TokenColumnStart + 1) {
-							return nil, fmt.Errorf("to substitute non-primitive value, it cannot be a part of a string and needs to be unquoted")
-						}
-					}
-
-					valOut, err := json.Marshal(val)
-					if err != nil {
-						return nil, err
-					}
-
-					if valOut[0] == '"' && valOut[len(valOut)-1] == '"' {
-						switch valOut[1] {
-						case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"':
-							if len(valOut) > 2 && checkQuotePrefix.Match(c.Line[:c.TokenColumnStart]) {
-								return valOut, nil
-							}
-						}
-
-						valOut = valOut[1 : len(valOut)-1]
-					}
-
-					return valOut, nil
-				}).
-				WithSkipRowColumnInfo(true).
-				WithVarChar('$').ExpandRaw([]byte(val.String()))
+			valOut, err := json.Marshal(val)
 			if err != nil {
-				if essentialKeys == nil || isPathInMap(curPath, essentialKeys) {
-					var pp printer.Printer
-					annotate := pp.PrintErrorToken(val.GetToken(), yaml.DefaultColorize())
+				return nil, err
+			}
 
-					return merry.Errorf("\nfile: %s\n%s\n\n%s  value expansion failed: %w", file, annotate, emoji.Warning, err)
+			if valOut[0] == '"' && valOut[len(valOut)-1] == '"' {
+				switch valOut[1] {
+				case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"':
+					if len(valOut) > 2 && checkQuotePrefix.Match(c.Line[:c.TokenColumnStart]) {
+						return valOut, nil
+					}
 				}
 
-				continue
+				valOut = valOut[1 : len(valOut)-1]
 			}
 
-			tok, err := parser.ParseBytes(output, 0)
+			return valOut, nil
+		}).
+		WithSkipRowColumnInfo(true).
+		WithVarChar('$').ExpandRaw([]byte(n.String()))
+	if err != nil {
+		if essentialKeys == nil || isPathInMap(path, essentialKeys) {
+			var pp printer.Printer
+			annotate := pp.PrintErrorToken(n.GetToken(), yaml.DefaultColorize())
+
+			return nil, merry.Errorf("\nfile: %s\n%s\n\n%s  value expansion failed: %w", file, annotate, emoji.Warning, err)
+		}
+
+		return n, nil
+	}
+
+	tok, err := parser.ParseBytes(output, 0)
+	if err != nil {
+		var pp printer.Printer
+		annotate := pp.PrintErrorToken(n.GetToken(), yaml.DefaultColorize())
+
+		return nil, merry.Errorf("\nfile: %s\n%s\n\n%s  error parsing resulting yaml: %w", file, annotate, emoji.Warning, err)
+	}
+
+	return tok.Docs[0].Body, nil
+}
+
+func traverseYAMLMapping(node ast.Node, file string, vars map[string]interface{}, essentialKeys map[string]bool, path []string) (ast.Node, error) {
+	switch n := node.(type) {
+	case *ast.StringNode:
+		return expandYAMLString(n, file, vars, essentialKeys, path)
+
+	case *ast.MappingValueNode:
+		new, err := traverseYAMLMapping(n.Value, file, vars, essentialKeys, append(append([]string(nil), path...), n.Key.String()))
+		if err != nil {
+			return nil, err
+		}
+
+		n.Value = new
+
+	case *ast.MappingNode:
+		for _, v := range n.Values {
+			keyPath := append(append([]string(nil), path...), v.Key.String())
+
+			new, err := traverseYAMLMapping(v.Value, file, vars, essentialKeys, keyPath)
 			if err != nil {
-				var pp printer.Printer
-				annotate := pp.PrintErrorToken(val.GetToken(), yaml.DefaultColorize())
-
-				return merry.Errorf("\nfile: %s\n%s\n\n%s  error parsing resulting yaml: %w", file, annotate, emoji.Warning, err)
+				return nil, err
 			}
 
-			mv.Value = tok.Docs[0].Body
+			v.Value = new
+		}
+
+	case *ast.SequenceNode:
+		for i, v := range n.Values {
+			new, err := traverseYAMLMapping(v, file, vars, essentialKeys, path)
+			if err != nil {
+				return nil, err
+			}
+
+			n.Values[i] = new
 		}
 	}
 
-	return nil
+	return node, nil
 }

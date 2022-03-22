@@ -164,7 +164,7 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 		return nil, merry.Errorf("project file %s yaml is invalid", path)
 	}
 
-	err = traverseYAMLMapping(path, vars, m, essentialKeys, nil)
+	_, err = traverseYAMLMapping(m, path, vars, essentialKeys, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func (p *Project) LoadAppFile(file string, essentialKeys map[string]bool) error 
 		return merry.Errorf("application file %s yaml is invalid", file)
 	}
 
-	err = traverseYAMLMapping(file, p.vars, m, essentialKeys, nil)
+	_, err = traverseYAMLMapping(m, file, p.vars, essentialKeys, nil)
 	if err != nil {
 		return err
 	}
