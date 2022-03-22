@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -437,7 +436,7 @@ func (d *Run) waitAll(ctx context.Context, runInfo *runInfo) error {
 				if err == nil {
 					_ = resp.Body.Close()
 
-					d.log.Printf("%s App '%s' is UP.\n", strings.Title(app.App.Type), app.App.Name)
+					d.log.Printf("%s App '%s' is UP.\n", util.Title(app.App.Type), app.App.Name)
 					prog.Increment()
 
 					return nil
@@ -629,7 +628,7 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 	d.log.Successln("All apps are UP.")
 
 	for _, a := range runInfo.apps {
-		d.log.Printf("%s App '%s' listening at %s\n", strings.Title(a.App.Type), a.App.Name, a.Url)
+		d.log.Printf("%s App '%s' listening at %s\n", util.Title(a.App.Type), a.App.Name, a.Url)
 	}
 
 	d.log.Println()

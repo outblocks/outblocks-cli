@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -92,7 +91,7 @@ type valuesInit struct {
 }
 
 func (d *Init) promptEnv(ctx context.Context, cfg *projectInit, env string, input map[string]interface{}) error {
-	d.log.Section().Printf("%s environment configuration", strings.Title(env))
+	d.log.Section().Printf("%s environment configuration", util.Title(env))
 
 	vals := &valuesInit{
 		projectInit:  cfg,

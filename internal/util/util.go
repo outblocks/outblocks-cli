@@ -8,6 +8,8 @@ import (
 
 	"github.com/ansel1/merry/v2"
 	"golang.org/x/term"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 func InterfaceSlice(slice interface{}) []interface{} {
@@ -98,4 +100,8 @@ func IndentString(s, indent string) string {
 	}
 
 	return fmt.Sprintf("%s%s", indent, newline.ReplaceAllString(s, fmt.Sprintf("\n%s", indent)))
+}
+
+func Title(s string) string {
+	return cases.Title(language.Und, cases.NoLower).String(s)
 }

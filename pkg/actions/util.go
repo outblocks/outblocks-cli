@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -32,7 +33,7 @@ type change struct {
 
 func (i *change) Name() string {
 	if i.app != nil {
-		return fmt.Sprintf("%s App '%s'", strings.Title(i.app.Type), i.app.Name)
+		return fmt.Sprintf("%s App '%s'", util.Title(i.app.Type), i.app.Name)
 	}
 
 	if i.dep != nil {
@@ -369,7 +370,7 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 			return
 		}
 
-		success := fmt.Sprintf("%s %s '%s'", strings.Title(applyActionType(act)), act.ObjectType, act.ObjectName)
+		success := fmt.Sprintf("%s %s '%s'", util.Title(applyActionType(act)), act.ObjectType, act.ObjectName)
 
 		if act.Progress == act.Total {
 			m.Lock()

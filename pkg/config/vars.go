@@ -94,33 +94,33 @@ func traverseYAMLMapping(node ast.Node, file string, vars map[string]interface{}
 		return expandYAMLString(n, file, vars, essentialKeys, path)
 
 	case *ast.MappingValueNode:
-		new, err := traverseYAMLMapping(n.Value, file, vars, essentialKeys, append(append([]string(nil), path...), n.Key.String()))
+		newVal, err := traverseYAMLMapping(n.Value, file, vars, essentialKeys, append(append([]string(nil), path...), n.Key.String()))
 		if err != nil {
 			return nil, err
 		}
 
-		n.Value = new
+		n.Value = newVal
 
 	case *ast.MappingNode:
 		for _, v := range n.Values {
 			keyPath := append(append([]string(nil), path...), v.Key.String())
 
-			new, err := traverseYAMLMapping(v.Value, file, vars, essentialKeys, keyPath)
+			newVal, err := traverseYAMLMapping(v.Value, file, vars, essentialKeys, keyPath)
 			if err != nil {
 				return nil, err
 			}
 
-			v.Value = new
+			v.Value = newVal
 		}
 
 	case *ast.SequenceNode:
 		for i, v := range n.Values {
-			new, err := traverseYAMLMapping(v, file, vars, essentialKeys, path)
+			newVal, err := traverseYAMLMapping(v, file, vars, essentialKeys, path)
 			if err != nil {
 				return nil, err
 			}
 
-			n.Values[i] = new
+			n.Values[i] = newVal
 		}
 	}
 

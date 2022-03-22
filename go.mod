@@ -1,6 +1,6 @@
 module github.com/outblocks/outblocks-cli
 
-go 1.17
+go 1.18
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.2
@@ -18,7 +18,7 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20220317191823-3d3257ab8ee0
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20220322134338-c32d4787e087
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.37
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
@@ -28,6 +28,7 @@ require (
 	github.com/txn2/txeh v1.3.0
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211
+	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.45.0
 	google.golang.org/protobuf v1.27.1
 )
@@ -89,7 +90,6 @@ require (
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
 	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5 // indirect
-	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220314164441-57ef72a4c106 // indirect
