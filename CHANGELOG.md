@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.81](https://github.com/outblocks/outblocks-cli/compare/v0.1.80...v0.1.81)
+
+> 2022-03-22
+
+### FEATURES
+
+[`a783a42`](https://github.com/outblocks/outblocks-cli/commit/a783a42223b7deaf687a16fc157a1a5c18ab0349) sequence support for yaml templating
+
+
 ## [v0.1.80](https://github.com/outblocks/outblocks-cli/compare/v0.1.79...v0.1.80)
 
 > 2022-03-21
