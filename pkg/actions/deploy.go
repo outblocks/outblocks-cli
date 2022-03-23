@@ -312,12 +312,23 @@ func (d *Deploy) checkIfDNSAreUsed(stateApps map[string]*apiv1.AppState) error {
 	return nil
 }
 
-func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *types.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (stateDiff *statediff.Diff, shouldSave bool, acquiredLocks map[string]string, dur time.Duration, err error) {
+type planAndApplyResults struct {
+	stateDiff       *statediff.Diff
+	empty, canceled bool
+	acquiredLocks   map[string]string
+	missingLocks    []string
+	dur             time.Duration
+}
+
+func (r *planAndApplyResults) shouldSave() bool {
+	return !r.canceled && (!r.empty || !r.stateDiff.IsEmpty())
+}
+
+func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *types.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (ret planAndApplyResults, err error) {
 	var (
-		locks           []string
-		missingLocks    []string
-		stateBefore     *types.StateData
-		empty, canceled bool
+		locks        []string
+		missingLocks []string
+		stateBefore  *types.StateData
 	)
 
 	// Acquire necessary acquiredLocks.
@@ -331,19 +342,19 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *types.StateDa
 	statePlugin := d.cfg.State.Plugin()
 
 	for {
-		acquiredLocks, err = statePlugin.Client().AcquireLocks(ctx, d.cfg.State.Other, locks, d.opts.LockWait, yamlContext)
+		ret.acquiredLocks, err = statePlugin.Client().AcquireLocks(ctx, d.cfg.State.Other, locks, d.opts.LockWait, yamlContext)
 		if err != nil {
-			return nil, false, nil, dur, err
+			return ret, err
 		}
 
-		d.log.Debugf("Acquired locks: %s\n", acquiredLocks)
+		d.log.Debugf("Acquired locks: %s\n", ret.acquiredLocks)
 
 		// Build apps.
 		if first && !d.opts.SkipBuild {
 			err = d.buildApps(ctx, state.Apps)
 			if err != nil {
-				_ = releaseLocks(d.cfg, acquiredLocks)
-				return nil, false, nil, dur, err
+				_ = releaseLocks(d.cfg, ret.acquiredLocks)
+				return ret, err
 			}
 
 			first = false
@@ -354,14 +365,14 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *types.StateDa
 
 		err = d.preChecks(state)
 		if err != nil {
-			_ = releaseLocks(d.cfg, acquiredLocks)
-			return nil, false, nil, dur, err
+			_ = releaseLocks(d.cfg, ret.acquiredLocks)
+			return ret, err
 		}
 
-		empty, canceled, dur, missingLocks, err = d.planAndApply(ctx, verify, state, acquiredLocks, true)
+		ret.empty, ret.canceled, ret.dur, ret.missingLocks, err = d.planAndApply(ctx, verify, state, ret.acquiredLocks, true)
 		if err != nil {
-			_ = releaseLocks(d.cfg, acquiredLocks)
-			acquiredLocks = nil
+			_ = releaseLocks(d.cfg, ret.acquiredLocks)
+			ret.acquiredLocks = nil
 
 			// Proceed to save partial work if needed.
 			break
@@ -373,31 +384,31 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *types.StateDa
 
 		locks = append(locks, missingLocks...)
 
-		err = releaseLocks(d.cfg, acquiredLocks)
+		err = releaseLocks(d.cfg, ret.acquiredLocks)
 		if err != nil {
-			return nil, false, nil, dur, err
+			return ret, err
 		}
 
 		state, _, err = getState(ctx, d.cfg.State, false, d.opts.LockWait, false, yamlContext)
 		if err != nil {
-			return nil, false, nil, dur, err
+			return ret, err
 		}
 	}
 
 	stateAfter := state
 
-	stateDiff, diffErr := statediff.New(stateBefore, stateAfter)
+	var diffErr error
+
+	ret.stateDiff, diffErr = statediff.New(stateBefore, stateAfter)
 	if diffErr != nil {
-		return nil, false, nil, dur, merry.Errorf("computing state diff failed: %w", err)
+		return ret, merry.Errorf("computing state diff failed: %w", err)
 	}
 
-	shouldSave = !canceled && (!empty || !stateDiff.IsEmpty()) && !d.opts.SkipDiff
-
-	if !stateDiff.IsEmpty() {
-		d.log.Debugf("State Diff (to apply: %t)\n%s\n", shouldSave, stateDiff)
+	if !ret.stateDiff.IsEmpty() {
+		d.log.Debugf("State Diff (to apply: %t)\n%s\n", ret.shouldSave, ret.stateDiff)
 	}
 
-	return stateDiff, shouldSave, acquiredLocks, dur, err
+	return ret, err
 }
 
 func (d *Deploy) multilockRun(ctx context.Context) error {
@@ -422,24 +433,24 @@ func (d *Deploy) multilockRun(ctx context.Context) error {
 	}
 
 	// Acquire locks and plan+apply.
-	stateDiff, shouldSave, acquiredLocks, dur, err := d.multilockPlanAndApply(ctx, state, partialLock, verify, yamlContext)
+	res, err := d.multilockPlanAndApply(ctx, state, partialLock, verify, yamlContext)
 	if err != nil {
 		return err
 	}
 
-	if shouldSave {
+	if res.shouldSave() && !d.opts.SkipDiff {
 		d.log.Debugln("Saving state.")
 
 		var stateErr error
 
 		state, stateRes, stateErr = getState(context.Background(), d.cfg.State, true, stateLockWait, false, yamlContext)
 		if stateErr != nil {
-			_ = releaseLocks(d.cfg, acquiredLocks)
+			_ = releaseLocks(d.cfg, res.acquiredLocks)
 			return stateErr
 		}
 
 		// These are "less important" errors.
-		if e := stateDiff.Apply(state); err == nil {
+		if e := res.stateDiff.Apply(state); err == nil {
 			err = e
 		}
 
@@ -450,21 +461,21 @@ func (d *Deploy) multilockRun(ctx context.Context) error {
 		if e := releaseStateLock(d.cfg, stateRes.LockInfo); err == nil {
 			err = e
 		}
-	}
 
-	if shouldSave && err == nil {
-		d.log.Printf("All changes applied in %s.\n", dur.Truncate(timeTruncate))
+		if err == nil {
+			d.log.Printf("All changes applied in %s.\n", res.dur.Truncate(timeTruncate))
+		}
 	}
 
 	// Release locks.
-	if releaseErr := releaseLocks(d.cfg, acquiredLocks); err == nil {
+	if releaseErr := releaseLocks(d.cfg, res.acquiredLocks); err == nil {
 		err = releaseErr
 	}
 
 	switch {
 	case err != nil:
 		return err
-	case !shouldSave:
+	case res.canceled:
 		return nil
 	}
 
@@ -622,6 +633,35 @@ func (d *Deploy) prepareAppSSLMap(appStates map[string]*apiv1.AppState) (map[str
 	return sslMap, nil
 }
 
+func (d *Deploy) showAppState(appState *apiv1.AppState, appNameStyle, appURLStyle *pterm.Style) {
+	app := appState.App
+
+	var appInfo []string
+
+	if app.Url != "" {
+		appInfo = append(appInfo, pterm.Gray("URL"), appURLStyle.Sprint(app.Url))
+	} else if appState.Dns != nil {
+		var privateURL string
+
+		switch {
+		case appState.Dns.InternalUrl != "":
+			privateURL = appState.Dns.InternalUrl
+		case appState.Dns.InternalIp != "":
+			privateURL = appState.Dns.InternalIp
+		default:
+			return
+		}
+
+		appInfo = append(appInfo, pterm.Gray("private"), appURLStyle.Sprint(privateURL))
+	}
+
+	d.log.Printf("%s (%s)\n  %s\n", appNameStyle.Sprint(app.Name), app.Type, strings.Join(appInfo, " "))
+
+	if appState.Dns.CloudUrl != "" {
+		d.log.Printf("  %s %s\n", pterm.Gray("cloud URL"), appURLStyle.Sprint(appState.Dns.CloudUrl))
+	}
+}
+
 func (d *Deploy) showAppStates(appStates map[string]*apiv1.AppState, appNameStyle *pterm.Style) (allReady bool) {
 	appURLStyle := pterm.NewStyle(pterm.FgGreen, pterm.Underscore)
 	appFailingStyle := pterm.NewStyle(pterm.FgRed, pterm.Bold)
@@ -655,38 +695,13 @@ func (d *Deploy) showAppStates(appStates map[string]*apiv1.AppState, appNameStyl
 		d.log.Section().Println("App Status")
 
 		for _, appState := range readyApps {
-			app := appState.App
-
-			var appInfo []string
-
-			if app.Url != "" {
-				appInfo = append(appInfo, pterm.Gray("URL"), appURLStyle.Sprint(app.Url))
-			} else if appState.Dns != nil {
-				var privateURL string
-
-				switch {
-				case appState.Dns.InternalUrl != "":
-					privateURL = appState.Dns.InternalUrl
-				case appState.Dns.InternalIp != "":
-					privateURL = appState.Dns.InternalIp
-				default:
-					continue
-				}
-
-				appInfo = append(appInfo, pterm.Gray("private"), appURLStyle.Sprint(privateURL))
-			}
-
-			d.log.Printf("%s (%s)\n  %s\n", appNameStyle.Sprint(app.Name), app.Type, strings.Join(appInfo, " "))
-
-			if appState.Dns.CloudUrl != "" {
-				fmt.Printf("  %s %s\n", pterm.Gray("cloud URL"), appURLStyle.Sprint(appState.Dns.CloudUrl))
-			}
+			d.showAppState(appState, appNameStyle, appURLStyle)
 		}
 
 		for _, appState := range unreadyApps {
-			app := appState.App
+			d.showAppState(appState, appNameStyle, appURLStyle)
 
-			d.log.Printf("%s (%s) %s %s\n", appNameStyle.Sprint(app.Name), app.Type, pterm.Gray("==>"), appFailingStyle.Sprint("FAILING"))
+			d.log.Printf("  %s %s\n", pterm.Gray("status"), appFailingStyle.Sprint("FAILING!"))
 			d.log.Errorln(appState.Deployment.Message)
 		}
 	}
