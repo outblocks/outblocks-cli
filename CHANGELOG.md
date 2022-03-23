@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.83](https://github.com/outblocks/outblocks-cli/compare/v0.1.82...v0.1.83)
+
+> 2022-03-23
+
+### BUG FIXES
+
+[`b4e0cc2`](https://github.com/outblocks/outblocks-cli/commit/b4e0cc24a69fe4ac21eabaddf0239c36864fed3b) use first state plugin as default, handle local state correctly
+
+
 ## [v0.1.82](https://github.com/outblocks/outblocks-cli/compare/v0.1.81...v0.1.82)
 
 > 2022-03-22
