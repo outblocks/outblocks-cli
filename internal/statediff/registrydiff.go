@@ -190,7 +190,7 @@ func registryMap(reg json.RawMessage) (map[registry.ResourceID]*registry.Resourc
 	var loaded []*registry.ResourceSerialized
 
 	if len(reg) == 0 {
-		return nil, nil
+		return make(map[registry.ResourceID]*registry.ResourceSerialized), nil
 	}
 
 	err := json.Unmarshal(reg, &loaded)
