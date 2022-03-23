@@ -66,10 +66,6 @@ func (s *State) SaveLocal(d *types.StateData) error {
 func (s *State) Normalize(cfg *Project) error {
 	s.Type = strings.ToLower(s.Type)
 
-	if s.Type == "" {
-		return cfg.yamlError("$.state.type", "state has no type defined, did you want \"type: local\"?")
-	}
-
 	return nil
 }
 
@@ -85,13 +81,17 @@ func (s *State) Check(cfg *Project) error {
 		}
 
 		for _, typ := range plug.StateTypes {
-			if typ == s.Type {
+			if typ == s.Type || s.Type == "" {
 				s.plugin = plug
 			}
 		}
 	}
 
 	if s.plugin == nil {
+		if s.Type == "" {
+			return cfg.yamlError("$.state", "state has no type defined, did you want \"type: local\"?")
+		}
+
 		return cfg.yamlError("$.state", "state has no supported plugin available")
 	}
 

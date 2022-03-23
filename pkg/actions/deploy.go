@@ -472,7 +472,7 @@ func (d *Deploy) multilockRun(ctx context.Context) error {
 }
 
 func (d *Deploy) Run(ctx context.Context) error {
-	if d.opts.Lock && d.cfg.State.Plugin().HasAction(plugins.ActionLock) {
+	if d.opts.Lock && d.cfg.State.Plugin() != nil && d.cfg.State.Plugin().HasAction(plugins.ActionLock) {
 		return d.multilockRun(ctx)
 	}
 

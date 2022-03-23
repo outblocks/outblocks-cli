@@ -60,11 +60,7 @@ func (p *Project) Normalize() error {
 
 		// Default to local statefile.
 		if p.State == nil {
-			p.State = &State{
-				Type: StateLocal,
-			}
-		} else if p.State.Type == "" {
-			p.State.Type = StateLocal
+			p.State = &State{}
 		}
 
 		if err := p.State.Normalize(p); err != nil {
