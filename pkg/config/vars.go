@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"regexp"
 	"strings"
 
 	"github.com/ansel1/merry/v2"
@@ -14,10 +13,6 @@ import (
 	"github.com/goccy/go-yaml/parser"
 	"github.com/goccy/go-yaml/printer"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
-)
-
-var (
-	checkQuotePrefix = regexp.MustCompile(`(\s*-\s+|\S:\s+)$`)
 )
 
 func isPathInMap(path []string, m map[string]bool) bool {
@@ -46,23 +41,7 @@ func expandYAMLString(n *ast.StringNode, file string, vars map[string]interface{
 				}
 			}
 
-			valOut, err := json.Marshal(val)
-			if err != nil {
-				return nil, err
-			}
-
-			if valOut[0] == '"' && valOut[len(valOut)-1] == '"' {
-				switch valOut[1] {
-				case '*', '&', '[', '{', '}', ']', ',', '!', '|', '>', '%', '\'', '"':
-					if len(valOut) > 2 && checkQuotePrefix.Match(c.Line[:c.TokenColumnStart]) {
-						return valOut, nil
-					}
-				}
-
-				valOut = valOut[1 : len(valOut)-1]
-			}
-
-			return valOut, nil
+			return json.Marshal(val)
 		}).
 		WithSkipRowColumnInfo(true).
 		WithVarChar('$').ExpandRaw([]byte(n.String()))
