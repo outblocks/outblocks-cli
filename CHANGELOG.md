@@ -1,5 +1,19 @@
 # Outblocks CLI Changelog
 
+## [v0.1.84](https://github.com/outblocks/outblocks-cli/compare/v0.1.83...v0.1.84)
+
+> 2022-03-25
+
+### BUG FIXES
+
+[`02fed2d`](https://github.com/outblocks/outblocks-cli/commit/02fed2d6d74ae5db798bf14a419e0e26577213d6) expansion edge case
+[`41d7974`](https://github.com/outblocks/outblocks-cli/commit/41d7974bd88c2894296a7f0e28ebdc33567eceb4) registry diff with multilock on empty state
+
+### FEATURES
+
+[`fccf5b6`](https://github.com/outblocks/outblocks-cli/commit/fccf5b6a09e7d22f09fd9725fb6f87381c63af41) consistent show state
+
+
 ## [v0.1.83](https://github.com/outblocks/outblocks-cli/compare/v0.1.82...v0.1.83)
 
 > 2022-03-23
