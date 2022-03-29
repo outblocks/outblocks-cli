@@ -1,4 +1,4 @@
-package statediff
+package statefile
 
 import (
 	"encoding/json"
@@ -8,7 +8,6 @@ import (
 	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
-	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
 type Diff struct {
@@ -25,7 +24,7 @@ func (s *Diff) IsEmpty() bool {
 	return s.Apps.IsEmpty() && s.Dependencies.IsEmpty() && s.DNSRecords.IsEmpty() && s.DomainsInfo.IsEmpty() && len(s.PluginsRegistry) == 0 && len(s.PluginsOther) == 0 && len(s.PluginsDelete) == 0
 }
 
-func (s *Diff) Apply(state *types.StateData) error {
+func (s *Diff) Apply(state *StateData) error {
 	if state.Apps == nil {
 		state.Apps = make(map[string]*apiv1.AppState)
 	}
@@ -50,10 +49,10 @@ func (s *Diff) Apply(state *types.StateData) error {
 
 	// DNS Records.
 	if state.DNSRecords == nil {
-		state.DNSRecords = make(types.DNSRecordMap)
+		state.DNSRecords = make(DNSRecordMap)
 	}
 
-	s.DNSRecords.Apply(map[types.DNSRecordKey]types.DNSRecordValue(state.DNSRecords))
+	s.DNSRecords.Apply(map[DNSRecordKey]DNSRecordValue(state.DNSRecords))
 
 	// Domains info.
 	if state.DomainsInfo == nil {
@@ -71,12 +70,12 @@ func (s *Diff) Apply(state *types.StateData) error {
 
 	// Plugin state.
 	if state.Plugins == nil {
-		state.Plugins = make(map[string]*types.PluginState)
+		state.Plugins = make(map[string]*PluginState)
 	}
 
 	for k, v := range s.PluginsRegistry {
 		if _, ok := state.Plugins[k]; !ok {
-			state.Plugins[k] = &types.PluginState{}
+			state.Plugins[k] = &PluginState{}
 		}
 
 		err := v.Apply(state.Plugins[k])
@@ -87,7 +86,7 @@ func (s *Diff) Apply(state *types.StateData) error {
 
 	for k, v := range s.PluginsOther {
 		if _, ok := state.Plugins[k]; !ok {
-			state.Plugins[k] = &types.PluginState{}
+			state.Plugins[k] = &PluginState{}
 		}
 
 		if state.Plugins[k].Other == nil {
@@ -166,7 +165,7 @@ func fromJSONObject(i, out interface{}) {
 	_ = json.Unmarshal(b, out)
 }
 
-func New(state1, state2 *types.StateData) (*Diff, error) {
+func NewDiff(state1, state2 *StateData) (*Diff, error) {
 	apps, err := NewMapDiff(toJSONObject(state1.Apps), toJSONObject(state2.Apps), 2)
 	if err != nil {
 		return nil, merry.Wrap(err)
@@ -177,7 +176,7 @@ func New(state1, state2 *types.StateData) (*Diff, error) {
 		return nil, merry.Wrap(err)
 	}
 
-	dnsRecords, err := NewMapDiff(map[types.DNSRecordKey]types.DNSRecordValue(state1.DNSRecords), map[types.DNSRecordKey]types.DNSRecordValue(state2.DNSRecords), 1)
+	dnsRecords, err := NewMapDiff(map[DNSRecordKey]DNSRecordValue(state1.DNSRecords), map[DNSRecordKey]DNSRecordValue(state2.DNSRecords), 1)
 	if err != nil {
 		return nil, merry.Wrap(err)
 	}
@@ -193,7 +192,7 @@ func New(state1, state2 *types.StateData) (*Diff, error) {
 	for k, v2 := range state2.Plugins {
 		v1 := state1.Plugins[k]
 		if v1 == nil {
-			v1 = &types.PluginState{}
+			v1 = &PluginState{}
 		}
 
 		rdiff, err := NewRegistryDiff(v1, v2)

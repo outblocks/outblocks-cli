@@ -1,4 +1,4 @@
-package statediff
+package statefile
 
 import (
 	"bytes"

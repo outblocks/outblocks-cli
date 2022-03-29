@@ -3,6 +3,7 @@ module github.com/outblocks/outblocks-cli
 go 1.18
 
 require (
+	github.com/23doors/go-yaml v1.9.6-0.20220328165103-15fd217cc309
 	github.com/AlecAivazis/survey/v2 v2.3.2
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig v2.22.0+incompatible
@@ -11,14 +12,13 @@ require (
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/enescakir/emoji v1.0.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
-	github.com/goccy/go-yaml v1.9.5
 	github.com/google/go-github/v35 v35.3.0
 	github.com/gookit/color v1.5.0
 	github.com/goreleaser/fileglob v1.3.0
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20220322134338-c32d4787e087
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20220328165400-c0288fe91a69
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.37
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
@@ -99,7 +99,5 @@ require (
 
 replace github.com/santhosh-tekuri/jsonschema/v5 => github.com/23doors/jsonschema/v5 v5.0.1-0.20220120150455-3960be6116ea
 
-replace github.com/goccy/go-yaml => github.com/23doors/go-yaml v1.8.10-0.20220221225217-7ce4b7f6d9b9
-
-// replace github.com/goccy/go-yaml => ../go-yaml
+// replace github.com/23doors/go-yaml => ../go-yaml
 // replace github.com/outblocks/outblocks-plugin-go => ../outblocks-plugin-go

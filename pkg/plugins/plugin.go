@@ -16,17 +16,17 @@ import (
 )
 
 type Plugin struct {
-	Name           string                    `json:"name"`
-	Author         string                    `json:"author"`
-	Usage          string                    `json:"usage"`
-	Description    string                    `json:"description"`
-	Cmd            map[string]string         `json:"cmd"`
-	Actions        []string                  `json:"actions"`
-	Hooks          []*PluginHooks            `json:"hooks"`
-	Supports       []string                  `json:"supports"`
-	StateTypes     []string                  `json:"state_types"`
-	SupportedTypes []*PluginType             `json:"supported_types"`
-	Commands       map[string]*PluginCommand `json:"commands"`
+	Name           string                            `json:"name"`
+	Author         string                            `json:"author"`
+	Usage          string                            `json:"usage"`
+	Description    string                            `json:"description"`
+	Cmd            map[string]*command.StringCommand `json:"cmd"`
+	Actions        []string                          `json:"actions"`
+	Hooks          []*PluginHooks                    `json:"hooks"`
+	Supports       []string                          `json:"supports"`
+	StateTypes     []string                          `json:"state_types"`
+	SupportedTypes []*PluginType                     `json:"supported_types"`
+	Commands       map[string]*PluginCommand         `json:"commands"`
 
 	Dir      string          `json:"-"`
 	CacheDir string          `json:"-"`
@@ -122,7 +122,7 @@ func (p *Plugin) Prepare(ctx context.Context, log logger.Logger, env, projectID,
 		runCommand = p.Cmd["default"]
 	}
 
-	cmd := command.NewCmdAsUser(runCommand)
+	cmd := runCommand.ExecCmdAsUser()
 
 	cmd.Env = append(os.Environ(),
 		fmt.Sprintf("OUTBLOCKS_BIN=%s", os.Args[0]),

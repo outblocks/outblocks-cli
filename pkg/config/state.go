@@ -8,8 +8,8 @@ import (
 
 	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
+	"github.com/outblocks/outblocks-cli/internal/statefile"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
-	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
 const (
@@ -38,23 +38,23 @@ func (s *State) LocalPath() string {
 	return s.Path
 }
 
-func (s *State) LoadLocal() (*types.StateData, error) {
+func (s *State) LoadLocal() (*statefile.StateData, error) {
 	data, err := os.ReadFile(s.LocalPath())
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return types.NewStateData(), nil
+			return statefile.NewStateData(), nil
 		}
 
 		return nil, err
 	}
 
-	d := types.NewStateData()
+	d := statefile.NewStateData()
 	err = json.Unmarshal(data, &d)
 
 	return d, err
 }
 
-func (s *State) SaveLocal(d *types.StateData) error {
+func (s *State) SaveLocal(d *statefile.StateData) error {
 	data, err := json.Marshal(d)
 	if err != nil {
 		return merry.Errorf("error marshaling state: %w", err)

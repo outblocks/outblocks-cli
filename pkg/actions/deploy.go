@@ -2,18 +2,17 @@ package actions
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/23doors/go-yaml"
+	"github.com/23doors/go-yaml/parser"
 	"github.com/ansel1/merry/v2"
 	dockerclient "github.com/docker/docker/client"
-	"github.com/goccy/go-yaml"
-	"github.com/goccy/go-yaml/parser"
-	"github.com/outblocks/outblocks-cli/internal/statediff"
+	"github.com/outblocks/outblocks-cli/internal/statefile"
 	"github.com/outblocks/outblocks-cli/internal/urlutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
@@ -21,7 +20,6 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
-	"github.com/outblocks/outblocks-plugin-go/types"
 	"github.com/outblocks/outblocks-plugin-go/util/errgroup"
 	"github.com/pterm/pterm"
 )
@@ -56,6 +54,7 @@ type DeployOptions struct {
 	LockWait             time.Duration
 	AutoApprove          bool
 	ForceApprove         bool
+	MergeMode            bool
 	TargetApps, SkipApps []string
 	SkipAllApps          bool
 	SkipDNS              bool
@@ -71,7 +70,7 @@ func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Dep
 	}
 }
 
-func (d *Deploy) preChecks(state *types.StateData) error {
+func (d *Deploy) preChecks(state *statefile.StateData) error {
 	return d.checkIfDNSAreUsed(state.Apps)
 }
 
@@ -117,7 +116,7 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 	// Proceed with saving.
 	stateAfter := state
 
-	stateDiff, diffErr := statediff.New(stateBefore, stateAfter)
+	stateDiff, diffErr := statefile.NewDiff(stateBefore, stateAfter)
 	if diffErr != nil {
 		return merry.Errorf("computing state diff failed: %w", err)
 	}
@@ -151,7 +150,7 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 	return d.showStateStatus(state.Apps, state.Dependencies, state.DNSRecords)
 }
 
-func (d *Deploy) allLockIDs(state *types.StateData) []string {
+func (d *Deploy) allLockIDs(state *statefile.StateData) []string {
 	lockIDsMap := make(map[string]struct{})
 
 	for _, app := range d.cfg.Apps {
@@ -215,7 +214,7 @@ func (d *Deploy) allLockIDs(state *types.StateData) []string {
 	return locks
 }
 
-func (d *Deploy) partialLockIDs(state *types.StateData) []string {
+func (d *Deploy) partialLockIDs(state *statefile.StateData) []string {
 	if d.opts.SkipAllApps {
 		return nil
 	}
@@ -313,7 +312,7 @@ func (d *Deploy) checkIfDNSAreUsed(stateApps map[string]*apiv1.AppState) error {
 }
 
 type planAndApplyResults struct {
-	stateDiff       *statediff.Diff
+	stateDiff       *statefile.Diff
 	empty, canceled bool
 	acquiredLocks   map[string]string
 	missingLocks    []string
@@ -324,11 +323,10 @@ func (r *planAndApplyResults) shouldSave() bool {
 	return !r.canceled && (!r.empty || !r.stateDiff.IsEmpty())
 }
 
-func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *types.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (ret planAndApplyResults, err error) {
+func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (ret planAndApplyResults, err error) {
 	var (
-		locks        []string
-		missingLocks []string
-		stateBefore  *types.StateData
+		locks       []string
+		stateBefore *statefile.StateData
 	)
 
 	// Acquire necessary acquiredLocks.
@@ -378,11 +376,11 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *types.StateDa
 			break
 		}
 
-		if len(missingLocks) == 0 {
+		if len(ret.missingLocks) == 0 {
 			break
 		}
 
-		locks = append(locks, missingLocks...)
+		locks = append(locks, ret.missingLocks...)
 
 		err = releaseLocks(d.cfg, ret.acquiredLocks)
 		if err != nil {
@@ -399,13 +397,13 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *types.StateDa
 
 	var diffErr error
 
-	ret.stateDiff, diffErr = statediff.New(stateBefore, stateAfter)
+	ret.stateDiff, diffErr = statefile.NewDiff(stateBefore, stateAfter)
 	if diffErr != nil {
 		return ret, merry.Errorf("computing state diff failed: %w", err)
 	}
 
 	if !ret.stateDiff.IsEmpty() {
-		d.log.Debugf("State Diff (to apply: %t)\n%s\n", ret.shouldSave, ret.stateDiff)
+		d.log.Debugf("State Diff (to apply: %t)\n%s\n", ret.shouldSave(), ret.stateDiff)
 	}
 
 	return ret, err
@@ -461,10 +459,10 @@ func (d *Deploy) multilockRun(ctx context.Context) error {
 		if e := releaseStateLock(d.cfg, stateRes.LockInfo); err == nil {
 			err = e
 		}
+	}
 
-		if err == nil {
-			d.log.Printf("All changes applied in %s.\n", res.dur.Truncate(timeTruncate))
-		}
+	if !res.canceled && !res.empty && err == nil && !d.opts.SkipApply {
+		d.log.Printf("All changes applied in %s.\n", res.dur.Truncate(timeTruncate))
 	}
 
 	// Release locks.
@@ -525,7 +523,7 @@ func (d *Deploy) promptDiff(deployChanges []*change, acquiredLocks map[string]st
 	return empty, canceled, missingLocks
 }
 
-func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *types.StateData, acquiredLocks map[string]string, checkLocks bool) (empty, canceled bool, dur time.Duration, missingLocks []string, err error) {
+func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (empty, canceled bool, dur time.Duration, missingLocks []string, err error) {
 	var domains []*apiv1.DomainInfo
 
 	if d.opts.SkipDNS {
@@ -639,8 +637,10 @@ func (d *Deploy) showAppState(appState *apiv1.AppState, appNameStyle, appURLStyl
 	var appInfo []string
 
 	if app.Url != "" {
-		appInfo = append(appInfo, pterm.Gray("URL"), appURLStyle.Sprint(app.Url))
-	} else if appState.Dns != nil {
+		appInfo = append(appInfo, fmt.Sprintf("%s %s", pterm.Gray("URL"), appURLStyle.Sprint(app.Url)))
+	}
+
+	if appState.Dns != nil {
 		var privateURL string
 
 		switch {
@@ -652,10 +652,10 @@ func (d *Deploy) showAppState(appState *apiv1.AppState, appNameStyle, appURLStyl
 			return
 		}
 
-		appInfo = append(appInfo, pterm.Gray("private"), appURLStyle.Sprint(privateURL))
+		appInfo = append(appInfo, fmt.Sprintf("%s %s", pterm.Gray("private URL"), appURLStyle.Sprint(privateURL)))
 	}
 
-	d.log.Printf("%s (%s)\n  %s\n", appNameStyle.Sprint(app.Name), app.Type, strings.Join(appInfo, " "))
+	d.log.Printf("%s (%s)\n  %s\n", appNameStyle.Sprint(app.Name), app.Type, strings.Join(appInfo, "\n  "))
 
 	if appState.Dns.CloudUrl != "" {
 		d.log.Printf("  %s %s\n", pterm.Gray("cloud URL"), appURLStyle.Sprint(appState.Dns.CloudUrl))
@@ -709,7 +709,7 @@ func (d *Deploy) showAppStates(appStates map[string]*apiv1.AppState, appNameStyl
 	return len(unreadyApps) == 0
 }
 
-func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependencyStates map[string]*apiv1.DependencyState, dnsRecords types.DNSRecordMap) error {
+func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependencyStates map[string]*apiv1.DependencyState, dnsRecords statefile.DNSRecordMap) error {
 	var dns []*apiv1.DNSRecord
 
 	for k, v := range dnsRecords {
@@ -763,7 +763,35 @@ func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependenc
 				first = false
 			}
 
-			d.log.Printf("%s (%s) %s %s\n", appNameStyle.Sprint(dep.Name), dep.Type, pterm.Gray("==>"), pterm.Green(depState.Dns.ConnectionInfo))
+			connInfo := depState.Dns.ConnectionInfo
+
+			if connInfo == "" {
+				f := depState.Dns.Properties.Fields
+				if len(f) == 0 {
+					continue
+				}
+
+				var props []string
+				for k, v := range f {
+					props = append(props, fmt.Sprintf("%s:%s", k, v.AsInterface()))
+				}
+
+				sort.Slice(props, func(i, j int) bool {
+					if strings.HasPrefix(props[i], "name:") {
+						return true
+					}
+
+					if strings.HasPrefix(props[j], "name:") {
+						return false
+					}
+
+					return props[i] < props[j]
+				})
+
+				connInfo = strings.Join(props, " | ")
+			}
+
+			d.log.Printf("%s (%s) %s %s\n", appNameStyle.Sprint(dep.Name), dep.Type, pterm.Gray("==>"), pterm.Green(connInfo))
 		}
 	}
 
@@ -797,7 +825,7 @@ func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependenc
 	return nil
 }
 
-func saveState(cfg *config.Project, data *types.StateData) error {
+func saveState(cfg *config.Project, data *statefile.StateData) error {
 	state := cfg.State
 	plug := state.Plugin()
 
@@ -813,7 +841,7 @@ func saveState(cfg *config.Project, data *types.StateData) error {
 	return err
 }
 
-func getState(ctx context.Context, state *config.State, lock bool, lockWait time.Duration, skipCreate bool, yamlContext *client.YAMLContext) (stateData *types.StateData, stateRes *apiv1.GetStateResponse_State, err error) {
+func getState(ctx context.Context, state *config.State, lock bool, lockWait time.Duration, skipCreate bool, yamlContext *client.YAMLContext) (stateData *statefile.StateData, stateRes *apiv1.GetStateResponse_State, err error) {
 	plug := state.Plugin()
 
 	if state.IsLocal() {
@@ -830,10 +858,9 @@ func getState(ctx context.Context, state *config.State, lock bool, lockWait time
 		return nil, nil, err
 	}
 
-	stateData = types.NewStateData()
-
-	if len(ret.State) != 0 {
-		err = json.Unmarshal(ret.State, &stateData)
+	stateData, err = statefile.ReadState(ret.State)
+	if err != nil {
+		return nil, nil, merry.Errorf("error reading state: %w", err)
 	}
 
 	return stateData, ret, err
@@ -902,8 +929,8 @@ func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetApp
 	return planMap
 }
 
-func mergeState(state *types.StateData, pluginName string, pluginState *apiv1.PluginState, appStates map[string]*apiv1.AppState, depStates map[string]*apiv1.DependencyState, dnsRecords []*apiv1.DNSRecord) {
-	state.Plugins[pluginName] = types.PluginStateFromProto(pluginState)
+func mergeState(state *statefile.StateData, pluginName string, pluginState *apiv1.PluginState, appStates map[string]*apiv1.AppState, depStates map[string]*apiv1.DependencyState, dnsRecords []*apiv1.DNSRecord) {
+	state.Plugins[pluginName] = statefile.PluginStateFromProto(pluginState)
 
 	// Merge state with new changes.
 	for k, v := range appStates {
@@ -919,9 +946,9 @@ func mergeState(state *types.StateData, pluginName string, pluginState *apiv1.Pl
 	}
 }
 
-func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, domains []*apiv1.DomainInfo, verify, destroy bool) (retMap map[*plugins.Plugin]*apiv1.PlanResponse, err error) {
+func plan(ctx context.Context, state *statefile.StateData, planMap map[*plugins.Plugin]*planParams, domains []*apiv1.DomainInfo, verify, destroy bool) (retMap map[*plugins.Plugin]*apiv1.PlanResponse, err error) {
 	if state.Plugins == nil {
-		state.Plugins = make(map[string]*types.PluginState)
+		state.Plugins = make(map[string]*statefile.PluginState)
 	}
 
 	retMap = make(map[*plugins.Plugin]*apiv1.PlanResponse, len(planMap))
@@ -966,11 +993,11 @@ func plan(ctx context.Context, state *types.StateData, planMap map[*plugins.Plug
 	return retMap, err
 }
 
-func apply(ctx context.Context, state *types.StateData, planMap map[*plugins.Plugin]*planParams, domains []*apiv1.DomainInfo, destroy bool, callback func(*apiv1.ApplyAction)) error {
+func apply(ctx context.Context, state *statefile.StateData, planMap map[*plugins.Plugin]*planParams, domains []*apiv1.DomainInfo, destroy bool, callback func(*apiv1.ApplyAction)) error {
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 
 	if state.Plugins == nil {
-		state.Plugins = make(map[string]*types.PluginState)
+		state.Plugins = make(map[string]*statefile.PluginState)
 	}
 
 	var mu sync.Mutex

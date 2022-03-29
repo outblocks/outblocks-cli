@@ -157,7 +157,17 @@
         },
         "command": {
           "description": "Command to be run to for dev mode.",
-          "type": "string"
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
         },
         "port": {
           "description": "Port override, by default just assigns next port starting from listen-port.",
@@ -305,6 +315,34 @@
         "port": {
           "description": "Docker container port to use.",
           "type": "integer"
+        },
+        "command": {
+          "description": "Docker command (CMD) to override.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "entrypoint": {
+          "description": "Docker entrypoint (ENTRYPOINT) to override.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
         }
       }
     }

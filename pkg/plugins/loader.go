@@ -9,9 +9,9 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/23doors/go-yaml"
 	"github.com/Masterminds/semver"
 	"github.com/ansel1/merry/v2"
-	"github.com/goccy/go-yaml"
 	"github.com/otiai10/copy"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/validator"

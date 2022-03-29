@@ -6,12 +6,12 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/23doors/go-yaml"
+	"github.com/23doors/go-yaml/ast"
+	"github.com/23doors/go-yaml/parser"
+	"github.com/23doors/go-yaml/printer"
 	"github.com/ansel1/merry/v2"
 	"github.com/enescakir/emoji"
-	"github.com/goccy/go-yaml"
-	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/parser"
-	"github.com/goccy/go-yaml/printer"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
@@ -31,19 +31,21 @@ func expandYAMLString(n *ast.StringNode, file string, vars map[string]interface{
 		return n, nil
 	}
 
-	complexType := false
+	var (
+		t         reflect.Type
+		fullValue bool
+	)
 
 	output, _, err := plugin_util.NewBaseVarEvaluator(vars).
 		WithEncoder(func(c *plugin_util.VarContext, val interface{}) ([]byte, error) {
-			t := reflect.TypeOf(val)
+			t = reflect.TypeOf(val)
+			fullValue = len(c.Input) == (c.TokenColumnEnd - c.TokenColumnStart + 1)
 
 			switch {
 			case t.Kind() == reflect.Slice || t.Kind() == reflect.Map:
-				if len(c.Input) != (c.TokenColumnEnd - c.TokenColumnStart + 1) {
-					return nil, fmt.Errorf("to substitute non-primitive value, it cannot be a part of a string and needs to be unquoted")
+				if !fullValue {
+					return nil, fmt.Errorf("to substitute non-primitive value, it cannot be a part of a string")
 				}
-
-				complexType = true
 
 			case t.Kind() == reflect.String:
 				return []byte(val.(string)), nil
@@ -64,7 +66,7 @@ func expandYAMLString(n *ast.StringNode, file string, vars map[string]interface{
 		return n, nil
 	}
 
-	if !complexType {
+	if !fullValue || t.Kind() == reflect.String {
 		output = []byte(fmt.Sprintf("%q", string(output)))
 	}
 

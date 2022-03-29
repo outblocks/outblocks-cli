@@ -3,8 +3,8 @@ package validator
 import (
 	"reflect"
 
+	"github.com/23doors/go-yaml"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/goccy/go-yaml"
 )
 
 func DefaultValidator() yaml.StructValidator {

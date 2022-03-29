@@ -32,7 +32,7 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 	var err error
 
 	info.Cmd, err = command.New(
-		a.App.Run.Command,
+		command.NewStringCommandFromArray(a.Command).ExecCmdAsUser(),
 		command.WithDir(a.App.Dir),
 		command.WithEnv(util.FlattenEnvMap(a.App.Env)),
 	)

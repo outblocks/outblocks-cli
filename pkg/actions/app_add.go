@@ -22,6 +22,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/templates"
 	"github.com/outblocks/outblocks-plugin-go/types"
+	"github.com/outblocks/outblocks-plugin-go/util/command"
 	"github.com/pterm/pterm"
 )
 
@@ -522,12 +523,12 @@ func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
 				},
 				AppRun: &config.AppRunInfo{
 					Plugin:  d.opts.RunPlugin,
-					Command: d.opts.RunCommand,
+					Command: command.NewStringCommandFromString(d.opts.RunCommand),
 				},
 			},
 			StaticAppProperties: types.StaticAppProperties{
 				Build: &types.StaticAppBuild{
-					Command: d.opts.StaticBuildCommand,
+					Command: command.NewStringCommandFromString(d.opts.StaticBuildCommand),
 					Dir:     d.opts.StaticBuildDir,
 				},
 				Routing: d.opts.StaticRouting,
@@ -545,7 +546,7 @@ func (d *AppAdd) promptService() (*serviceAppInfo, error) { // nolint: unparam
 				AppURL:  d.opts.URL,
 				AppDir:  d.opts.Dir,
 				AppRun: &config.AppRunInfo{
-					Command: d.opts.RunCommand,
+					Command: command.NewStringCommandFromString(d.opts.RunCommand),
 				},
 			},
 			ServiceAppProperties: types.ServiceAppProperties{

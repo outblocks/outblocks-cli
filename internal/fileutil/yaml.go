@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/23doors/go-yaml"
 	"github.com/ansel1/merry/v2"
 	"github.com/enescakir/emoji"
-	"github.com/goccy/go-yaml"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 

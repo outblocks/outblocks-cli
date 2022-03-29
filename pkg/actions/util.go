@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/outblocks/outblocks-cli/internal/statefile"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
-	"github.com/outblocks/outblocks-plugin-go/types"
+	"github.com/outblocks/outblocks-plugin-go/registry"
 	"github.com/pterm/pterm"
 )
 
@@ -61,9 +62,9 @@ func (i *changeID) Type() string {
 	panic("unknown type")
 }
 
-func newChangeFromPlanAction(cfg *config.Project, act *apiv1.PlanAction, state *types.StateData, plugin *plugins.Plugin) *change {
+func newChangeFromPlanAction(cfg *config.Project, act *apiv1.PlanAction, state *statefile.StateData, plugin *plugins.Plugin) *change {
 	switch act.Source {
-	case types.SourceApp:
+	case registry.SourceApp:
 		var app *apiv1.App
 
 		if a := cfg.AppByID(act.Namespace); a != nil {
@@ -79,7 +80,7 @@ func newChangeFromPlanAction(cfg *config.Project, act *apiv1.PlanAction, state *
 				app: app,
 			}
 		}
-	case types.SourceDependency:
+	case registry.SourceDependency:
 		var dep *apiv1.Dependency
 
 		if d := cfg.DependencyByID(act.Namespace); d != nil {
@@ -103,7 +104,7 @@ func newChangeFromPlanAction(cfg *config.Project, act *apiv1.PlanAction, state *
 	}
 }
 
-func computeChangeInfo(cfg *config.Project, state *types.StateData, plugin *plugins.Plugin, actions []*apiv1.PlanAction) (changes []*change) {
+func computeChangeInfo(cfg *config.Project, state *statefile.StateData, plugin *plugins.Plugin, actions []*apiv1.PlanAction) (changes []*change) {
 	changesMap := make(map[string]*change)
 
 	for _, act := range actions {
@@ -129,7 +130,7 @@ func computeChangeInfo(cfg *config.Project, state *types.StateData, plugin *plug
 	return changes
 }
 
-func computeChange(cfg *config.Project, oldState, state *types.StateData, planMap map[*plugins.Plugin]*apiv1.PlanResponse) []*change { // nolint:unparam
+func computeChange(cfg *config.Project, oldState, state *statefile.StateData, planMap map[*plugins.Plugin]*apiv1.PlanResponse) []*change { // nolint:unparam
 	var changes []*change
 
 	for plugin, p := range planMap {

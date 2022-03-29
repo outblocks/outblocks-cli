@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/23doors/go-yaml"
 	"github.com/ansel1/merry/v2"
-	"github.com/goccy/go-yaml"
 	"github.com/outblocks/outblocks-cli/pkg/getter"
 	"github.com/outblocks/outblocks-cli/pkg/strvals"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"

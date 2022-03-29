@@ -178,7 +178,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 	}
 
 	for _, app := range cfg.Apps {
-		if app.RunInfo().Command == "" {
+		if app.RunInfo().Command.IsEmpty() {
 			return nil, app.YAMLError("$.run.command", "run.command is required to run app")
 		}
 
@@ -196,10 +196,13 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		appType.Properties = plugin_util.MustNewStruct(mergedProps)
 
 		appRun := &apiv1.AppRun{
-			App:  appType,
-			Url:  d.localURL(app.URL(), appPort, app.PathRedirect()),
-			Ip:   loopbackIP,
-			Port: int32(appPort),
+			App:     appType,
+			Url:     d.localURL(app.URL(), appPort, app.PathRedirect()),
+			Ip:      loopbackIP,
+			Port:    int32(appPort),
+			Command: app.RunInfo().Command.Array(),
+			Env:     app.RunInfo().Env,
+			Other:   plugin_util.MustNewStruct(app.RunInfo().Other),
 		}
 
 		info.apps = append(info.apps, appRun)

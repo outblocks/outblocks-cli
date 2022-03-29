@@ -54,6 +54,8 @@ func (c *Command) Run(ctx context.Context) error {
 			req.AppStates = state.Apps
 		case plugins.CommandInputTypeDependencyStates:
 			req.DependencyStates = state.Dependencies
+		case plugins.CommandInputTypePluginState:
+			req.PluginState = state.Plugins[c.opts.Plugin.Name].Proto()
 		}
 	}
 

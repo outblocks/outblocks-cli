@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -128,7 +128,7 @@ func (d *Deploy) buildStaticApp(ctx context.Context, app *config.StaticApp, eval
 		return err
 	}
 
-	cmd, err := command.New(app.Build.Command, command.WithDir(app.Dir()), command.WithEnv(util.FlattenEnvMap(env)))
+	cmd, err := command.New(app.Build.Command.ExecCmdAsUser(), command.WithDir(app.Dir()), command.WithEnv(util.FlattenEnvMap(env)))
 	if err != nil {
 		return merry.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
@@ -161,21 +161,23 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 	}
 
 	buildArgs := util.FlattenEnvMap(buildArgsMap)
-	for i, arg := range buildArgs {
-		buildArgs[i] = strings.ReplaceAll(arg, "\"", "\\\"")
-	}
 
-	cmdStr := fmt.Sprintf("docker build --platform=linux/amd64 --tag %s --pull --file %s --progress=plain", app.AppBuild.LocalDockerImage, app.Build.Dockerfile)
+	cmdArgs := []string{"build", "--platform=linux/amd64", "--tag", app.AppBuild.LocalDockerImage, "--pull", "--file", app.Build.Dockerfile, "--progress=plain"}
 
 	// Add build args if needed.
 	if len(buildArgs) > 0 {
-		buildArgsStr := strings.Join(buildArgs, "\" --build-arg=\"")
-		cmdStr += fmt.Sprintf("%s\"", buildArgsStr[1:])
+		for _, a := range buildArgs {
+			cmdArgs = append(cmdArgs, "--build-arg", a)
+		}
 	}
 
-	cmdStr += " ."
+	cmdArgs = append(cmdArgs, ".")
 
-	cmd, err := command.New(cmdStr, command.WithDir(dockercontext), command.WithEnv([]string{"DOCKER_BUILDKIT=1"}))
+	cmd, err := command.New(
+		exec.Command("docker", cmdArgs...),
+		command.WithDir(dockercontext),
+		command.WithEnv([]string{"DOCKER_BUILDKIT=1"}),
+	)
 	if err != nil {
 		return merry.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
@@ -256,7 +258,7 @@ func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppS
 		case config.AppTypeStatic:
 			a := app.(*config.StaticApp)
 
-			if a.Build.Command == "" {
+			if a.Build.Command.IsEmpty() {
 				continue
 			}
 

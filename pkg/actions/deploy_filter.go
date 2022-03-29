@@ -2,14 +2,14 @@ package actions
 
 import (
 	"github.com/ansel1/merry/v2"
+	"github.com/outblocks/outblocks-cli/internal/statefile"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
-	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
-func filterAppsNormal(cfg *config.Project, state *types.StateData, targetAppIDsMap, skipAppIDsMap map[string]bool) map[string]*apiv1.AppPlan {
+func filterAppsNormal(cfg *config.Project, state *statefile.StateData, targetAppIDsMap, skipAppIDsMap map[string]bool) map[string]*apiv1.AppPlan {
 	appsMap := make(map[string]*apiv1.AppPlan, len(state.Apps))
 
 	// Use state apps as base unless skip mode is enabled and they are NOT to be skipped.
@@ -50,7 +50,7 @@ func filterAppsNormal(cfg *config.Project, state *types.StateData, targetAppIDsM
 	return appsMap
 }
 
-func filterAppsDestroy(state *types.StateData, targetAppIDsMap, skipAppIDsMap map[string]bool) (appsMap map[string]*apiv1.AppPlan, skipAppIDs []string) {
+func filterAppsDestroy(state *statefile.StateData, targetAppIDsMap, skipAppIDsMap map[string]bool) (appsMap map[string]*apiv1.AppPlan, skipAppIDs []string) {
 	skipAppIDs = make([]string, 0, len(state.Apps))
 	appsMap = make(map[string]*apiv1.AppPlan, len(state.Apps))
 
@@ -77,7 +77,7 @@ func filterAppsDestroy(state *types.StateData, targetAppIDsMap, skipAppIDsMap ma
 	return appsMap, skipAppIDs
 }
 
-func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps, destroy bool) (apps []*apiv1.AppPlan, retSkipAppIDs []string, retDestroy bool, err error) {
+func filterApps(cfg *config.Project, state *statefile.StateData, targetAppIDs, skipAppIDs []string, skipAllApps, destroy bool) (apps []*apiv1.AppPlan, retSkipAppIDs []string, retDestroy bool, err error) {
 	if skipAllApps {
 		retSkipAppIDs := make([]string, 0, len(state.Apps))
 		apps = make([]*apiv1.AppPlan, 0, len(state.Apps))
@@ -150,7 +150,7 @@ func filterApps(cfg *config.Project, state *types.StateData, targetAppIDs, skipA
 	return apps, skipAppIDs, false, err
 }
 
-func filterDependencies(cfg *config.Project, state *types.StateData, targetAppIDs, skipAppIDs []string, skipAllApps bool) (deps []*apiv1.DependencyPlan) {
+func filterDependencies(cfg *config.Project, state *statefile.StateData, targetAppIDs, skipAppIDs []string, skipAllApps bool) (deps []*apiv1.DependencyPlan) {
 	if skipAllApps {
 		deps = make([]*apiv1.DependencyPlan, 0, len(state.Dependencies))
 		for _, dep := range state.Dependencies {

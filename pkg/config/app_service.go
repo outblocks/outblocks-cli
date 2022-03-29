@@ -3,10 +3,10 @@ package config
 import (
 	"fmt"
 
+	"github.com/23doors/go-yaml"
+	"github.com/23doors/go-yaml/ast"
 	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/goccy/go-yaml"
-	"github.com/goccy/go-yaml/ast"
 	"github.com/outblocks/outblocks-cli/internal/validator"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"

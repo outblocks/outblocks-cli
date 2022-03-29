@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/23doors/go-yaml"
 	"github.com/ansel1/merry/v2"
-	"github.com/goccy/go-yaml"
 )
 
 // ErrNotList indicates that a non-list was treated as a list.

@@ -29,6 +29,18 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				return config.ErrProjectConfigNotFound
 			}
 
+			if opts.MergeMode {
+				if len(opts.TargetApps) > 0 || len(opts.SkipApps) > 0 || opts.SkipAllApps {
+					return merry.New("merge-mode already implies which apps are to be targeted/skipped")
+				}
+
+				opts.TargetApps = make([]string, len(e.cfg.Apps))
+
+				for i, app := range e.cfg.Apps {
+					opts.TargetApps[i] = app.ID()
+				}
+			}
+
 			if len(opts.TargetApps) > 0 && len(opts.SkipApps) > 0 {
 				return merry.New("target-apps and skip-apps arguments are mutually exclusive modes")
 			}
@@ -73,6 +85,7 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 	f.DurationVar(&opts.LockWait, "lock-wait", 0, "wait for lock if it is already acquired")
 	f.BoolVar(&opts.AutoApprove, "yes", false, "auto approve changes")
 	f.BoolVar(&opts.ForceApprove, "force", false, "force approve even with critical changes")
+	f.BoolVar(&opts.MergeMode, "merge-mode", false, "merge mode targets all apps that can be found (this is the same behavior as if all apps with visible app config were targeted manually)")
 	f.StringSliceVarP(&targetApps, "target-apps", "t", nil, "target only specified apps, can specify multiple or separate values with comma in a form of <app type>.<name>, e.g.: static.website,service.api")
 	f.StringSliceVarP(&skipApps, "skip-apps", "s", nil, "skip specified apps (if they exist), can specify multiple or separate values with comma in a form of <app type>.<name>, e.g.: static.website,service.api")
 	f.BoolVar(&opts.SkipAllApps, "skip-all-apps", false, "skip all apps (if they exist)")

@@ -22,11 +22,12 @@ type CommandInputType int
 const (
 	CommandInputTypeAppStates CommandInputType = iota + 1
 	CommandInputTypeDependencyStates
+	CommandInputTypePluginState
 )
 
 var (
 	CommandValueTypes = []string{"str", "string", "bool", "boolean", "int", "integer"}
-	CommandInputTypes = []string{"app_states", "dependency_states"}
+	CommandInputTypes = []string{"app_states", "dependency_states", "plugin_state"}
 )
 
 type PluginCommand struct {
@@ -71,6 +72,8 @@ func (p *PluginCommand) InputTypes() []CommandInputType {
 			p.inputTypes[i] = CommandInputTypeAppStates
 		case "dependency_states":
 			p.inputTypes[i] = CommandInputTypeDependencyStates
+		case "plugin_state":
+			p.inputTypes[i] = CommandInputTypePluginState
 		default:
 			panic(fmt.Sprintf("unknown input type: %s", v))
 		}

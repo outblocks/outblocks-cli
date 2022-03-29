@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/ansel1/merry/v2"
+	"github.com/outblocks/outblocks-cli/internal/statefile"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
-	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
@@ -45,7 +45,7 @@ func (c *Client) GetState(ctx context.Context, typ string, props map[string]inte
 	}
 }
 
-func (c *Client) SaveState(ctx context.Context, state *types.StateData, typ string, props map[string]interface{}) (*apiv1.SaveStateResponse, error) {
+func (c *Client) SaveState(ctx context.Context, state *statefile.StateData, typ string, props map[string]interface{}) (*apiv1.SaveStateResponse, error) {
 	if err := c.Start(ctx); err != nil {
 		return nil, err
 	}

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/23doors/go-yaml"
 	"github.com/Masterminds/sprig"
-	"github.com/goccy/go-yaml"
 )
 
 var (

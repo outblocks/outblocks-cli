@@ -13,6 +13,7 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
+	"github.com/outblocks/outblocks-plugin-go/util/command"
 )
 
 var (
@@ -46,20 +47,10 @@ type App interface {
 
 type AppRunInfo struct {
 	Plugin  string                 `json:"plugin,omitempty"`
-	Command string                 `json:"command,omitempty"`
+	Command *command.StringCommand `json:"command,omitempty"`
 	Port    int                    `json:"port,omitempty"`
 	Env     map[string]string      `json:"env,omitempty"`
-	Other   map[string]interface{} `yaml:",remain"`
-}
-
-func (i *AppRunInfo) Proto() *apiv1.AppRunInfo {
-	return &apiv1.AppRunInfo{
-		Plugin:  i.Plugin,
-		Command: i.Command,
-		Port:    int32(i.Port),
-		Env:     i.Env,
-		Other:   plugin_util.MustNewStruct(i.Other),
-	}
+	Other   map[string]interface{} `yaml:",remain" json:"other,omitempty"`
 }
 
 type AppDeployInfo struct {
@@ -150,10 +141,6 @@ func ParseAppURL(u string) (*url.URL, error) {
 	parsed, err := url.Parse(u)
 	if err != nil {
 		return nil, err
-	}
-
-	if parsed.Path == "" {
-		parsed.Path = "/"
 	}
 
 	return parsed, nil
@@ -338,7 +325,6 @@ func (a *BasicApp) Proto() *apiv1.App {
 		DeployPlugin: deployPluginName,
 		DnsPlugin:    dnsPluginName,
 		RunPlugin:    runPluginName,
-		Run:          a.AppRun.Proto(),
 		Deploy:       a.AppDeploy.Proto(),
 		Needs:        needs,
 		Properties:   plugin_util.MustNewStruct(a.Other),

@@ -1,4 +1,4 @@
-package statediff
+package statefile
 
 import (
 	"encoding/json"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-plugin-go/registry"
-	"github.com/outblocks/outblocks-plugin-go/types"
 )
 
 type ResourceDiff struct {
@@ -23,7 +22,7 @@ type RegistryDiff struct {
 	delete map[registry.ResourceID]struct{}
 }
 
-func NewRegistryDiff(m1, m2 *types.PluginState) (*RegistryDiff, error) {
+func NewRegistryDiff(m1, m2 *PluginState) (*RegistryDiff, error) {
 	loaded1, err := registryMap(m1.Registry)
 	if err != nil {
 		return nil, err
@@ -89,7 +88,7 @@ func NewRegistryDiff(m1, m2 *types.PluginState) (*RegistryDiff, error) {
 	return ret, nil
 }
 
-func (d *RegistryDiff) Apply(m *types.PluginState) error {
+func (d *RegistryDiff) Apply(m *PluginState) error {
 	loaded, err := registryMap(m.Registry)
 	if err != nil {
 		return err
