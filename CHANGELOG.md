@@ -1,8 +1,21 @@
 # Outblocks CLI Changelog
 
+## [v0.1.86](https://github.com/outblocks/outblocks-cli/compare/v0.1.85...v0.1.86)
+
+> 2022-03-29
+
+### FEATURES
+
+[`8b0d0de`](https://github.com/outblocks/outblocks-cli/commit/8b0d0de30e2228ae43e3ed35273ca07e2caae724) initial state versioning, support for plugin state commands
+
+
 ## [v0.1.85](https://github.com/outblocks/outblocks-cli/compare/v0.1.84...v0.1.85)
 
 > 2022-03-25
+
+### HOT FIXES
+
+[`d57ca63`](https://github.com/outblocks/outblocks-cli/commit/d57ca631c28d5d073429148882a2cfb259fe64f1) complex type resolve
 
 
 ## [v0.1.84](https://github.com/outblocks/outblocks-cli/compare/v0.1.83...v0.1.84)
@@ -131,6 +144,10 @@
 
 > 2022-02-24
 
+### HOT FIXES
+
+[`ddaa5fe`](https://github.com/outblocks/outblocks-cli/commit/ddaa5fe7697a3d388fe5f533025a5cc5adafce3b) mapdiff
+
 
 ## [v0.1.71](https://github.com/outblocks/outblocks-cli/compare/v0.1.70...v0.1.71)
 
@@ -181,10 +198,18 @@
 
 > 2022-02-10
 
+### HOT FIXES
+
+[`9be48e0`](https://github.com/outblocks/outblocks-cli/commit/9be48e0f9d693bf6befb854b4ab86ca36d099232) temporarily disable multi lock run
+
 
 ## [v0.1.65](https://github.com/outblocks/outblocks-cli/compare/v0.1.64...v0.1.65)
 
 > 2022-02-10
+
+### HOT FIXES
+
+[`44cb081`](https://github.com/outblocks/outblocks-cli/commit/44cb0813f55582d729e8e2e6e4bdc79c1a97910a) filtered build proto
 
 
 ## [v0.1.64](https://github.com/outblocks/outblocks-cli/compare/v0.1.63...v0.1.64)
