@@ -87,6 +87,24 @@ scoop:
   license: MIT
 
 dockers:
+  - id: alpine
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - "outblocks/cli:latest"
+      - "outblocks/cli:alpine"
+      - "outblocks/cli:{{ .Tag }}"
+      - "outblocks/cli:v{{ .Major }}"
+      - "outblocks/cli:v{{ .Major }}.{{ .Minor }}"
+    dockerfile: dockerfiles/Dockerfile.alpine
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--platform=linux/amd64"
+
   - id: gcloud
     goos: linux
     goarch: amd64
