@@ -1,5 +1,18 @@
 # Outblocks CLI Changelog
 
+## [v0.1.94](https://github.com/outblocks/outblocks-cli/compare/v0.1.93...v0.1.94)
+
+> 2022-04-04
+
+### BUG FIXES
+
+[`8057a02`](https://github.com/outblocks/outblocks-cli/commit/8057a02bd2d696c0cba4e4352ec8c2a08292cbd4) add homedir to outblocks user
+
+### FEATURES
+
+[`9bce187`](https://github.com/outblocks/outblocks-cli/commit/9bce1879875b4007fc63effb767809aaab82be96) allow running docker as root through flag
+
+
 ## [v0.1.93](https://github.com/outblocks/outblocks-cli/compare/v0.1.92...v0.1.93)
 
 > 2022-04-04
