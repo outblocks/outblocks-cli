@@ -7,7 +7,7 @@ ARG GOSU_VERSION=1.14
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 RUN apk add --no-cache curl shadow && \
-    useradd -u 1000 -U -d /home/outblocks -s /bin/false outblocks && \
+    adduser -u 1000 -D -h /home/outblocks -s /bin/false outblocks && \
     mkdir /app && chown outblocks:outblocks /app && \
     curl -sL https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-amd64 -o /usr/local/bin/gosu && chmod +x /usr/local/bin/gosu && \
     curl -sL https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKER_VERSION}.tgz | tar -xz --strip-components 1 --directory /usr/local/bin && \
