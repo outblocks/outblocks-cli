@@ -7,7 +7,7 @@ groupmod -o -g "${PGID}" outblocks > /dev/null
 usermod -o -u "${PUID}" outblocks > /dev/null
 
 if [ "${RUN_AS_ROOT:-0}" = "1" ] || [ "$(id -u || true)" != "0" ]; then
-    exec ok "$@"
+    exec /bin/ok "$@"
     return
 fi
 
