@@ -1,6 +1,6 @@
 ARG GCLOUD_TAG=latest
 
-FROM google/cloud-sdk=${GCLOUD_TAG}
+FROM google/cloud-sdk:${GCLOUD_TAG}
 
 ARG BUILDX_VERSION=0.8.2
 ARG SOPS_VERSION=3.7.2
