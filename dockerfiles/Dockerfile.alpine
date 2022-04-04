@@ -6,7 +6,7 @@ ARG SOPS_VERSION=3.7.2
 ARG GOSU_VERSION=1.14
 
 SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
-RUN apk add --no-cache curl shadow && \
+RUN apk add --no-cache curl shadow git && \
     adduser -u 1000 -D -h /home/outblocks -s /bin/false outblocks && \
     mkdir /app && chown outblocks:outblocks /app && \
     curl -sL https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-amd64 -o /usr/local/bin/gosu && chmod +x /usr/local/bin/gosu && \
