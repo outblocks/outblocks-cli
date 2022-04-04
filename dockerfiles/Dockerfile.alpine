@@ -15,7 +15,7 @@ RUN apk add --no-cache curl shadow && \
     curl -L https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-amd64 -o /usr/local/lib/docker/cli-plugins/docker-buildx && \
     chmod a+x /usr/local/lib/docker/cli-plugins/docker-buildx
 
-COPY entrypoint.sh /root/entrypoint.sh
+COPY dockerfiles/entrypoint.sh /root/entrypoint.sh
 
 WORKDIR /app
 COPY ok /bin
