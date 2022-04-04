@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.98](https://github.com/outblocks/outblocks-cli/compare/v0.1.97...v0.1.98)
+
+> 2022-04-04
+
+### FEATURES
+
+[`dba6322`](https://github.com/outblocks/outblocks-cli/commit/dba632257e55e05075ad9bd4de5929bc3879639e) prefer OUTBLOCKS_VALUE_<env>_*
+
+
 ## [v0.1.97](https://github.com/outblocks/outblocks-cli/compare/v0.1.96...v0.1.97)
 
 > 2022-04-04
