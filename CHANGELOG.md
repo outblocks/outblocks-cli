@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.96](https://github.com/outblocks/outblocks-cli/compare/v0.1.95...v0.1.96)
+
+> 2022-04-04
+
+### BUG FIXES
+
+[`d4fcdce`](https://github.com/outblocks/outblocks-cli/commit/d4fcdcee2650e57ebff952d5e7b9b0ac3053f99d) proper adduser
+
+
 ## [v0.1.95](https://github.com/outblocks/outblocks-cli/compare/v0.1.94...v0.1.95)
 
 > 2022-04-04
