@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.93](https://github.com/outblocks/outblocks-cli/compare/v0.1.92...v0.1.93)
+
+> 2022-04-04
+
+### BUG FIXES
+
+[`6372352`](https://github.com/outblocks/outblocks-cli/commit/637235272161a82ca9a04d238ec909c845ae787d) dockerfile entrypoint
+
+
 ## [v0.1.92](https://github.com/outblocks/outblocks-cli/compare/v0.1.91...v0.1.92)
 
 > 2022-04-04
