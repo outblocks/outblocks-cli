@@ -1,5 +1,18 @@
 # Outblocks CLI Changelog
 
+## [v0.1.89](https://github.com/outblocks/outblocks-cli/compare/v0.1.88...v0.1.89)
+
+> 2022-04-04
+
+### BUG FIXES
+
+[`02d5aa9`](https://github.com/outblocks/outblocks-cli/commit/02d5aa90dfdaf467421c71cfaa73afde1b535454) goreleaser with docker
+
+### FEATURES
+
+[`b0355cb`](https://github.com/outblocks/outblocks-cli/commit/b0355cbb5796b0f0e6ceb5a6797300d8308b27c0) skip tests on tag release
+
+
 ## [v0.1.88](https://github.com/outblocks/outblocks-cli/compare/v0.1.87...v0.1.88)
 
 > 2022-04-04
