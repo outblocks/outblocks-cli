@@ -1,0 +1,14 @@
+ARG GCLOUD_TAG=latest
+
+FROM google/cloud-sdk=${GCLOUD_TAG}
+
+ARG BUILDX_VERSION=0.8.2
+ARG SOPS_VERSION=3.7.2
+
+RUN curl -sL https://github.com/mozilla/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux -o /usr/local/bin/sops && chmod a+x /usr/local/bin/sops && \
+    mkdir -p /usr/local/lib/docker/cli-plugins/ && \
+    curl -L https://github.com/docker/buildx/releases/download/v${BUILDX_VERSION}/buildx-v${BUILDX_VERSION}.linux-amd64 -o /usr/local/lib/docker/cli-plugins/docker-buildx && \
+    chmod a+x /usr/local/lib/docker/cli-plugins/docker-buildx
+
+COPY ok /bin
+ENTRYPOINT ["/bin/ok"]

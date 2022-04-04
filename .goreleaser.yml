@@ -85,3 +85,38 @@ scoop:
   homepage: https://outblocks.io
   description: Auto devops.
   license: MIT
+
+dockers:
+  - id: gcloud
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - "outblocks/cli:gcloud"
+      - "outblocks/cli:{{ .Tag }}-gcloud"
+      - "outblocks/cli:v{{ .Major }}-gcloud"
+    dockerfile: dockerfiles/Dockerfile.gcloud
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--build-arg=GCLOUD_TAG=latest"
+      - "--platform=linux/arm64"
+
+  - id: gcloud-alpine
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - "outblocks/cli:gcloud-alpine"
+      - "outblocks/cli:{{ .Tag }}-gcloud-alpine"
+      - "outblocks/cli:v{{ .Major }}-gcloud-alpine"
+    dockerfile: dockerfiles/Dockerfile.gcloud
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--build-arg=GCLOUD_TAG=alpine"
+      - "--platform=linux/arm64"

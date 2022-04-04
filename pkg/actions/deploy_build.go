@@ -203,32 +203,37 @@ type appBuilder struct {
 }
 
 func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppState) error {
-	appTypeMap := make(map[string]*apiv1.App)
+	appMap := make(map[string]*apiv1.AppState)
 
-	if len(d.opts.TargetApps) != 0 || len(d.opts.SkipApps) != 0 {
-		// Get state apps as well.
-		for _, appState := range stateApps {
-			if appState.App == nil {
-				continue
-			}
-
-			appTypeMap[appState.App.Id] = appState.App
+	// Prepare AppVars from state.
+	for _, appState := range stateApps {
+		if appState.App == nil {
+			continue
 		}
+
+		appMap[appState.App.Id] = appState
 	}
+
+	appStates := make([]*apiv1.AppState, 0, len(appMap))
+	for _, app := range appMap {
+		appStates = append(appStates, app)
+	}
+
+	appStateVars := types.AppVarsFromAppStates(appStates)
 
 	var builders []*appBuilder
 
-	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
-
 	apps := d.cfg.Apps
+	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 	targetAppIDsMap := util.StringArrayToSet(d.opts.TargetApps)
 	skipAppIDsMap := util.StringArrayToSet(d.opts.SkipApps)
 
-	var appsTemp []config.App
+	var (
+		appsTemp []config.App
+		appTypes []*apiv1.App
+	)
 
 	for _, app := range apps {
-		appTypeMap[app.ID()] = app.Proto()
-
 		if len(targetAppIDsMap) > 0 && !targetAppIDsMap[app.ID()] {
 			continue
 		}
@@ -238,20 +243,16 @@ func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppS
 		}
 
 		appsTemp = append(appsTemp, app)
+		appTypes = append(appTypes, app.Proto())
 	}
 
 	apps = appsTemp
 
-	// Flatten appTypeMap.
-	appTypes := make([]*apiv1.App, 0, len(appTypeMap))
-	for _, app := range appTypeMap {
-		appTypes = append(appTypes, app)
-	}
-
 	appVars := types.AppVarsFromApps(appTypes)
+	appVars = types.MergeAppVars(appStateVars, appVars)
 
-	for _, app := range apps {
-		eval := util.NewVarEvaluator(types.VarsForApp(appVars, app.Proto(), nil))
+	for i, app := range apps {
+		eval := util.NewVarEvaluator(types.VarsForApp(appVars, appTypes[i], nil))
 
 		// TODO: add build app function
 		switch app.Type() {

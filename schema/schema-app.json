@@ -232,6 +232,34 @@
         "max_scale": {
           "description": "Maximum scale of container deployment (used if deployment uses a container).",
           "type": "number"
+        },
+        "command": {
+          "description": "Docker command (CMD) to override. Defaults to container.command if specified.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "entrypoint": {
+          "description": "Docker entrypoint (ENTRYPOINT) to override. Defaults to container.entrypoint if specified.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
         }
       }
     },
@@ -277,7 +305,17 @@
         },
         "command": {
           "description": "Command to be run to generate output files.",
-          "type": "string"
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
         },
         "dir": {
           "description": "Output dir to where static files end up.",
