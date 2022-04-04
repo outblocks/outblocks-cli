@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.97](https://github.com/outblocks/outblocks-cli/compare/v0.1.96...v0.1.97)
+
+> 2022-04-04
+
+### FEATURES
+
+[`4f4906b`](https://github.com/outblocks/outblocks-cli/commit/4f4906b9c1d1c5c0da6dce63c80324ff3dde46e3) add git to dockerfile
+
+
 ## [v0.1.96](https://github.com/outblocks/outblocks-cli/compare/v0.1.95...v0.1.96)
 
 > 2022-04-04
