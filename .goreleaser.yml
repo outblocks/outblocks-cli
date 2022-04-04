@@ -94,6 +94,7 @@ dockers:
       - "outblocks/cli:gcloud"
       - "outblocks/cli:{{ .Tag }}-gcloud"
       - "outblocks/cli:v{{ .Major }}-gcloud"
+      - "outblocks/cli:v{{ .Major }}.{{ .Minor }}-gcloud"
     dockerfile: dockerfiles/Dockerfile.gcloud
     build_flag_templates:
       - "--pull"
@@ -102,7 +103,7 @@ dockers:
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--build-arg=GCLOUD_TAG=latest"
-      - "--platform=linux/arm64"
+      - "--platform=linux/amd64"
 
   - id: gcloud-alpine
     goos: linux
@@ -111,6 +112,7 @@ dockers:
       - "outblocks/cli:gcloud-alpine"
       - "outblocks/cli:{{ .Tag }}-gcloud-alpine"
       - "outblocks/cli:v{{ .Major }}-gcloud-alpine"
+      - "outblocks/cli:v{{ .Major }}.{{ .Minor }}-gcloud-alpine"
     dockerfile: dockerfiles/Dockerfile.gcloud
     build_flag_templates:
       - "--pull"
@@ -119,4 +121,4 @@ dockers:
       - "--label=org.opencontainers.image.revision={{.FullCommit}}"
       - "--label=org.opencontainers.image.version={{.Version}}"
       - "--build-arg=GCLOUD_TAG=alpine"
-      - "--platform=linux/arm64"
+      - "--platform=linux/amd64"
