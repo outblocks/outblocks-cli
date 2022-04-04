@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.91](https://github.com/outblocks/outblocks-cli/compare/v0.1.90...v0.1.91)
+
+> 2022-04-04
+
+### FEATURES
+
+[`1f2899d`](https://github.com/outblocks/outblocks-cli/commit/1f2899decb81be5455f38f6d94abfa6186c71c51) add main dockerfile with alpine base image
+
+
 ## [v0.1.90](https://github.com/outblocks/outblocks-cli/compare/v0.1.89...v0.1.90)
 
 > 2022-04-04
