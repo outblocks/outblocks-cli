@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.92](https://github.com/outblocks/outblocks-cli/compare/v0.1.91...v0.1.92)
+
+> 2022-04-04
+
+### FEATURES
+
+[`7628734`](https://github.com/outblocks/outblocks-cli/commit/762873457b55359ec6c89b831c68e6ae4cb63c26) remove gcloud docker for now, add entrypoint for alpine
+
+
 ## [v0.1.91](https://github.com/outblocks/outblocks-cli/compare/v0.1.90...v0.1.91)
 
 > 2022-04-04
