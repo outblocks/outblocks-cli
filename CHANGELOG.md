@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.90](https://github.com/outblocks/outblocks-cli/compare/v0.1.89...v0.1.90)
+
+> 2022-04-04
+
+### FEATURES
+
+[`8511216`](https://github.com/outblocks/outblocks-cli/commit/8511216f992c24103a8b6e8cec3cc6edd6c089f5) add support for OUTBLOCKS_VALUE_*
+
+
 ## [v0.1.89](https://github.com/outblocks/outblocks-cli/compare/v0.1.88...v0.1.89)
 
 > 2022-04-04
