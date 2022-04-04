@@ -1,5 +1,14 @@
 # Outblocks CLI Changelog
 
+## [v0.1.87](https://github.com/outblocks/outblocks-cli/compare/v0.1.86...v0.1.87)
+
+> 2022-04-04
+
+### FEATURES
+
+[`766a55a`](https://github.com/outblocks/outblocks-cli/commit/766a55a67888864f572695ec6565d9d50680c6fc) better build and run env vars, build dockerfiles
+
+
 ## [v0.1.86](https://github.com/outblocks/outblocks-cli/compare/v0.1.85...v0.1.86)
 
 > 2022-03-29
