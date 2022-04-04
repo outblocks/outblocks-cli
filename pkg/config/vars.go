@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"reflect"
 	"strings"
 
@@ -52,6 +53,17 @@ func expandYAMLString(n *ast.StringNode, file string, vars map[string]interface{
 			}
 
 			return json.Marshal(val)
+		}).
+		WithKeyGetter(func(c *plugin_util.VarContext, vars map[string]interface{}) (val interface{}, err error) {
+			if strings.HasPrefix(c.Token, "var.") {
+				env := fmt.Sprintf("OUTBLOCKS_VALUE_%s", c.Token[4:])
+				val, ok := os.LookupEnv(env)
+				if ok {
+					return val, nil
+				}
+			}
+
+			return plugin_util.DefaultVarKeyGetter(c, vars)
 		}).
 		WithSkipRowColumnInfo(true).
 		WithVarChar('$').ExpandRaw([]byte(n.Value))
