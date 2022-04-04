@@ -1,5 +1,18 @@
 # Outblocks CLI Changelog
 
+## [v0.1.95](https://github.com/outblocks/outblocks-cli/compare/v0.1.94...v0.1.95)
+
+> 2022-04-04
+
+### BUG FIXES
+
+[`bc9656a`](https://github.com/outblocks/outblocks-cli/commit/bc9656aeb8913800e9e38bfb5f0d01bf92b125dc) wrapper script
+
+### FEATURES
+
+[`51fb782`](https://github.com/outblocks/outblocks-cli/commit/51fb78206d770aab99525ac0e9ae83d7185c4a88) add wrapper for ok instead of running whole thing as non-root
+
+
 ## [v0.1.94](https://github.com/outblocks/outblocks-cli/compare/v0.1.93...v0.1.94)
 
 > 2022-04-04
