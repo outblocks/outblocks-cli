@@ -173,7 +173,7 @@ func (p *ProgressbarPrinter) Add(count int) {
 
 		p.Current += count
 
-		if p.Current >= p.Total {
+		if p.Current > p.Total {
 			return
 		}
 

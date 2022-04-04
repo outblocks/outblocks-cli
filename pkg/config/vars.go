@@ -26,7 +26,7 @@ func isPathInMap(path []string, m map[string]bool) bool {
 	return false
 }
 
-func expandYAMLString(n *ast.StringNode, file string, vars map[string]interface{}, essentialKeys map[string]bool, path []string) (ast.Node, error) {
+func expandYAMLString(n *ast.StringNode, file, env string, vals map[string]interface{}, essentialKeys map[string]bool, path []string) (ast.Node, error) {
 	tknCount := strings.Count(n.Value, "${")
 	if tknCount == 0 {
 		return n, nil
@@ -37,7 +37,7 @@ func expandYAMLString(n *ast.StringNode, file string, vars map[string]interface{
 		fullValue bool
 	)
 
-	output, _, err := plugin_util.NewBaseVarEvaluator(vars).
+	output, _, err := plugin_util.NewBaseVarEvaluator(vals).
 		WithEncoder(func(c *plugin_util.VarContext, val interface{}) ([]byte, error) {
 			t = reflect.TypeOf(val)
 			fullValue = len(c.Input) == (c.TokenColumnEnd - c.TokenColumnStart + 1)
@@ -56,9 +56,11 @@ func expandYAMLString(n *ast.StringNode, file string, vars map[string]interface{
 		}).
 		WithKeyGetter(func(c *plugin_util.VarContext, vars map[string]interface{}) (val interface{}, err error) {
 			if strings.HasPrefix(c.Token, "var.") {
-				env := fmt.Sprintf("OUTBLOCKS_VALUE_%s", c.Token[4:])
-				val, ok := os.LookupEnv(env)
-				if ok {
+				if val, ok := os.LookupEnv(fmt.Sprintf("OUTBLOCKS_VALUE_%s_%s", strings.ToUpper(env), c.Token[4:])); ok {
+					return val, nil
+				}
+
+				if val, ok := os.LookupEnv(fmt.Sprintf("OUTBLOCKS_VALUE_%s", c.Token[4:])); ok {
 					return val, nil
 				}
 			}
@@ -93,13 +95,13 @@ func expandYAMLString(n *ast.StringNode, file string, vars map[string]interface{
 	return tok.Docs[0].Body, nil
 }
 
-func traverseYAMLMapping(node ast.Node, file string, vars map[string]interface{}, essentialKeys map[string]bool, path []string) (ast.Node, error) {
+func traverseYAMLMapping(node ast.Node, file, env string, vals map[string]interface{}, essentialKeys map[string]bool, path []string) (ast.Node, error) {
 	switch n := node.(type) {
 	case *ast.StringNode:
-		return expandYAMLString(n, file, vars, essentialKeys, path)
+		return expandYAMLString(n, file, env, vals, essentialKeys, path)
 
 	case *ast.MappingValueNode:
-		newVal, err := traverseYAMLMapping(n.Value, file, vars, essentialKeys, append(append([]string(nil), path...), n.Key.String()))
+		newVal, err := traverseYAMLMapping(n.Value, file, env, vals, essentialKeys, append(append([]string(nil), path...), n.Key.String()))
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +112,7 @@ func traverseYAMLMapping(node ast.Node, file string, vars map[string]interface{}
 		for _, v := range n.Values {
 			keyPath := append(append([]string(nil), path...), v.Key.String())
 
-			newVal, err := traverseYAMLMapping(v.Value, file, vars, essentialKeys, keyPath)
+			newVal, err := traverseYAMLMapping(v.Value, file, env, vals, essentialKeys, keyPath)
 			if err != nil {
 				return nil, err
 			}
@@ -120,7 +122,7 @@ func traverseYAMLMapping(node ast.Node, file string, vars map[string]interface{}
 
 	case *ast.SequenceNode:
 		for i, v := range n.Values {
-			newVal, err := traverseYAMLMapping(v, file, vars, essentialKeys, path)
+			newVal, err := traverseYAMLMapping(v, file, env, vals, essentialKeys, path)
 			if err != nil {
 				return nil, err
 			}

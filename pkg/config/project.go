@@ -92,7 +92,7 @@ type Project struct {
 	yamlPath         string
 	yamlData         []byte
 	lock             *lockfile.Lockfile
-	vars             map[string]interface{}
+	vals             map[string]interface{}
 }
 
 func (p *Project) ID() string {
@@ -110,7 +110,7 @@ type ProjectOptions struct {
 	Env string
 }
 
-func LoadProjectConfig(cfgPath string, vars map[string]interface{}, mode LoadMode, opts *ProjectOptions) (*Project, error) {
+func LoadProjectConfig(cfgPath string, vals map[string]interface{}, mode LoadMode, opts *ProjectOptions) (*Project, error) {
 	if mode == LoadModeSkip {
 		return nil, nil
 	}
@@ -141,7 +141,7 @@ func LoadProjectConfig(cfgPath string, vars map[string]interface{}, mode LoadMod
 		reqKeys = essentialProjectKeysMap
 	}
 
-	p, err := LoadProjectConfigData(cfgPath, data, vars, reqKeys, opts, lock)
+	p, err := LoadProjectConfigData(cfgPath, data, vals, reqKeys, opts, lock)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func LoadProjectConfig(cfgPath string, vars map[string]interface{}, mode LoadMod
 	return p, err
 }
 
-func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}, essentialKeys map[string]bool, opts *ProjectOptions, lock *lockfile.Lockfile) (*Project, error) {
+func LoadProjectConfigData(path string, data []byte, vals map[string]interface{}, essentialKeys map[string]bool, opts *ProjectOptions, lock *lockfile.Lockfile) (*Project, error) {
 	f, err := parser.ParseBytes(data, 0)
 	if err != nil {
 		return nil, merry.Errorf("cannot read project yaml file: %s, cause: %w", path, err)
@@ -164,7 +164,7 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 		return nil, merry.Errorf("project file %s yaml is invalid", path)
 	}
 
-	_, err = traverseYAMLMapping(m, path, vars, essentialKeys, nil)
+	_, err = traverseYAMLMapping(m, path, opts.Env, vals, essentialKeys, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func LoadProjectConfigData(path string, data []byte, vars map[string]interface{}
 		env:      opts.Env,
 		Dir:      filepath.Dir(path),
 		lock:     lock,
-		vars:     vars,
+		vals:     vals,
 		State: &State{
 			env: opts.Env,
 		},
@@ -267,7 +267,7 @@ func (p *Project) LoadAppFile(file string, essentialKeys map[string]bool) error 
 		return merry.Errorf("application file %s yaml is invalid", file)
 	}
 
-	_, err = traverseYAMLMapping(m, file, p.vars, essentialKeys, nil)
+	_, err = traverseYAMLMapping(m, file, p.env, p.vals, essentialKeys, nil)
 	if err != nil {
 		return err
 	}
