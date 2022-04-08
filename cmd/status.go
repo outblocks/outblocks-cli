@@ -23,11 +23,12 @@ func (e *Executor) newStatusCmd() *cobra.Command {
 			}
 
 			return actions.NewDeploy(e.Log(), e.cfg, &actions.DeployOptions{
-				SkipAllApps: true,
-				SkipBuild:   true,
-				SkipDNS:     true,
-				SkipApply:   true,
-				SkipDiff:    true,
+				SkipAllApps:     true,
+				SkipBuild:       true,
+				SkipDNS:         true,
+				SkipApply:       true,
+				SkipDiff:        true,
+				SkipStateCreate: true,
 			}).Run(cmd.Context())
 		},
 	}

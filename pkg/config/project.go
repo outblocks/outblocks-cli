@@ -15,7 +15,6 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
-	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
@@ -159,12 +158,12 @@ func LoadProjectConfigData(path string, data []byte, vals map[string]interface{}
 		return nil, merry.Errorf("multi-document yamls are unsupported, file: %s", path)
 	}
 
-	m, ok := f.Docs[0].Body.(*ast.MappingNode)
+	n, ok := f.Docs[0].Body.(*ast.MappingNode)
 	if !ok {
 		return nil, merry.Errorf("project file %s yaml is invalid", path)
 	}
 
-	_, err = traverseYAMLMapping(m, path, opts.Env, vals, essentialKeys, nil)
+	_, err = traverseYAMLMapping(n, path, opts.Env, vals, essentialKeys, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +181,7 @@ func LoadProjectConfigData(path string, data []byte, vals map[string]interface{}
 		Defaults: &Defaults{},
 	}
 
-	if err := yaml.NodeToValue(m, out, yaml.Validator(validator.DefaultValidator())); err != nil {
+	if err := util.YAMLNodeDecode(n, out); err != nil {
 		return nil, merry.Errorf("load project config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
@@ -262,17 +261,17 @@ func (p *Project) LoadAppFile(file string, essentialKeys map[string]bool) error 
 		return merry.Errorf("multi-document yamls are unsupported, file: %s", file)
 	}
 
-	m, ok := f.Docs[0].Body.(*ast.MappingNode)
+	n, ok := f.Docs[0].Body.(*ast.MappingNode)
 	if !ok {
 		return merry.Errorf("application file %s yaml is invalid", file)
 	}
 
-	_, err = traverseYAMLMapping(m, file, p.env, p.vals, essentialKeys, nil)
+	_, err = traverseYAMLMapping(n, file, p.env, p.vals, essentialKeys, nil)
 	if err != nil {
 		return err
 	}
 
-	typ, err := DetectAppType(m)
+	typ, err := DetectAppType(n)
 	if err != nil {
 		return err
 	}
@@ -290,13 +289,13 @@ func (p *Project) LoadAppFile(file string, essentialKeys map[string]bool) error 
 
 	switch typ {
 	case AppTypeFunction:
-		app, err = LoadFunctionAppData(file, m)
+		app, err = LoadFunctionAppData(file, n)
 
 	case AppTypeService:
-		app, err = LoadServiceAppData(file, m)
+		app, err = LoadServiceAppData(file, n)
 
 	case AppTypeStatic:
-		app, err = LoadStaticAppData(file, m)
+		app, err = LoadStaticAppData(file, n)
 	}
 
 	if err != nil {

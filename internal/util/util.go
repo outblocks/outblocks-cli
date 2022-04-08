@@ -6,7 +6,10 @@ import (
 	"reflect"
 	"regexp"
 
+	"github.com/23doors/go-yaml"
+	"github.com/23doors/go-yaml/ast"
 	"github.com/ansel1/merry/v2"
+	"github.com/outblocks/outblocks-cli/internal/validator"
 	"golang.org/x/term"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -104,4 +107,21 @@ func IndentString(s, indent string) string {
 
 func Title(s string) string {
 	return cases.Title(language.Und, cases.NoLower).String(s)
+}
+
+func YAMLNodeDecode(n ast.Node, out interface{}) error {
+	err := yaml.NodeToValue(n, out,
+		yaml.Validator(validator.DefaultValidator()),
+	)
+
+	return err
+}
+
+func YAMLUnmarshal(in []byte, out interface{}) error {
+	err := yaml.UnmarshalWithOptions(in, out,
+		yaml.Validator(validator.DefaultValidator()),
+		yaml.UseJSONUnmarshaler(),
+	)
+
+	return err
 }

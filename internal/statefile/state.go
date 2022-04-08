@@ -109,6 +109,10 @@ func NewStateData() *StateData {
 	}
 }
 
+func (d *StateData) IsEmpty() bool {
+	return len(d.Apps) == 0 && len(d.Dependencies) == 0 && len(d.Plugins) == 0 && len(d.DNSRecords) == 0 && len(d.DomainsInfo) == 0
+}
+
 func (d *StateData) Reset() {
 	d.Apps = make(map[string]*apiv1.AppState)
 	d.Dependencies = make(map[string]*apiv1.DependencyState)

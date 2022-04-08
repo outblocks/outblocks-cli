@@ -38,6 +38,28 @@ func expandYAMLString(n *ast.StringNode, file, env string, vals map[string]inter
 	)
 
 	output, _, err := plugin_util.NewBaseVarEvaluator(vals).
+		WithKeyGetter(func(c *plugin_util.VarContext, vars map[string]interface{}) (val interface{}, err error) {
+			if strings.HasPrefix(c.Token, "var.") {
+				tkn := c.Token[4:]
+
+				for _, jsonEnv := range []string{fmt.Sprintf("OUTBLOCKS_VALUE_JSON_%s_%s", strings.ToUpper(env), tkn), fmt.Sprintf("OUTBLOCKS_VALUE_JSON_%s", tkn)} {
+					if val, ok := os.LookupEnv(jsonEnv); ok {
+						var v interface{}
+						err := json.Unmarshal([]byte(val), &v)
+
+						return v, err
+					}
+				}
+
+				for _, env := range []string{fmt.Sprintf("OUTBLOCKS_VALUE_%s_%s", strings.ToUpper(env), tkn), fmt.Sprintf("OUTBLOCKS_VALUE_%s", tkn)} {
+					if val, ok := os.LookupEnv(env); ok {
+						return val, nil
+					}
+				}
+			}
+
+			return plugin_util.DefaultVarKeyGetter(c, vars)
+		}).
 		WithEncoder(func(c *plugin_util.VarContext, val interface{}) ([]byte, error) {
 			t = reflect.TypeOf(val)
 			fullValue = len(c.Input) == (c.TokenColumnEnd - c.TokenColumnStart + 1)
@@ -53,19 +75,6 @@ func expandYAMLString(n *ast.StringNode, file, env string, vals map[string]inter
 			}
 
 			return json.Marshal(val)
-		}).
-		WithKeyGetter(func(c *plugin_util.VarContext, vars map[string]interface{}) (val interface{}, err error) {
-			if strings.HasPrefix(c.Token, "var.") {
-				if val, ok := os.LookupEnv(fmt.Sprintf("OUTBLOCKS_VALUE_%s_%s", strings.ToUpper(env), c.Token[4:])); ok {
-					return val, nil
-				}
-
-				if val, ok := os.LookupEnv(fmt.Sprintf("OUTBLOCKS_VALUE_%s", c.Token[4:])); ok {
-					return val, nil
-				}
-			}
-
-			return plugin_util.DefaultVarKeyGetter(c, vars)
 		}).
 		WithSkipRowColumnInfo(true).
 		WithVarChar('$').ExpandRaw([]byte(n.Value))

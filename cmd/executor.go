@@ -152,6 +152,8 @@ func (e *Executor) addPluginsCommands() error {
 	}
 
 	for _, plug := range e.cfg.Plugins {
+		plug := plug
+
 		for cmdName, cmdt := range plug.Loaded().Commands {
 			cmdName := cmdName
 			cmdt := cmdt
@@ -161,9 +163,10 @@ func (e *Executor) addPluginsCommands() error {
 			cmd, _, err := e.rootCmd.Find([]string{cmdName})
 			if err != nil {
 				cmd = &cobra.Command{
-					Use:   fmt.Sprintf("%s-%s", plug.Name, cmdName),
-					Short: cmdt.Short,
-					Long:  cmdt.Long,
+					Use:          fmt.Sprintf("%s-%s", plug.Name, cmdName),
+					Short:        cmdt.Short,
+					Long:         cmdt.Long,
+					SilenceUsage: true,
 					Annotations: map[string]string{
 						cmdGroupAnnotation:           cmdGroupPlugin,
 						cmdProjectLoadModeAnnotation: cmdLoadModeEssential,

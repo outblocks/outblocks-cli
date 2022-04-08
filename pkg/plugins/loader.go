@@ -9,12 +9,11 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/23doors/go-yaml"
 	"github.com/Masterminds/semver"
 	"github.com/ansel1/merry/v2"
 	"github.com/otiai10/copy"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
-	"github.com/outblocks/outblocks-cli/internal/validator"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 )
 
@@ -252,7 +251,7 @@ func (l *Loader) loadPlugin(pi *pluginInfo, dir string, ver *semver.Version) (*P
 		source:   pi.source,
 	}
 
-	if err := yaml.UnmarshalWithOptions(data, &plugin, yaml.Validator(validator.DefaultValidator()), yaml.UseJSONUnmarshaler(), yaml.DisallowDuplicateKey()); err != nil {
+	if err := util.YAMLUnmarshal(data, &plugin); err != nil {
 		return nil, merry.Errorf("plugin config load failed.\nfile: %s\n%s", p, err)
 	}
 

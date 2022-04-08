@@ -60,6 +60,7 @@ type DeployOptions struct {
 	SkipDNS              bool
 	SkipDiff             bool
 	SkipApply            bool
+	SkipStateCreate      bool
 }
 
 func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
@@ -70,8 +71,8 @@ func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Dep
 	}
 }
 
-func (d *Deploy) preChecks(state *statefile.StateData) error {
-	return d.checkIfDNSAreUsed(state.Apps)
+func (d *Deploy) preChecks(state *statefile.StateData, showWarnings bool) error {
+	return d.checkIfDNSAreUsed(state.Apps, showWarnings)
 }
 
 func (d *Deploy) stateLockRun(ctx context.Context) error {
@@ -82,15 +83,19 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 	}
 
 	// Get state.
-	state, stateRes, err := getState(ctx, d.cfg.State, d.opts.Lock, d.opts.LockWait, false, yamlContext)
+	state, stateRes, err := getState(ctx, d.cfg.State, d.opts.Lock, d.opts.LockWait, d.opts.SkipStateCreate, yamlContext)
 	if err != nil {
 		return err
 	}
 
-	if stateRes.StateCreated {
-		d.log.Infof("New state created: '%s' for environment: %s\n", stateRes.StateName, d.cfg.State.Env())
+	switch {
+	case stateRes.StateCreated:
+		d.log.Infof("New state created: '%s' for environment: '%s'\n", stateRes.StateName, d.cfg.State.Env())
 
 		verify = true
+	case d.opts.SkipStateCreate && state.IsEmpty():
+		d.log.Infof("State for environment: '%s' is empty or does not exist\n", d.cfg.State.Env())
+		return nil
 	}
 
 	// Build apps.
@@ -102,28 +107,17 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 	}
 
 	// Plan and apply.
-	stateBefore := state.DeepCopy()
-
-	err = d.preChecks(state)
+	err = d.preChecks(state, true)
 	if err != nil {
 		_ = releaseStateLock(d.cfg, stateRes.LockInfo)
 
 		return err
 	}
 
-	empty, canceled, dur, _, err := d.planAndApply(ctx, verify, state, nil, false)
+	res, err := d.planAndApply(ctx, verify, state, nil, false)
 
 	// Proceed with saving.
-	stateAfter := state
-
-	stateDiff, diffErr := statefile.NewDiff(stateBefore, stateAfter)
-	if diffErr != nil {
-		return merry.Errorf("computing state diff failed: %w", err)
-	}
-
-	shouldSave := !canceled && (!empty || !stateDiff.IsEmpty()) && !d.opts.SkipDiff
-
-	if shouldSave {
+	if res.shouldSave() {
 		d.log.Debugln("Saving state.")
 
 		if saveErr := saveState(d.cfg, state); err == nil {
@@ -131,8 +125,8 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 		}
 	}
 
-	if !canceled && !empty && err == nil && !d.opts.SkipApply {
-		d.log.Printf("All changes applied in %s.\n", dur.Truncate(timeTruncate))
+	if !res.canceled && !res.empty && err == nil && !d.opts.SkipApply {
+		d.log.Printf("All changes applied in %s.\n", res.dur.Truncate(timeTruncate))
 	}
 
 	// Release lock if needed.
@@ -143,7 +137,7 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 	switch {
 	case err != nil:
 		return err
-	case canceled:
+	case res.canceled:
 		return nil
 	}
 
@@ -256,7 +250,7 @@ func (d *Deploy) partialLockIDs(state *statefile.StateData) []string {
 	return locks
 }
 
-func (d *Deploy) checkIfDNSAreUsed(stateApps map[string]*apiv1.AppState) error {
+func (d *Deploy) checkIfDNSAreUsed(stateApps map[string]*apiv1.AppState, showWarnings bool) error {
 	var stateDomains []string
 
 	for _, app := range stateApps {
@@ -303,7 +297,9 @@ func (d *Deploy) checkIfDNSAreUsed(stateApps map[string]*apiv1.AppState) error {
 			return err
 		}
 
-		d.log.Warnf("One or more project DNS configurations are unused!\nfile: %s, line: %d\n", d.cfg.YAMLPath(), node.GetToken().Position.Line)
+		if showWarnings {
+			d.log.Warnf("One or more project DNS configurations are unused!\nfile: %s, line: %d\n", d.cfg.YAMLPath(), node.GetToken().Position.Line)
+		}
 
 		return nil
 	}
@@ -323,10 +319,9 @@ func (r *planAndApplyResults) shouldSave() bool {
 	return !r.canceled && (!r.empty || !r.stateDiff.IsEmpty())
 }
 
-func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (ret planAndApplyResults, err error) {
+func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (planAndApplyResults, error) {
 	var (
-		locks       []string
-		stateBefore *statefile.StateData
+		locks []string
 	)
 
 	// Acquire necessary acquiredLocks.
@@ -336,48 +331,50 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.Sta
 		locks = d.allLockIDs(state)
 	}
 
-	first := true
+	build := true
+	showWarnings := true
 	statePlugin := d.cfg.State.Plugin()
+	ret := planAndApplyResults{}
 
 	for {
-		ret.acquiredLocks, err = statePlugin.Client().AcquireLocks(ctx, d.cfg.State.Other, locks, d.opts.LockWait, yamlContext)
+		acquiredLocks, err := statePlugin.Client().AcquireLocks(ctx, d.cfg.State.Other, locks, d.opts.LockWait, yamlContext)
 		if err != nil {
 			return ret, err
 		}
 
-		d.log.Debugf("Acquired locks: %s\n", ret.acquiredLocks)
+		d.log.Debugf("Acquired locks: %s\n", acquiredLocks)
 
 		// Build apps.
-		if first && !d.opts.SkipBuild {
+		if build && !d.opts.SkipBuild {
 			err = d.buildApps(ctx, state.Apps)
 			if err != nil {
-				_ = releaseLocks(d.cfg, ret.acquiredLocks)
+				_ = releaseLocks(d.cfg, acquiredLocks)
 				return ret, err
 			}
 
-			first = false
+			build = false
 		}
 
 		// Plan and apply.
-		stateBefore = state.DeepCopy()
-
-		err = d.preChecks(state)
+		err = d.preChecks(state, showWarnings)
 		if err != nil {
-			_ = releaseLocks(d.cfg, ret.acquiredLocks)
+			_ = releaseLocks(d.cfg, acquiredLocks)
 			return ret, err
 		}
 
-		ret.empty, ret.canceled, ret.dur, ret.missingLocks, err = d.planAndApply(ctx, verify, state, ret.acquiredLocks, true)
-		if err != nil {
-			_ = releaseLocks(d.cfg, ret.acquiredLocks)
-			ret.acquiredLocks = nil
+		showWarnings = false
 
-			// Proceed to save partial work if needed.
-			break
+		ret, err = d.planAndApply(ctx, verify, state, acquiredLocks, true)
+		if err != nil {
+			_ = releaseLocks(d.cfg, acquiredLocks)
+
+			return ret, err
 		}
 
+		ret.acquiredLocks = acquiredLocks
+
 		if len(ret.missingLocks) == 0 {
-			break
+			return ret, nil
 		}
 
 		locks = append(locks, ret.missingLocks...)
@@ -387,26 +384,11 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.Sta
 			return ret, err
 		}
 
-		state, _, err = getState(ctx, d.cfg.State, false, d.opts.LockWait, false, yamlContext)
+		state, _, err = getState(ctx, d.cfg.State, false, d.opts.LockWait, d.opts.SkipStateCreate, yamlContext)
 		if err != nil {
 			return ret, err
 		}
 	}
-
-	stateAfter := state
-
-	var diffErr error
-
-	ret.stateDiff, diffErr = statefile.NewDiff(stateBefore, stateAfter)
-	if diffErr != nil {
-		return ret, merry.Errorf("computing state diff failed: %w", err)
-	}
-
-	if !ret.stateDiff.IsEmpty() {
-		d.log.Debugf("State Diff (to apply: %t)\n%s\n", ret.shouldSave(), ret.stateDiff)
-	}
-
-	return ret, err
 }
 
 func (d *Deploy) multilockRun(ctx context.Context) error {
@@ -418,16 +400,20 @@ func (d *Deploy) multilockRun(ctx context.Context) error {
 	}
 
 	// Get state.
-	state, stateRes, err := getState(ctx, d.cfg.State, false, d.opts.LockWait, false, yamlContext)
+	state, stateRes, err := getState(ctx, d.cfg.State, false, d.opts.LockWait, d.opts.SkipStateCreate, yamlContext)
 	if err != nil {
 		return err
 	}
 
-	if stateRes.StateCreated {
-		d.log.Infof("New state created: '%s' for environment: %s\n", stateRes.StateName, d.cfg.State.Env())
+	switch {
+	case stateRes.StateCreated:
+		d.log.Infof("New state created: '%s' for environment: '%s'\n", stateRes.StateName, d.cfg.State.Env())
 
 		verify = true
 		partialLock = false
+	case d.opts.SkipStateCreate && state.IsEmpty():
+		d.log.Infof("State for environment: '%s' is empty or does not exist\n", d.cfg.State.Env())
+		return nil
 	}
 
 	// Acquire locks and plan+apply.
@@ -436,12 +422,12 @@ func (d *Deploy) multilockRun(ctx context.Context) error {
 		return err
 	}
 
-	if res.shouldSave() && !d.opts.SkipDiff {
+	if res.shouldSave() {
 		d.log.Debugln("Saving state.")
 
 		var stateErr error
 
-		state, stateRes, stateErr = getState(context.Background(), d.cfg.State, true, stateLockWait, false, yamlContext)
+		state, stateRes, stateErr = getState(context.Background(), d.cfg.State, true, stateLockWait, d.opts.SkipStateCreate, yamlContext)
 		if stateErr != nil {
 			_ = releaseLocks(d.cfg, res.acquiredLocks)
 			return stateErr
@@ -523,8 +509,11 @@ func (d *Deploy) promptDiff(deployChanges []*change, acquiredLocks map[string]st
 	return empty, canceled, missingLocks
 }
 
-func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (empty, canceled bool, dur time.Duration, missingLocks []string, err error) {
+func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (planAndApplyResults, error) {
 	var domains []*apiv1.DomainInfo
+
+	ret := planAndApplyResults{}
+	stateBefore := state.DeepCopy()
 
 	if d.opts.SkipDNS {
 		domains = state.DomainsInfo
@@ -535,21 +524,21 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 	// Plan and apply.
 	apps, skipAppIDs, destroy, err := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps, d.opts.Destroy)
 	if err != nil {
-		return false, false, dur, nil, err
+		return ret, err
 	}
 
 	deps := filterDependencies(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
 
 	planMap, err := calculatePlanMap(d.cfg, apps, deps, d.opts.TargetApps, skipAppIDs)
 	if err != nil {
-		return false, false, dur, nil, err
+		return ret, err
 	}
 
 	// Start plugins.
 	for plug := range planMap {
 		err = plug.Client().Start(ctx)
 		if err != nil {
-			return false, false, dur, nil, err
+			return ret, err
 		}
 	}
 
@@ -568,7 +557,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 	if err != nil {
 		spinner.Stop()
 
-		return false, true, dur, nil, err
+		return ret, err
 	}
 
 	spinner.Stop()
@@ -576,19 +565,21 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 	if !d.opts.SkipDiff {
 		deployChanges := computeChange(d.cfg, &oldState, state, planRetMap)
 
-		empty, canceled, missingLocks = d.promptDiff(deployChanges, acquiredLocks, checkLocks)
-		if len(missingLocks) != 0 {
-			return empty, canceled, dur, missingLocks, nil
+		ret.empty, ret.canceled, ret.missingLocks = d.promptDiff(deployChanges, acquiredLocks, checkLocks)
+		if len(ret.missingLocks) != 0 {
+			return ret, nil
 		}
 
+		start := time.Now()
+
 		// Apply if needed.
-		if !canceled && !empty && !d.opts.SkipApply {
+		if !ret.canceled && !ret.empty && !d.opts.SkipApply {
 			callback := applyProgress(d.log, deployChanges, nil)
 			err = apply(context.Background(), state, planMap, domains, destroy, callback)
 		}
-	}
 
-	start := time.Now()
+		ret.dur = time.Since(start)
+	}
 
 	// Merge state with current apps/deps if needed (they might not have a state defined).
 	for _, app := range apps {
@@ -609,7 +600,18 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 
 	state.DomainsInfo = domains
 
-	return empty, canceled, time.Since(start), nil, err
+	var diffErr error
+
+	ret.stateDiff, diffErr = statefile.NewDiff(stateBefore, state)
+	if diffErr != nil {
+		return ret, merry.Errorf("computing state diff failed: %w", diffErr)
+	}
+
+	if !ret.stateDiff.IsEmpty() {
+		d.log.Debugf("State Diff (to apply: %t)\n%s\n", ret.shouldSave(), ret.stateDiff)
+	}
+
+	return ret, err
 }
 
 func (d *Deploy) prepareAppSSLMap(appStates map[string]*apiv1.AppState) (map[string]*apiv1.DNSState, error) {

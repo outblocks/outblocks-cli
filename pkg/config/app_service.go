@@ -7,7 +7,7 @@ import (
 	"github.com/23doors/go-yaml/ast"
 	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/outblocks/outblocks-cli/internal/validator"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
@@ -35,7 +35,7 @@ func LoadServiceAppData(path string, n ast.Node) (App, error) {
 		AppBuild: &apiv1.AppBuild{},
 	}
 
-	if err := yaml.NodeToValue(n, out, yaml.Validator(validator.DefaultValidator())); err != nil {
+	if err := util.YAMLNodeDecode(n, out); err != nil {
 		return nil, merry.Errorf("load service config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 

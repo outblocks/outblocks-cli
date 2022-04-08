@@ -15,7 +15,6 @@ import (
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/jsonschemaform"
 	"github.com/outblocks/outblocks-cli/internal/util"
-	"github.com/outblocks/outblocks-cli/internal/validator"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/outblocks/outblocks-cli/templates"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
@@ -95,7 +94,7 @@ func LoadTemplate(dir string) (*Template, error) {
 		dir: dir,
 	}
 
-	if err := yaml.UnmarshalWithOptions(templateData, t, yaml.Validator(validator.DefaultValidator())); err != nil {
+	if err := util.YAMLUnmarshal(templateData, t); err != nil {
 		return nil, merry.Errorf("load template error: \n%s", yaml.FormatErrorDefault(err))
 	}
 
@@ -184,7 +183,7 @@ func (t *Template) ParseProjectTemplate(projectName string, input map[string]int
 		return merry.Errorf("error processing project template: %w", err)
 	}
 
-	if err := yaml.UnmarshalWithOptions(buf.Bytes(), t.Project, yaml.Validator(validator.DefaultValidator())); err != nil {
+	if err := util.YAMLUnmarshal(buf.Bytes(), t.Project); err != nil {
 		return merry.Errorf("load project template error: \n%s", yaml.FormatErrorDefault(err))
 	}
 
@@ -265,7 +264,7 @@ func (t *Template) ParseValuesTemplate(input map[string]interface{}) ([]byte, er
 		return nil, merry.Errorf("error processing values template: %w", err)
 	}
 
-	if err := yaml.UnmarshalWithOptions(buf.Bytes(), &t.Values.Val, yaml.Validator(validator.DefaultValidator())); err != nil {
+	if err := util.YAMLUnmarshal(buf.Bytes(), t.Values.Val); err != nil {
 		return nil, merry.Errorf("load values template error: \n%s", yaml.FormatErrorDefault(err))
 	}
 

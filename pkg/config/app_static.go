@@ -8,7 +8,6 @@ import (
 	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/internal/util"
-	"github.com/outblocks/outblocks-cli/internal/validator"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/outblocks/outblocks-plugin-go/types"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
@@ -48,7 +47,7 @@ func LoadStaticAppData(path string, n ast.Node) (*StaticApp, error) {
 		},
 	}
 
-	if err := yaml.NodeToValue(n, out, yaml.Validator(validator.DefaultValidator())); err != nil {
+	if err := util.YAMLNodeDecode(n, out); err != nil {
 		return nil, merry.Errorf("load function config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 

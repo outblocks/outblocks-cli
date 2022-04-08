@@ -6,7 +6,7 @@ import (
 	"github.com/23doors/go-yaml"
 	"github.com/ansel1/merry/v2"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/outblocks/outblocks-cli/internal/validator"
+	"github.com/outblocks/outblocks-cli/internal/util"
 )
 
 type Lockfile struct {
@@ -40,7 +40,7 @@ func LoadLockfileData(path string, data []byte) (*Lockfile, error) {
 		yamlData: data,
 	}
 
-	if err := yaml.UnmarshalWithOptions(data, out, yaml.Validator(validator.DefaultValidator()), yaml.UseJSONUnmarshaler(), yaml.Strict()); err != nil {
+	if err := util.YAMLUnmarshal(data, out); err != nil {
 		return nil, merry.Errorf("load lockfile %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 

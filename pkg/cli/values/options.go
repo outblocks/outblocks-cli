@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/23doors/go-yaml"
 	"github.com/ansel1/merry/v2"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/getter"
 	"github.com/outblocks/outblocks-cli/pkg/strvals"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
@@ -50,7 +50,7 @@ func (opts *Options) MergeValues(ctx context.Context, root string, p getter.Prov
 			return nil, err
 		}
 
-		if err := yaml.Unmarshal(bytes, &currentMap); err != nil {
+		if err := util.YAMLUnmarshal(bytes, &currentMap); err != nil {
 			return nil, merry.Errorf("failed to parse %s: %w", filePath, err)
 		}
 		// Merge with the previous map
