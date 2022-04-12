@@ -24,7 +24,7 @@ type ServiceApp struct {
 	AppBuild *apiv1.AppBuild `json:"-"`
 }
 
-func LoadServiceAppData(path string, n ast.Node) (App, error) {
+func LoadServiceAppData(projectName, path string, n ast.Node) (App, error) {
 	out := &ServiceApp{
 		BasicApp: *NewBasicApp(),
 		ServiceAppProperties: types.ServiceAppProperties{
@@ -39,7 +39,10 @@ func LoadServiceAppData(path string, n ast.Node) (App, error) {
 		return nil, merry.Errorf("load service config %s error: \n%s", path, yaml.FormatErrorDefault(err))
 	}
 
-	out.AppBuild.LocalDockerImage = fmt.Sprintf("outblocks/%s", out.ID())
+	out.AppBuild.LocalDockerImage = fmt.Sprintf("outblocks/%s/%s", projectName, out.ID())
+	if out.ServiceAppProperties.Build.DockerImage != "" {
+		out.AppBuild.LocalDockerImage = out.ServiceAppProperties.Build.DockerImage
+	}
 
 	out.yamlPath = path
 	out.yamlData = []byte(n.String())

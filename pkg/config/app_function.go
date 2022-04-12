@@ -16,7 +16,7 @@ type FunctionApp struct {
 	BasicApp `json:",inline"`
 }
 
-func LoadFunctionAppData(path string, n ast.Node) (App, error) {
+func LoadFunctionAppData(projectName, path string, n ast.Node) (App, error) {
 	out := &FunctionApp{
 		BasicApp: BasicApp{
 			AppRun:    &AppRunInfo{},

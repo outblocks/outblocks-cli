@@ -166,7 +166,7 @@ func (p *ProgressbarPrinter) Add(count int) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	if util.IsTermDumb() {
+	if !util.IsTerminal() {
 		if p.Total == 0 {
 			return
 		}
@@ -190,7 +190,7 @@ func (p *ProgressbarPrinter) UpdateTitle(title string) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
-	if util.IsTermDumb() {
+	if !util.IsTerminal() {
 		p.Title = title
 		p.updateProgressRaw()
 
@@ -201,7 +201,7 @@ func (p *ProgressbarPrinter) UpdateTitle(title string) {
 }
 
 func (p *ProgressbarPrinter) Start() (Progressbar, error) {
-	if util.IsTermDumb() {
+	if !util.IsTerminal() {
 		p.ShowElapsedTime = false
 		p.RemoveWhenDone = false
 

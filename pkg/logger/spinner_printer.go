@@ -10,7 +10,7 @@ type SpinnerPrinter struct {
 }
 
 func (s *SpinnerPrinter) Start(text ...interface{}) (Spinner, error) {
-	if util.IsTermDumb() {
+	if !util.IsTerminal() {
 		if len(text) != 0 {
 			s.Text = pterm.Sprint(text...)
 		}
@@ -31,7 +31,7 @@ func (s *SpinnerPrinter) Start(text ...interface{}) (Spinner, error) {
 }
 
 func (s *SpinnerPrinter) Stop() {
-	if util.IsTermDumb() {
+	if !util.IsTerminal() {
 		return
 	}
 

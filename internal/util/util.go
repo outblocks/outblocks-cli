@@ -75,24 +75,16 @@ func StringArrayToSet(in []string) map[string]bool {
 	return outMap
 }
 
-func IsInteractive() bool {
+func IsTerminal() bool {
 	if !term.IsTerminal(int(os.Stdin.Fd())) {
 		return false
 	}
 
-	if os.Getenv("CI") == "true" {
+	if os.Getenv("CI") == "true" || os.Getenv("TERM") == "dumb" {
 		return false
 	}
 
 	return true
-}
-
-func IsTermDumb() bool {
-	if os.Getenv("CI") == "true" || os.Getenv("TERM") == "dumb" {
-		return true
-	}
-
-	return false
 }
 
 var newline = regexp.MustCompile(`\n`)

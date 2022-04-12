@@ -347,7 +347,7 @@ func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(
 			now := time.Now()
 
 			for _, v := range startMap {
-				if time.Since(v.notify) > 10*time.Second {
+				if now.Sub(v.notify) > 10*time.Second {
 					log.Infof("Still %s %s '%s'... elapsed %s.\n", applyActionType(v.act), v.act.ObjectType, v.act.ObjectName, time.Since(v.start).Truncate(timeTruncate))
 
 					v.notify = now

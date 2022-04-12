@@ -331,7 +331,7 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.Sta
 		locks = d.allLockIDs(state)
 	}
 
-	build := true
+	buildDone := false
 	showWarnings := true
 	statePlugin := d.cfg.State.Plugin()
 	ret := planAndApplyResults{}
@@ -345,14 +345,14 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.Sta
 		d.log.Debugf("Acquired locks: %s\n", acquiredLocks)
 
 		// Build apps.
-		if build && !d.opts.SkipBuild {
+		if !buildDone && !d.opts.SkipBuild {
 			err = d.buildApps(ctx, state.Apps)
 			if err != nil {
 				_ = releaseLocks(d.cfg, acquiredLocks)
 				return ret, err
 			}
 
-			build = false
+			buildDone = true
 		}
 
 		// Plan and apply.
@@ -467,6 +467,11 @@ func (d *Deploy) multilockRun(ctx context.Context) error {
 }
 
 func (d *Deploy) Run(ctx context.Context) error {
+	err := d.prepareApps(ctx)
+	if err != nil {
+		return err
+	}
+
 	if d.opts.Lock && d.cfg.State.Plugin() != nil && d.cfg.State.Plugin().HasAction(plugins.ActionLock) {
 		return d.multilockRun(ctx)
 	}
@@ -502,6 +507,10 @@ func (d *Deploy) promptDiff(deployChanges []*change, acquiredLocks map[string]st
 
 			return false, false, missingLocks
 		}
+	}
+
+	if d.opts.SkipDiff {
+		return len(deployChanges) == 0, false, missingLocks
 	}
 
 	empty, canceled = planPrompt(d.log, d.cfg.Env(), deployChanges, nil, d.opts.AutoApprove, d.opts.ForceApprove)
@@ -562,24 +571,24 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 
 	spinner.Stop()
 
-	if !d.opts.SkipDiff {
-		deployChanges := computeChange(d.cfg, &oldState, state, planRetMap)
+	deployChanges := computeChange(d.cfg, &oldState, state, planRetMap)
 
-		ret.empty, ret.canceled, ret.missingLocks = d.promptDiff(deployChanges, acquiredLocks, checkLocks)
-		if len(ret.missingLocks) != 0 {
-			return ret, nil
-		}
-
-		start := time.Now()
-
-		// Apply if needed.
-		if !ret.canceled && !ret.empty && !d.opts.SkipApply {
-			callback := applyProgress(d.log, deployChanges, nil)
-			err = apply(context.Background(), state, planMap, domains, destroy, callback)
-		}
-
-		ret.dur = time.Since(start)
+	ret.empty, ret.canceled, ret.missingLocks = d.promptDiff(deployChanges, acquiredLocks, checkLocks)
+	if len(ret.missingLocks) != 0 {
+		return ret, nil
 	}
+
+	start := time.Now()
+
+	// Apply if needed.
+	if !ret.canceled && !ret.empty && !d.opts.SkipApply {
+		state.Reset()
+
+		callback := applyProgress(d.log, deployChanges, nil)
+		err = apply(context.Background(), state, planMap, domains, destroy, callback)
+	}
+
+	ret.dur = time.Since(start)
 
 	// Merge state with current apps/deps if needed (they might not have a state defined).
 	for _, app := range apps {
@@ -711,6 +720,68 @@ func (d *Deploy) showAppStates(appStates map[string]*apiv1.AppState, appNameStyl
 	return len(unreadyApps) == 0
 }
 
+func (d *Deploy) showDependencyStatus(dependencyStates map[string]*apiv1.DependencyState, depNameStyle *pterm.Style) {
+	if len(dependencyStates) == 0 {
+		return
+	}
+
+	depStates := make([]*apiv1.DependencyState, 0, len(dependencyStates))
+
+	for _, depState := range dependencyStates {
+		depStates = append(depStates, depState)
+	}
+
+	sort.Slice(depStates, func(i int, j int) bool {
+		return depStates[i].Dependency.Name < depStates[j].Dependency.Name
+	})
+
+	first := true
+
+	for _, depState := range depStates {
+		dep := depState.Dependency
+
+		if depState.Dns == nil {
+			continue
+		}
+
+		if first {
+			d.log.Section().Println("Dependency Status")
+
+			first = false
+		}
+
+		connInfo := depState.Dns.ConnectionInfo
+
+		if connInfo == "" {
+			f := depState.Dns.Properties.Fields
+			if len(f) == 0 {
+				continue
+			}
+
+			var props []string
+			for k, v := range f {
+				props = append(props, fmt.Sprintf("%s:%s", k, v.AsInterface()))
+			}
+
+			sort.Slice(props, func(i, j int) bool {
+				if strings.HasPrefix(props[i], "name:") {
+					return true
+				}
+
+				if strings.HasPrefix(props[j], "name:") {
+					return false
+				}
+
+				return props[i] < props[j]
+			})
+
+			connInfo = strings.Join(props, " | ")
+		}
+
+		d.log.Printf("%s (%s) %s %s\n", depNameStyle.Sprint(dep.Name), dep.Type, pterm.Gray("==>"), pterm.Green(connInfo))
+	}
+}
+
 func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependencyStates map[string]*apiv1.DependencyState, dnsRecords statefile.DNSRecordMap) error {
 	var dns []*apiv1.DNSRecord
 
@@ -749,53 +820,7 @@ func (d *Deploy) showStateStatus(appStates map[string]*apiv1.AppState, dependenc
 	allReady := d.showAppStates(appStates, appNameStyle)
 
 	// Dependency Status.
-	if len(dependencyStates) > 0 {
-		first := true
-
-		for _, depState := range dependencyStates {
-			dep := depState.Dependency
-
-			if depState.Dns == nil {
-				continue
-			}
-
-			if first {
-				d.log.Section().Println("Dependency Status")
-
-				first = false
-			}
-
-			connInfo := depState.Dns.ConnectionInfo
-
-			if connInfo == "" {
-				f := depState.Dns.Properties.Fields
-				if len(f) == 0 {
-					continue
-				}
-
-				var props []string
-				for k, v := range f {
-					props = append(props, fmt.Sprintf("%s:%s", k, v.AsInterface()))
-				}
-
-				sort.Slice(props, func(i, j int) bool {
-					if strings.HasPrefix(props[i], "name:") {
-						return true
-					}
-
-					if strings.HasPrefix(props[j], "name:") {
-						return false
-					}
-
-					return props[i] < props[j]
-				})
-
-				connInfo = strings.Join(props, " | ")
-			}
-
-			d.log.Printf("%s (%s) %s %s\n", appNameStyle.Sprint(dep.Name), dep.Type, pterm.Gray("==>"), pterm.Green(connInfo))
-		}
-	}
+	d.showDependencyStatus(dependencyStates, appNameStyle)
 
 	// Show info about SSL status.
 	sslMap, err := d.prepareAppSSLMap(appStates)

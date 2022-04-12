@@ -289,13 +289,13 @@ func (p *Project) LoadAppFile(file string, essentialKeys map[string]bool) error 
 
 	switch typ {
 	case AppTypeFunction:
-		app, err = LoadFunctionAppData(file, n)
+		app, err = LoadFunctionAppData(p.Name, file, n)
 
 	case AppTypeService:
-		app, err = LoadServiceAppData(file, n)
+		app, err = LoadServiceAppData(p.Name, file, n)
 
 	case AppTypeStatic:
-		app, err = LoadStaticAppData(file, n)
+		app, err = LoadStaticAppData(p.Name, file, n)
 	}
 
 	if err != nil {

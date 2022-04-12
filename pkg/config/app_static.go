@@ -33,7 +33,7 @@ type StaticApp struct {
 	types.StaticAppProperties `json:",inline"`
 }
 
-func LoadStaticAppData(path string, n ast.Node) (*StaticApp, error) {
+func LoadStaticAppData(projectName, path string, n ast.Node) (*StaticApp, error) {
 	out := &StaticApp{
 		BasicApp: *NewBasicApp(),
 		StaticAppProperties: types.StaticAppProperties{

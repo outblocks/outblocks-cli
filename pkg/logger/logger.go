@@ -75,7 +75,7 @@ func NewLogger() Logger {
 }
 
 func printer(a ...interface{}) {
-	if util.IsTermDumb() {
+	if !util.IsTerminal() {
 		if !pterm.Output {
 			return
 		}
@@ -100,7 +100,7 @@ func (l *Log) Println(a ...interface{}) {
 }
 
 func (l *Log) Printo(a ...interface{}) {
-	if util.IsTermDumb() {
+	if !util.IsTerminal() {
 		l.Println(a...)
 
 		return

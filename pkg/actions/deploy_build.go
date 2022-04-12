@@ -3,6 +3,7 @@ package actions
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"github.com/ansel1/merry/v2"
 	dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
@@ -69,9 +71,60 @@ func (d *Deploy) dockerClient(ctx context.Context) (*dockerclient.Client, error)
 	return d.dockerCli, err
 }
 
-func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *command.Cmd, app *config.BasicApp) error {
+func (d *Deploy) printAppOutput(app config.App, msg string, isErr bool) {
 	prefix := fmt.Sprintf("APP:%s:%s:", app.Type(), app.Name())
 
+	if isErr {
+		d.log.Printf("%s %s\n", pterm.FgYellow.Sprint(prefix), plugin_util.StripAnsiControl(msg))
+	} else {
+		d.log.Printf("%s %s\n", pterm.FgGreen.Sprint(prefix), plugin_util.StripAnsiControl(msg))
+	}
+}
+
+func (d *Deploy) printAppJSONMessage(app config.App, jm *jsonmessage.JSONMessage) error {
+	if jm.Error != nil {
+		if jm.Error.Code == 401 {
+			return fmt.Errorf("authentication is required")
+		}
+
+		return jm.Error
+	}
+
+	prefix := fmt.Sprintf("APP:%s:%s:", app.Type(), app.Name())
+
+	if jm.Progress != nil && jm.Progress.Current < jm.Progress.Total { // disable progressbar in non-terminal
+		return nil
+	}
+
+	msg := ""
+
+	if jm.TimeNano != 0 {
+		msg += fmt.Sprintf("%s ", time.Unix(0, jm.TimeNano).Format(jsonmessage.RFC3339NanoFixed))
+	} else if jm.Time != 0 {
+		msg += fmt.Sprintf("%s ", time.Unix(0, jm.Time).Format(jsonmessage.RFC3339NanoFixed))
+	}
+
+	if jm.ID != "" {
+		msg += fmt.Sprintf("%s: ", jm.ID)
+	}
+
+	if jm.From != "" {
+		msg += fmt.Sprintf("(from %s)", jm.From)
+	}
+
+	switch {
+	case jm.Stream != "":
+		msg += jm.Stream
+	default:
+		msg += jm.Status
+	}
+
+	d.log.Printf("%s %s\n", pterm.FgGreen.Sprint(prefix), msg)
+
+	return nil
+}
+
+func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *command.Cmd, app config.App) error {
 	// Process stdout/stderr.
 	var wg sync.WaitGroup
 
@@ -81,7 +134,7 @@ func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *command.Cmd, app *
 		s := bufio.NewScanner(cmd.Stdout())
 
 		for s.Scan() {
-			d.log.Printf("%s %s\n", pterm.FgGreen.Sprint(prefix), plugin_util.StripAnsiControl(s.Text()))
+			d.printAppOutput(app, s.Text(), false)
 		}
 
 		wg.Done()
@@ -91,7 +144,7 @@ func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *command.Cmd, app *
 		s := bufio.NewScanner(cmd.Stderr())
 
 		for s.Scan() {
-			d.log.Printf("%s %s\n", pterm.FgYellow.Sprint(prefix), plugin_util.StripAnsiControl(s.Text()))
+			d.printAppOutput(app, s.Text(), true)
 		}
 
 		wg.Done()
@@ -133,7 +186,7 @@ func (d *Deploy) buildStaticApp(ctx context.Context, app *config.StaticApp, eval
 		return merry.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
 
-	return d.runAppBuildCommand(ctx, cmd, &app.BasicApp)
+	return d.runAppBuildCommand(ctx, cmd, app)
 }
 
 func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, eval *util.VarEvaluator) error {
@@ -182,7 +235,9 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 		return merry.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
 
-	err = d.runAppBuildCommand(ctx, cmd, &app.BasicApp)
+	d.printAppOutput(app, fmt.Sprintf("Building image '%s'...", app.AppBuild.LocalDockerImage), false)
+
+	err = d.runAppBuildCommand(ctx, cmd, app)
 	if err != nil {
 		return err
 	}
@@ -195,6 +250,116 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 	app.AppBuild.LocalDockerHash = insp.ID
 
 	return nil
+}
+
+type appPrepare struct {
+	app     config.App
+	prepare func() error
+}
+
+func (d *Deploy) prepareApps(ctx context.Context) error {
+	var prepare []*appPrepare
+
+	cli, err := d.dockerClient(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, app := range d.cfg.Apps {
+		if app.Type() != config.AppTypeService {
+			continue
+		}
+
+		a := app.(*config.ServiceApp)
+		isCustom := a.ServiceAppProperties.Build.DockerImage != ""
+
+		if !d.opts.SkipBuild && !a.ServiceAppProperties.Build.SkipBuild {
+			continue
+		}
+
+		insp, _, err := cli.ImageInspectWithRaw(ctx, a.AppBuild.LocalDockerImage)
+		if err == nil {
+			a.AppBuild.LocalDockerHash = insp.ID
+
+			continue
+		} else if !isCustom {
+			return merry.Errorf("image '%s' for %s app %s does not seem to exist: %w", a.AppBuild.LocalDockerImage, app.Type(), app.Name(), err)
+		}
+
+		prepare = append(prepare, &appPrepare{
+			app: app,
+			prepare: func() error {
+				d.printAppOutput(app, fmt.Sprintf("Pulling image '%s'...", a.AppBuild.LocalDockerImage), false)
+
+				reader, err := cli.ImagePull(ctx, a.AppBuild.LocalDockerImage, dockertypes.ImagePullOptions{})
+				if err != nil {
+					d.printAppOutput(app, fmt.Sprintf("error pulling custom image %s", err), true)
+
+					return nil
+				}
+
+				var jm jsonmessage.JSONMessage
+
+				scanner := bufio.NewScanner(reader)
+
+				for scanner.Scan() {
+					err = json.Unmarshal(scanner.Bytes(), &jm)
+					if err != nil {
+						return err
+					}
+
+					err = d.printAppJSONMessage(app, &jm)
+					if err != nil {
+						return err
+					}
+				}
+
+				err = reader.Close()
+				if err != nil {
+					return err
+				}
+
+				insp, _, err := cli.ImageInspectWithRaw(ctx, a.AppBuild.LocalDockerImage)
+				if err != nil {
+					return merry.Errorf("error inspecting image %s for %s app: %s: %w", a.AppBuild.LocalDockerImage, app.Type(), app.Name(), err)
+				}
+
+				a.AppBuild.LocalDockerHash = insp.ID
+
+				return nil
+			},
+		})
+	}
+
+	if len(prepare) == 0 {
+		return nil
+	}
+
+	d.log.Printf("Preparing %d app(s)...\n", len(prepare))
+	prog, _ := d.log.ProgressBar().WithTotal(len(prepare)).WithTitle("Preparing apps...").Start()
+	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
+
+	for _, b := range prepare {
+		b := b
+
+		g.Go(func() error {
+			err := b.prepare()
+			if err != nil {
+				return err
+			}
+
+			pterm.Success.Printf("%s app '%s' done\n", util.Title(b.app.Type()), b.app.Name())
+			prog.Increment()
+
+			return nil
+		})
+	}
+
+	err = g.Wait()
+
+	prog.Stop()
+
+	return err
 }
 
 type appBuilder struct {
@@ -270,6 +435,9 @@ func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppS
 
 		case config.AppTypeService:
 			a := app.(*config.ServiceApp)
+			if a.ServiceAppProperties.Build.SkipBuild {
+				continue
+			}
 
 			builders = append(builders, &appBuilder{
 				app:   a,
@@ -282,7 +450,7 @@ func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppS
 		return nil
 	}
 
-	d.log.Printf("Building %d apps...\n", len(builders))
+	d.log.Printf("Building %d app(s)...\n", len(builders))
 	prog, _ := d.log.ProgressBar().WithTotal(len(builders)).WithTitle("Building apps...").Start()
 
 	for _, b := range builders {
@@ -294,7 +462,7 @@ func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppS
 				return err
 			}
 
-			pterm.Success.Printf("Service app '%s' built\n", b.app.Name())
+			pterm.Success.Printf("%s app '%s' built\n", util.Title(b.app.Type()), b.app.Name())
 			prog.Increment()
 
 			return nil

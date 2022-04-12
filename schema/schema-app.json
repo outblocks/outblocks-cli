@@ -328,6 +328,14 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "image": {
+          "description": "Docker image to use. If specified, will try to pull this image if skip-build is enabled.",
+          "type": "string"
+        },
+        "skip_build": {
+          "description": "Skip this image build phase. If enabled, requires image to be either present on docker host or custom image to be possible to pull.",
+          "type": "boolean"
+        },
         "build_args": {
           "description": "Docker build-args.",
           "type": "object",
