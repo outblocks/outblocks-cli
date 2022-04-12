@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.100](https://github.com/outblocks/outblocks-cli/compare/v0.1.99...v0.1.100)
+
+> 2022-04-12
+
+### FEATURES
+
+[`b5ec7a4`](https://github.com/outblocks/outblocks-cli/commit/b5ec7a4f59410fded55c3bbd5a51a05c10574ab0) custom docker image, skip build support, image pulling
+
 ## [v0.1.99](https://github.com/outblocks/outblocks-cli/compare/v0.1.98...v0.1.99)
 
 > 2022-04-08
