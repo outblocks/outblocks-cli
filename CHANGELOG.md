@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.101](https://github.com/outblocks/outblocks-cli/compare/v0.1.100...v0.1.101)
+
+> 2022-04-13
+
+### FEATURES
+
+[`d1c7f1d`](https://github.com/outblocks/outblocks-cli/commit/d1c7f1d037f5c13543ca0f02968f5d44171f1d09) use docker pull directly, add schema for storage and database
+
 ## [v0.1.100](https://github.com/outblocks/outblocks-cli/compare/v0.1.99...v0.1.100)
 
 > 2022-04-12
