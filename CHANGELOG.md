@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.102](https://github.com/outblocks/outblocks-cli/compare/v0.1.101...v0.1.102)
+
+> 2022-04-13
+
+### FEATURES
+
+[`bef408b`](https://github.com/outblocks/outblocks-cli/commit/bef408b3c026665f9b9a9c52c37160a39515e714) wrapper fix and back to api pull
+
 ## [v0.1.101](https://github.com/outblocks/outblocks-cli/compare/v0.1.100...v0.1.101)
 
 > 2022-04-13
