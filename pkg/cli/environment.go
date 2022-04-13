@@ -15,7 +15,8 @@ const (
 type Environment struct {
 	v *viper.Viper
 
-	vars []*EnvVar
+	vars   []*EnvVar
+	pflags map[string]*pflag.Flag
 }
 
 type EnvVar struct {
@@ -25,7 +26,10 @@ type EnvVar struct {
 }
 
 func NewEnvironment(v *viper.Viper) *Environment {
-	return &Environment{v: v}
+	return &Environment{
+		v:      v,
+		pflags: make(map[string]*pflag.Flag),
+	}
 }
 
 func envName(key string) string {
@@ -73,8 +77,18 @@ func (e *Environment) BindCLIFlag(key string, f *pflag.Flag) {
 		panic(err)
 	}
 
+	e.pflags[key] = f
+
 	key = strings.NewReplacer(".", "_").Replace(key)
 	key = strings.ToUpper(EnvPrefix + "_" + key)
 
 	f.Usage += fmt.Sprintf(` [$%s]`, key)
+}
+
+func (e *Environment) SetPFlags() {
+	for k, v := range e.pflags {
+		val := e.v.GetString(k)
+
+		_ = v.Value.Set(val)
+	}
 }

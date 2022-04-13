@@ -74,6 +74,8 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 		loadAppsMode       config.LoadMode
 	)
 
+	e.env.SetPFlags()
+
 	// Parse critical root flags.
 	e.rootCmd.PersistentFlags().ParseErrorsWhitelist.UnknownFlags = true
 
@@ -83,7 +85,6 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	}
 
 	helpFlag := e.rootCmd.PersistentFlags().Lookup("help")
-	e.opts.env = e.v.GetString("env")
 	cmd, _, err := e.rootCmd.Find(os.Args[1:])
 
 	isHelp := helpFlag.Changed || e.rootCmd == cmd || (len(os.Args) > 1 && strings.EqualFold(os.Args[1], "help"))

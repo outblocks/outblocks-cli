@@ -332,7 +332,7 @@ func (e *Executor) newRoot() *cobra.Command {
 	f.Bool("help", false, "help")
 	addValueOptionsFlags(f, e.opts.valueOpts)
 
-	f.StringP("env", "e", "dev", "environment to use")
+	f.StringVarP(&e.opts.env, "env", "e", "dev", "environment to use")
 	e.env.AddVarWithDefault("env", "environment to use", "dev")
 	e.env.BindCLIFlag("env", f.Lookup("env"))
 

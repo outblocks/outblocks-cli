@@ -3,7 +3,6 @@ package actions
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -14,7 +13,6 @@ import (
 	"github.com/ansel1/merry/v2"
 	dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
@@ -81,50 +79,7 @@ func (d *Deploy) printAppOutput(app config.App, msg string, isErr bool) {
 	}
 }
 
-func (d *Deploy) printAppJSONMessage(app config.App, jm *jsonmessage.JSONMessage) error {
-	if jm.Error != nil {
-		if jm.Error.Code == 401 {
-			return fmt.Errorf("authentication is required")
-		}
-
-		return jm.Error
-	}
-
-	prefix := fmt.Sprintf("APP:%s:%s:", app.Type(), app.Name())
-
-	if jm.Progress != nil && jm.Progress.Current < jm.Progress.Total { // disable progressbar in non-terminal
-		return nil
-	}
-
-	msg := ""
-
-	if jm.TimeNano != 0 {
-		msg += fmt.Sprintf("%s ", time.Unix(0, jm.TimeNano).Format(jsonmessage.RFC3339NanoFixed))
-	} else if jm.Time != 0 {
-		msg += fmt.Sprintf("%s ", time.Unix(0, jm.Time).Format(jsonmessage.RFC3339NanoFixed))
-	}
-
-	if jm.ID != "" {
-		msg += fmt.Sprintf("%s: ", jm.ID)
-	}
-
-	if jm.From != "" {
-		msg += fmt.Sprintf("(from %s)", jm.From)
-	}
-
-	switch {
-	case jm.Stream != "":
-		msg += jm.Stream
-	default:
-		msg += jm.Status
-	}
-
-	d.log.Printf("%s %s\n", pterm.FgGreen.Sprint(prefix), msg)
-
-	return nil
-}
-
-func (d *Deploy) runAppBuildCommand(ctx context.Context, cmd *command.Cmd, app config.App) error {
+func (d *Deploy) runAppCommand(ctx context.Context, cmd *command.Cmd, app config.App) error {
 	// Process stdout/stderr.
 	var wg sync.WaitGroup
 
@@ -186,7 +141,7 @@ func (d *Deploy) buildStaticApp(ctx context.Context, app *config.StaticApp, eval
 		return merry.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
 
-	return d.runAppBuildCommand(ctx, cmd, app)
+	return d.runAppCommand(ctx, cmd, app)
 }
 
 func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, eval *util.VarEvaluator) error {
@@ -237,7 +192,7 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 
 	d.printAppOutput(app, fmt.Sprintf("Building image '%s'...", app.AppBuild.LocalDockerImage), false)
 
-	err = d.runAppBuildCommand(ctx, cmd, app)
+	err = d.runAppCommand(ctx, cmd, app)
 	if err != nil {
 		return err
 	}
@@ -289,34 +244,20 @@ func (d *Deploy) prepareApps(ctx context.Context) error {
 		prepare = append(prepare, &appPrepare{
 			app: app,
 			prepare: func() error {
+				cmd, err := command.New(
+					exec.Command("docker", "pull", a.AppBuild.LocalDockerImage),
+				)
+				if err != nil {
+					return merry.Errorf("error preparing pull command for %s app: %s: %w", app.Type(), app.Name(), err)
+				}
+
 				d.printAppOutput(app, fmt.Sprintf("Pulling image '%s'...", a.AppBuild.LocalDockerImage), false)
 
-				reader, err := cli.ImagePull(ctx, a.AppBuild.LocalDockerImage, dockertypes.ImagePullOptions{})
+				err = d.runAppCommand(ctx, cmd, app)
 				if err != nil {
 					d.printAppOutput(app, fmt.Sprintf("error pulling custom image: %s", err), true)
 
 					return nil
-				}
-
-				var jm jsonmessage.JSONMessage
-
-				scanner := bufio.NewScanner(reader)
-
-				for scanner.Scan() {
-					err = json.Unmarshal(scanner.Bytes(), &jm)
-					if err != nil {
-						return err
-					}
-
-					err = d.printAppJSONMessage(app, &jm)
-					if err != nil {
-						return err
-					}
-				}
-
-				err = reader.Close()
-				if err != nil {
-					return err
 				}
 
 				insp, _, err := cli.ImageInspectWithRaw(ctx, a.AppBuild.LocalDockerImage)
