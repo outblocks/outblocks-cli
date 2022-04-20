@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.104](https://github.com/outblocks/outblocks-cli/compare/v0.1.103...v0.1.104)
+
+> 2022-04-20
+
+### FEATURES
+
+[`34fcae8`](https://github.com/outblocks/outblocks-cli/commit/34fcae816c0bfd2b9001d3da1ee0b5a86fac91ae) add skip pull support
+
 ## [v0.1.103](https://github.com/outblocks/outblocks-cli/compare/v0.1.102...v0.1.103)
 
 > 2022-04-13
