@@ -81,6 +81,7 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 	f.BoolVar(&opts.Verify, "verify", false, "verify existing resources")
 	f.BoolVar(&opts.Destroy, "destroy", false, "destroy all existing resources")
 	f.BoolVar(&opts.SkipBuild, "skip-build", false, "skip build command before deploy")
+	f.BoolVar(&opts.SkipPull, "skip-pull", false, "skip docker images pull phase before deploy")
 	f.BoolVar(&opts.Lock, "lock", true, "lock statefile during deploy")
 	f.DurationVar(&opts.LockWait, "lock-wait", 0, "wait for lock if it is already acquired")
 	f.BoolVar(&opts.AutoApprove, "yes", false, "auto approve changes")

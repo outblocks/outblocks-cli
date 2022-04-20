@@ -50,6 +50,7 @@ type DeployOptions struct {
 	Verify               bool
 	Destroy              bool
 	SkipBuild            bool
+	SkipPull             bool
 	Lock                 bool
 	LockWait             time.Duration
 	AutoApprove          bool

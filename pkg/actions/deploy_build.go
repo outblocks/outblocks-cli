@@ -170,7 +170,11 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 
 	buildArgs := util.FlattenEnvMap(buildArgsMap)
 
-	cmdArgs := []string{"build", "--platform=linux/amd64", "--tag", app.AppBuild.LocalDockerImage, "--pull", "--file", app.Build.Dockerfile, "--progress=plain"}
+	cmdArgs := []string{"build", "--platform=linux/amd64", "--tag", app.AppBuild.LocalDockerImage, "--file", app.Build.Dockerfile, "--progress=plain"}
+
+	if !d.opts.SkipPull && !app.Build.SkipPull {
+		cmdArgs = append(cmdArgs, "--pull")
+	}
 
 	// Add build args if needed.
 	if len(buildArgs) > 0 {

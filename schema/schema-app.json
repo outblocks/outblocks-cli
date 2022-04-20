@@ -336,6 +336,10 @@
           "description": "Skip this image build phase. If enabled, requires image to be either present on docker host or custom image to be possible to pull.",
           "type": "boolean"
         },
+        "skip_pull": {
+          "description": "Skip this image dependencies pull phase. As a result, doesn't check for newer versions of tagged dependencies. Useful if dependencies do not exist outside of local docker.",
+          "type": "boolean"
+        },
         "build_args": {
           "description": "Docker build-args.",
           "type": "object",
