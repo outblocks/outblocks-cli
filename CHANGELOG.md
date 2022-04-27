@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.105](https://github.com/outblocks/outblocks-cli/compare/v0.1.104...v0.1.105)
+
+> 2022-04-27
+
+### FEATURES
+
+[`79f2bbf`](https://github.com/outblocks/outblocks-cli/commit/79f2bbf71f21d54959d8bdeb1abf54b763e6619f) logging support
+
 ## [v0.1.104](https://github.com/outblocks/outblocks-cli/compare/v0.1.103...v0.1.104)
 
 > 2022-04-20
