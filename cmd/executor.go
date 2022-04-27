@@ -65,7 +65,7 @@ func NewExecutor() *Executor {
 func setupEnvVars(env *cli.Environment) {
 	env.AddVarWithDefault("plugins_cache_dir", "plugins cache directory", clipath.DataDir("plugin-cache"))
 	env.AddVar("no_color", "disable color output")
-	env.AddVarWithDefault("log_level", "set logging level: debug | info | warn | error", "info")
+	env.AddVarWithDefault("log_level", "set logging level (options: debug, notice, info, warn, error)", "info")
 }
 
 func (e *Executor) commandPreRun(ctx context.Context) error {
@@ -311,5 +311,9 @@ func (e *Executor) LogLevel() string {
 }
 
 func (e *Executor) NoColor() bool {
+	if _, ok := os.LookupEnv("NO_COLOR"); ok {
+		return true
+	}
+
 	return e.v.GetBool("no_color")
 }

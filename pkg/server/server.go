@@ -133,6 +133,8 @@ func (s *Server) Log(ctx context.Context, r *apiv1.LogRequest) (*apiv1.LogRespon
 		s.log.Print(r.Message)
 	case apiv1.LogRequest_LEVEL_UNSPECIFIED:
 		return nil, merry.New("unknown level")
+	default:
+		s.log.Info(r.Message)
 	}
 
 	return &apiv1.LogResponse{}, nil

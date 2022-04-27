@@ -9,6 +9,7 @@ require (
 	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/Masterminds/vcs v1.13.3
 	github.com/ansel1/merry/v2 v2.0.1
+	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/docker/docker v20.10.14+incompatible
 	github.com/enescakir/emoji v1.0.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
@@ -18,7 +19,7 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20220420190545-2f7c87d49345
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20220427125140-5c3ad920eb15
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.41
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0

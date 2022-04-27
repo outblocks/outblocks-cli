@@ -84,6 +84,10 @@ func (c *Client) commandPlugin() apiv1.CommandPluginServiceClient {
 	return apiv1.NewCommandPluginServiceClient(c.conn)
 }
 
+func (c *Client) logsPlugin() apiv1.LogsPluginServiceClient {
+	return apiv1.NewLogsPluginServiceClient(c.conn)
+}
+
 func (c *Client) init(ctx context.Context) error {
 	c.log.Debugf("Initializing connection to plugin: %s\n", c.name)
 

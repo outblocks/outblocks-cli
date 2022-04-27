@@ -351,6 +351,7 @@ func (e *Executor) newRoot() *cobra.Command {
 		e.newAppsCmd(),
 		e.newVersionCmd(),
 		e.newStatusCmd(),
+		e.newLogsCmd(),
 	)
 
 	return cmd

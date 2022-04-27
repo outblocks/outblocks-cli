@@ -15,18 +15,19 @@ type LogLevel int
 
 const (
 	LogLevelDebug LogLevel = iota
+	LogLevelNotice
 	LogLevelInfo
 	LogLevelWarn
 	LogLevelError
 )
 
 type Log struct {
-	logLevel                        LogLevel
-	debug, info, warn, err, success *PrefixPrinter
-	spinner                         *SpinnerPrinter
-	table                           *TablePrinter
-	section                         *SectionPrinter
-	progress                        *ProgressbarPrinter
+	logLevel                                LogLevel
+	debug, info, notice, warn, err, success *PrefixPrinter
+	spinner                                 *SpinnerPrinter
+	table                                   *TablePrinter
+	section                                 *SectionPrinter
+	progress                                *ProgressbarPrinter
 }
 
 func NewLogger() Logger {
@@ -34,6 +35,14 @@ func NewLogger() Logger {
 		Style: &pterm.ThemeDefault.DebugPrefixStyle,
 		Text:  "DEBG",
 	})
+	notice := pterm.Debug.WithPrefix(pterm.Prefix{
+		Style: &pterm.ThemeDefault.InfoPrefixStyle,
+		Text:  "NOTI",
+	}).WithMessageStyle(&pterm.Style{pterm.FgDefault})
+	info := pterm.Info.WithPrefix(pterm.Prefix{
+		Style: &pterm.ThemeDefault.InfoPrefixStyle,
+		Text:  "INFO",
+	}).WithMessageStyle(&pterm.Style{pterm.FgDefault})
 	warn := pterm.Warning.WithPrefix(pterm.Prefix{
 		Style: &pterm.ThemeDefault.WarningPrefixStyle,
 		Text:  "WARN",
@@ -60,7 +69,8 @@ func NewLogger() Logger {
 	l := &Log{
 		logLevel: LogLevelDebug,
 		debug:    &PrefixPrinter{PrefixPrinter: debug},
-		info:     &PrefixPrinter{PrefixPrinter: &pterm.Info},
+		notice:   &PrefixPrinter{PrefixPrinter: notice},
+		info:     &PrefixPrinter{PrefixPrinter: info},
 		warn:     &PrefixPrinter{PrefixPrinter: warn},
 		err:      &PrefixPrinter{PrefixPrinter: err},
 		success:  &PrefixPrinter{PrefixPrinter: success},
@@ -133,6 +143,21 @@ func (l *Log) Debugln(a ...interface{}) {
 	l.debug.Println(a...)
 }
 
+func (l *Log) Notice(a ...interface{}) {
+	if l.logLevel > LogLevelNotice {
+		return
+	}
+
+	l.notice.Print(a...)
+}
+
+func (l *Log) Noticef(format string, a ...interface{}) {
+	l.notice.Printf(format, a...)
+}
+
+func (l *Log) Noticeln(a ...interface{}) {
+	l.notice.Println(a...)
+}
 func (l *Log) Info(a ...interface{}) {
 	if l.logLevel > LogLevelInfo {
 		return
@@ -235,6 +260,8 @@ func (l *Log) SetLevelString(logLevel string) error {
 	switch strings.ToLower(logLevel) {
 	case "debug":
 		level = LogLevelDebug
+	case "notice":
+		level = LogLevelNotice
 	case "info", "":
 		level = LogLevelInfo
 	case "warn", "warning":
