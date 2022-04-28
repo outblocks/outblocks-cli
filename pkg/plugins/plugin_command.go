@@ -15,6 +15,7 @@ const (
 	CommandValueTypeBool CommandValueType = iota + 1
 	CommandValueTypeString
 	CommandValueTypeInt
+	CommandValueTypeStringArray
 )
 
 type CommandInputType int
@@ -26,7 +27,7 @@ const (
 )
 
 var (
-	CommandValueTypes = []string{"str", "string", "bool", "boolean", "int", "integer"}
+	CommandValueTypes = []string{"str", "string", "bool", "boolean", "int", "integer", "strings", "stringarray"}
 	CommandInputTypes = []string{"app_states", "dependency_states", "plugin_state"}
 )
 
@@ -106,6 +107,15 @@ func (p *PluginCommandFlag) Val() interface{} {
 		return *(p.Value.(*string))
 	case CommandValueTypeInt:
 		return *(p.Value.(*int))
+	case CommandValueTypeStringArray:
+		v := *(p.Value.(*[]string))
+		ret := make([]interface{}, len(v))
+
+		for i, val := range v {
+			ret[i] = val
+		}
+
+		return ret
 	}
 
 	return nil
@@ -123,6 +133,8 @@ func (p *PluginCommandFlag) ValueType() CommandValueType {
 		p.typ = CommandValueTypeInt
 	case "str", "string":
 		p.typ = CommandValueTypeString
+	case "stringarray", "strings":
+		p.typ = CommandValueTypeStringArray
 	default:
 		panic(fmt.Sprintf("unknown command value type: %s", p.Type))
 	}

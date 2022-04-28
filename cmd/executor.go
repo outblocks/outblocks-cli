@@ -122,7 +122,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 
 	v, err := e.opts.valueOpts.MergeValues(ctx, filepath.Dir(cfgPath), getter.All())
 	if err != nil {
-		if isHelp {
+		if isHelp && !e.rootCmd.PersistentFlags().Lookup("values").Changed {
 			return nil
 		}
 
@@ -205,6 +205,15 @@ func (e *Executor) addPluginsCommands() error {
 				case plugins.CommandValueTypeString:
 					def, _ := f.Default.(string)
 					f.Value = flags.StringP(f.Name, f.Short, def, f.Usage)
+				case plugins.CommandValueTypeStringArray:
+					def, _ := f.Default.([]interface{})
+					defStr := make([]string, len(def))
+
+					for i, v := range def {
+						defStr[i] = v.(string)
+					}
+
+					f.Value = flags.StringArrayP(f.Name, f.Short, defStr, f.Usage)
 				}
 
 				if f.Required {

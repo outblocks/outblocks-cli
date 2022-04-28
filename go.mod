@@ -19,7 +19,7 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20220427125140-5c3ad920eb15
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20220428150459-262b053acc7f
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.41
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
