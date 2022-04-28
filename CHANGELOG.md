@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.106](https://github.com/outblocks/outblocks-cli/compare/v0.1.105...v0.1.106)
+
+> 2022-04-28
+
+### FEATURES
+
+[`318e678`](https://github.com/outblocks/outblocks-cli/commit/318e678f2955491aca98a5cf886f1d3a4737a71a) support for stringarray in plugin commmand
+
 ## [v0.1.105](https://github.com/outblocks/outblocks-cli/compare/v0.1.104...v0.1.105)
 
 > 2022-04-27
