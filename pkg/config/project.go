@@ -3,7 +3,6 @@ package config
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,6 +58,7 @@ type DefaultsRun struct {
 
 type DefaultsDeploy struct {
 	Plugin string                 `json:"plugin,omitempty"`
+	Env    map[string]string      `json:"env,omitempty"`
 	Other  map[string]interface{} `yaml:"-,remain"`
 }
 
@@ -362,18 +362,6 @@ func (p *Project) YAMLPath() string {
 	return p.yamlPath
 }
 
-func (p *Project) FindDNSPlugin(u *url.URL) *plugins.Plugin {
-	for _, dns := range p.DNS {
-		if dns.Match(u.Host) {
-			dns.MarkAsUsed()
-
-			return dns.plugin
-		}
-	}
-
-	return nil
-}
-
 func (p *Project) FindLoadedPlugin(name string) *plugins.Plugin {
 	return p.loadedPluginsMap[name]
 }
@@ -452,15 +440,7 @@ func (p *Project) DomainInfoProto() []*apiv1.DomainInfo {
 	var ret []*apiv1.DomainInfo
 
 	for _, d := range p.DNS {
-		if d.SSLInfo.loadedCert == "" {
-			continue
-		}
-
-		ret = append(ret, &apiv1.DomainInfo{
-			Domains: d.Domains,
-			Cert:    d.SSLInfo.loadedCert,
-			Key:     d.SSLInfo.loadedKey,
-		})
+		ret = append(ret, d.Proto())
 	}
 
 	return ret

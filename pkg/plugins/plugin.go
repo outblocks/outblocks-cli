@@ -22,6 +22,7 @@ type Plugin struct {
 	Description    string                            `json:"description"`
 	Cmd            map[string]*command.StringCommand `json:"cmd"`
 	Actions        []string                          `json:"actions"`
+	Priorities     map[string][]int                  `json:"priorities"`
 	Hooks          []*PluginHooks                    `json:"hooks"`
 	Supports       []string                          `json:"supports"`
 	StateTypes     []string                          `json:"state_types"`
@@ -46,7 +47,10 @@ const (
 	ActionDNS
 	ActionLock
 	ActionState
+	ActionDeployHook
 )
+
+const DefaultPriority = 1000
 
 func (p *Plugin) Validate() error {
 	return validation.ValidateStruct(p,
@@ -69,6 +73,14 @@ func (p *Plugin) Locked() *lockfile.Plugin {
 
 func (p *Plugin) Client() *client.Client {
 	return p.client
+}
+
+func (p *Plugin) PriorityFor(cmd string) []int {
+	if v, ok := p.Priorities[cmd]; ok {
+		return v
+	}
+
+	return []int{DefaultPriority}
 }
 
 func (p *Plugin) HasAction(a Action) bool {

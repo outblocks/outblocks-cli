@@ -6,6 +6,7 @@ import (
 
 	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
+	"github.com/outblocks/outblocks-cli/pkg/plugins"
 )
 
 func (p *Project) normalizeDNS() error {
@@ -116,6 +117,20 @@ func (p *Project) FullCheck() error {
 
 		if err := p.State.Check(p); err != nil {
 			return err
+		}
+
+		for _, plug := range p.LoadedPlugins() {
+			if plug.HasAction(plugins.ActionDeploy) && p.Defaults.Deploy.Plugin == "" {
+				p.Defaults.Deploy.Plugin = plug.Name
+			}
+
+			if plug.HasAction(plugins.ActionDNS) && p.Defaults.DNS.Plugin == "" {
+				p.Defaults.DNS.Plugin = plug.Name
+			}
+
+			if plug.HasAction(plugins.ActionRun) && p.Defaults.Run.Plugin == "" {
+				p.Defaults.Run.Plugin = plug.Name
+			}
 		}
 
 		return nil

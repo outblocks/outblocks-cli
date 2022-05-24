@@ -10,11 +10,12 @@ import (
 
 var (
 	pluginTypes = map[string]Action{
-		"dns":    ActionDNS,
-		"deploy": ActionDeploy,
-		"run":    ActionRun,
-		"lock":   ActionLock,
-		"state":  ActionState,
+		"dns":         ActionDNS,
+		"deploy":      ActionDeploy,
+		"run":         ActionRun,
+		"lock":        ActionLock,
+		"state":       ActionState,
+		"deploy_hook": ActionDeployHook,
 	}
 	pluginTypesIgnored = map[string]struct{}{
 		"locking": {},

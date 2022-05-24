@@ -54,6 +54,10 @@ type DNSRecordValue struct {
 type DNSRecordMap map[DNSRecordKey]DNSRecordValue
 
 func (m DNSRecordMap) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.List())
+}
+
+func (m DNSRecordMap) List() []*apiv1.DNSRecord {
 	out := make([]*apiv1.DNSRecord, 0, len(m))
 
 	for k, v := range m {
@@ -65,7 +69,7 @@ func (m DNSRecordMap) MarshalJSON() ([]byte, error) {
 		})
 	}
 
-	return json.Marshal(out)
+	return out
 }
 
 func (m DNSRecordMap) UnmarshalJSON(b []byte) error {

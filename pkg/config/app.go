@@ -42,7 +42,6 @@ type App interface {
 
 	DeployPlugin() *plugins.Plugin
 	RunPlugin() *plugins.Plugin
-	DNSPlugin() *plugins.Plugin
 }
 
 type AppRunInfo struct {
@@ -111,7 +110,6 @@ type BasicApp struct {
 	yamlPath     string
 	yamlData     []byte
 	deployPlugin *plugins.Plugin
-	dnsPlugin    *plugins.Plugin
 	runPlugin    *plugins.Plugin
 }
 
@@ -220,24 +218,26 @@ func (a *BasicApp) Check(cfg *Project) error {
 		deployPlugin = cfg.Defaults.Deploy.Plugin
 	}
 
-	for _, plug := range cfg.loadedPlugins {
-		if !plug.HasAction(plugins.ActionDeploy) {
-			continue
+	plug := cfg.FindLoadedPlugin(deployPlugin)
+
+	if plug != nil && (!plug.HasAction(plugins.ActionDeploy) || !plug.SupportsApp(a.Type())) {
+		for _, p := range cfg.LoadedPlugins() {
+			if !p.HasAction(plugins.ActionDeploy) || !p.SupportsApp(a.Type()) {
+				continue
+			}
+
+			plug = p
+
+			break
 		}
-
-		if (deployPlugin != "" && deployPlugin != plug.Name) || !plug.SupportsApp(a.Type()) {
-			continue
-		}
-
-		a.deployPlugin = plug
-		a.AppDeploy.Plugin = plug.Name
-
-		break
 	}
 
-	if a.deployPlugin == nil {
+	if plug == nil {
 		return merry.Errorf("%s has no matching deployment plugin available.\nfile: %s", a.Type(), a.yamlPath)
 	}
+
+	a.deployPlugin = plug
+	a.AppDeploy.Plugin = plug.Name
 
 	// Check run plugin.
 	runPlugin := a.AppRun.Plugin
@@ -245,31 +245,30 @@ func (a *BasicApp) Check(cfg *Project) error {
 		runPlugin = cfg.Defaults.Run.Plugin
 	}
 
-	for _, plug := range cfg.loadedPlugins {
-		if !plug.HasAction(plugins.ActionRun) {
-			continue
-		}
+	plug = cfg.FindLoadedPlugin(runPlugin)
 
-		if (runPlugin != "" && runPlugin != plug.Name) || !plug.SupportsApp(a.Type()) {
-			continue
-		}
+	if plug != nil && (!plug.HasAction(plugins.ActionDeploy) || !plug.SupportsApp(a.Type())) {
+		for _, p := range cfg.LoadedPlugins() {
+			if !p.HasAction(plugins.ActionDeploy) || !p.SupportsApp(a.Type()) {
+				continue
+			}
 
-		a.runPlugin = plug
-		a.AppRun.Plugin = plug.Name
+			plug = p
+
+			break
+		}
 	}
 
-	if a.runPlugin == nil && !strings.EqualFold(RunPluginDirect, runPlugin) {
+	if plug == nil && !strings.EqualFold(RunPluginDirect, runPlugin) {
 		return merry.Errorf("%s has no matching run plugin available.\nfile: %s", a.Type(), a.yamlPath)
 	}
 
-	// Check dns plugin.
-	if a.AppURL != "" {
-		a.dnsPlugin = cfg.FindDNSPlugin(a.URL())
-	}
+	a.runPlugin = plug
+	a.AppRun.Plugin = plug.Name
 
 	for k, need := range a.Needs {
 		if need.dep.deployPlugin != a.deployPlugin {
-			return a.YAMLError(fmt.Sprintf("$.needs[%s]", k), fmt.Sprintf("%s needs a dependency that uses different deployment plugin.", a.Type()))
+			return a.YAMLError(fmt.Sprintf("$.needs[%s]", k), fmt.Sprintf("%s needs a dependency that uses different deployment plugin", a.Type()))
 		}
 	}
 
@@ -300,14 +299,10 @@ func (a *BasicApp) Proto() *apiv1.App {
 		appURL = a.url.String()
 	}
 
-	var dnsPluginName, deployPluginName, runPluginName string
+	var deployPluginName, runPluginName string
 
 	if a.DeployPlugin() != nil {
 		deployPluginName = a.DeployPlugin().Name
-	}
-
-	if a.DNSPlugin() != nil {
-		dnsPluginName = a.DNSPlugin().Name
 	}
 
 	if a.RunPlugin() != nil {
@@ -323,7 +318,6 @@ func (a *BasicApp) Proto() *apiv1.App {
 		PathRedirect: a.AppPathRedirect,
 		Env:          a.Env(),
 		DeployPlugin: deployPluginName,
-		DnsPlugin:    dnsPluginName,
 		RunPlugin:    runPluginName,
 		Deploy:       a.AppDeploy.Proto(),
 		Needs:        needs,
@@ -333,10 +327,6 @@ func (a *BasicApp) Proto() *apiv1.App {
 
 func (a *BasicApp) DeployPlugin() *plugins.Plugin {
 	return a.deployPlugin
-}
-
-func (a *BasicApp) DNSPlugin() *plugins.Plugin {
-	return a.dnsPlugin
 }
 
 func (a *BasicApp) RunPlugin() *plugins.Plugin {

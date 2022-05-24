@@ -164,7 +164,7 @@ func (e *Executor) addPluginsCommands() error {
 			cmd, _, err := e.rootCmd.Find([]string{cmdName})
 			if err != nil {
 				cmd = &cobra.Command{
-					Use:          fmt.Sprintf("%s-%s", plug.Name, cmdName),
+					Use:          fmt.Sprintf("%s-%s", plug.ShortName(), cmdName),
 					Short:        cmdt.Short,
 					Long:         cmdt.Long,
 					SilenceUsage: true,

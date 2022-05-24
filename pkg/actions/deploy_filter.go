@@ -37,7 +37,7 @@ func filterAppsNormal(cfg *config.Project, state *statefile.StateData, targetApp
 		mergedProps := plugin_util.MergeMaps(cfg.Defaults.Deploy.Other, appType.Properties.AsMap(), app.DeployInfo().Other)
 
 		appType.Properties = plugin_util.MustNewStruct(mergedProps)
-		appType.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, appType.Env, app.DeployInfo().Env)
+		appType.Env = plugin_util.MergeStringMaps(cfg.Defaults.Deploy.Env, appType.Env, app.DeployInfo().Env)
 
 		appsMap[app.ID()] = &apiv1.AppPlan{
 			State: &apiv1.AppState{
@@ -102,7 +102,7 @@ func filterApps(cfg *config.Project, state *statefile.StateData, targetAppIDs, s
 			mergedProps := plugin_util.MergeMaps(cfg.Defaults.Deploy.Other, appType.Properties.AsMap(), app.DeployInfo().Other)
 
 			appType.Properties = plugin_util.MustNewStruct(mergedProps)
-			appType.Env = plugin_util.MergeStringMaps(cfg.Defaults.Run.Env, appType.Env, app.DeployInfo().Env)
+			appType.Env = plugin_util.MergeStringMaps(cfg.Defaults.Deploy.Env, appType.Env, app.DeployInfo().Env)
 
 			apps = append(apps, &apiv1.AppPlan{
 				State: &apiv1.AppState{

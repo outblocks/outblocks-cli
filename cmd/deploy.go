@@ -45,8 +45,8 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				return merry.New("target-apps and skip-apps arguments are mutually exclusive modes")
 			}
 
-			if opts.SkipAllApps && opts.Destroy {
-				return merry.New("skip-all-apps and destroy are mutually exclusive modes")
+			if opts.Destroy && (opts.SkipAllApps || len(opts.TargetApps) != 0 || len(opts.SkipApps) != 0) {
+				return merry.New("targeted mode and destroy are mutually exclusive modes")
 			}
 
 			for _, t := range targetApps {
@@ -82,7 +82,7 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 	f.BoolVar(&opts.Destroy, "destroy", false, "destroy all existing resources")
 	f.BoolVar(&opts.SkipBuild, "skip-build", false, "skip build command before deploy")
 	f.BoolVar(&opts.SkipPull, "skip-pull", false, "skip docker images pull phase before deploy")
-	f.BoolVar(&opts.Lock, "lock", true, "lock statefile during deploy")
+	f.BoolVar(&opts.Lock, "lock", true, "acquire locks during deploy")
 	f.DurationVar(&opts.LockWait, "lock-wait", 0, "wait for lock if it is already acquired")
 	f.BoolVar(&opts.AutoApprove, "yes", false, "auto approve changes")
 	f.BoolVar(&opts.ForceApprove, "force", false, "force approve even with critical changes")

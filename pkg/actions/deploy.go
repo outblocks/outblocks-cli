@@ -20,8 +20,10 @@ import (
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
+	"github.com/outblocks/outblocks-plugin-go/types"
 	"github.com/outblocks/outblocks-plugin-go/util/errgroup"
 	"github.com/pterm/pterm"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -29,10 +31,16 @@ const (
 	stateLockWait = 30 * time.Second
 )
 
-type planParams struct {
+type planDeployParams struct {
 	appPlans []*apiv1.AppPlan
 	depPlans []*apiv1.DependencyPlan
 	args     map[string]interface{}
+	priority []int
+}
+
+type planDNSParams struct {
+	records []*apiv1.DNSRecord
+	args    map[string]interface{}
 }
 
 type Deploy struct {
@@ -76,46 +84,26 @@ func (d *Deploy) preChecks(state *statefile.StateData, showWarnings bool) error 
 	return d.checkIfDNSAreUsed(state.Apps, showWarnings)
 }
 
-func (d *Deploy) stateLockRun(ctx context.Context) error {
+func (d *Deploy) stateLockDeploy(ctx context.Context, state *statefile.StateData, stateRes *apiv1.GetStateResponse_State) (*statefile.StateData, error) {
 	verify := d.opts.Verify
-	yamlContext := &client.YAMLContext{
-		Prefix: "$.state",
-		Data:   d.cfg.YAMLData(),
-	}
-
-	// Get state.
-	state, stateRes, err := getState(ctx, d.cfg.State, d.opts.Lock, d.opts.LockWait, d.opts.SkipStateCreate, yamlContext)
-	if err != nil {
-		return err
-	}
-
-	switch {
-	case stateRes.StateCreated:
-		d.log.Infof("New state created: '%s' for environment: '%s'\n", stateRes.StateName, d.cfg.State.Env())
-
-		verify = true
-	case d.opts.SkipStateCreate && state.IsEmpty():
-		d.log.Infof("State for environment: '%s' is empty or does not exist\n", d.cfg.State.Env())
-		return nil
-	}
 
 	// Build apps.
 	if !d.opts.SkipBuild {
 		err := d.buildApps(ctx, state.Apps)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	// Plan and apply.
-	err = d.preChecks(state, true)
+	err := d.preChecks(state, true)
 	if err != nil {
 		_ = releaseStateLock(d.cfg, stateRes.LockInfo)
 
-		return err
+		return nil, err
 	}
 
-	res, err := d.planAndApply(ctx, verify, state, nil, false)
+	res, err := d.planAndApplyDeploy(ctx, verify, state, nil, false)
 
 	// Proceed with saving.
 	if res.shouldSave() {
@@ -137,26 +125,27 @@ func (d *Deploy) stateLockRun(ctx context.Context) error {
 
 	switch {
 	case err != nil:
-		return err
+		return nil, err
 	case res.canceled:
-		return nil
+		return nil, nil
 	}
 
-	return d.showStateStatus(state.Apps, state.Dependencies, state.DNSRecords)
+	return state, nil
 }
 
 func (d *Deploy) allLockIDs(state *statefile.StateData) []string {
 	lockIDsMap := make(map[string]struct{})
 
+	for _, plug := range d.cfg.LoadedPlugins() {
+		if plug.HasAction(plugins.ActionDNS) || plug.HasAction(plugins.ActionDeploy) {
+			lockIDsMap[plugins.ComputePluginID(plug.Name)] = struct{}{}
+		}
+	}
+
 	for _, app := range d.cfg.Apps {
 		lockIDsMap[app.ID()] = struct{}{}
 
-		dnsPlugin := app.DNSPlugin()
 		deployPlugin := app.DeployPlugin()
-
-		if dnsPlugin != nil {
-			lockIDsMap[dnsPlugin.ID()] = struct{}{}
-		}
 
 		if deployPlugin != nil {
 			lockIDsMap[deployPlugin.ID()] = struct{}{}
@@ -168,10 +157,6 @@ func (d *Deploy) allLockIDs(state *statefile.StateData) []string {
 
 		if app == nil || app.App == nil {
 			continue
-		}
-
-		if app.App.DnsPlugin != "" {
-			lockIDsMap[plugins.ComputePluginID(app.App.DnsPlugin)] = struct{}{}
 		}
 
 		if app.App.DeployPlugin != "" {
@@ -252,36 +237,49 @@ func (d *Deploy) partialLockIDs(state *statefile.StateData) []string {
 }
 
 func (d *Deploy) checkIfDNSAreUsed(stateApps map[string]*apiv1.AppState, showWarnings bool) error {
-	var stateDomains []string
+	domains := d.cfg.DomainInfoProto()
+	protoToDNS := make(map[*apiv1.DomainInfo]*config.DNS)
+
+	for i, dns := range d.cfg.DNS {
+		protoToDNS[domains[i]] = dns
+	}
+
+	matcher := types.NewDomainInfoMatcher(domains)
 
 	for _, app := range stateApps {
 		if app.App == nil {
 			continue
 		}
 
-		u, _ := config.ParseAppURL(strings.ToLower(app.App.Url))
-		if u != nil {
-			stateDomains = append(stateDomains, u.Host)
-		}
-	}
-
-	// Check state app domains as well.
-	for _, dns := range d.cfg.DNS {
-		if dns.IsUsed() {
+		u, _ := config.ParseAppURL(app.App.Url)
+		if u == nil {
 			continue
 		}
 
-		for _, d := range stateDomains {
-			if dns.Match(d) {
-				dns.MarkAsUsed()
-			}
-		}
-	}
-
-	for i, dns := range d.cfg.DNS {
-		if dns.IsUsed() {
+		m := matcher.Match(u.Host)
+		if m == nil {
 			continue
 		}
+
+		delete(protoToDNS, m)
+	}
+
+	for _, app := range d.cfg.Apps {
+		u := app.URL()
+		if u == nil {
+			continue
+		}
+
+		m := matcher.Match(u.Host)
+		if m == nil {
+			continue
+		}
+
+		delete(protoToDNS, m)
+	}
+
+	for di := range protoToDNS {
+		i := slices.IndexFunc(domains, func(d *apiv1.DomainInfo) bool { return d == di })
 
 		n, err := yaml.PathString(fmt.Sprintf("$.dns[%d]", i))
 		if err != nil {
@@ -320,7 +318,7 @@ func (r *planAndApplyResults) shouldSave() bool {
 	return !r.canceled && (!r.empty || !r.stateDiff.IsEmpty())
 }
 
-func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (planAndApplyResults, error) {
+func (d *Deploy) multilockPlanAndApplyDeploy(ctx context.Context, state *statefile.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (planAndApplyResults, error) {
 	var (
 		locks []string
 	)
@@ -350,6 +348,8 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.Sta
 			err = d.buildApps(ctx, state.Apps)
 			if err != nil {
 				_ = releaseLocks(d.cfg, acquiredLocks)
+				d.log.Debugf("Released locks: %s\n", acquiredLocks)
+
 				return ret, err
 			}
 
@@ -360,14 +360,17 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.Sta
 		err = d.preChecks(state, showWarnings)
 		if err != nil {
 			_ = releaseLocks(d.cfg, acquiredLocks)
+			d.log.Debugf("Released locks: %s\n", acquiredLocks)
+
 			return ret, err
 		}
 
 		showWarnings = false
 
-		ret, err = d.planAndApply(ctx, verify, state, acquiredLocks, true)
+		ret, err = d.planAndApplyDeploy(ctx, verify, state, acquiredLocks, true)
 		if err != nil {
 			_ = releaseLocks(d.cfg, acquiredLocks)
+			d.log.Debugf("Released locks: %s\n", acquiredLocks)
 
 			return ret, err
 		}
@@ -385,6 +388,8 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.Sta
 			return ret, err
 		}
 
+		d.log.Debugf("Released locks: %s\n", ret.acquiredLocks)
+
 		state, _, err = getState(ctx, d.cfg.State, false, d.opts.LockWait, d.opts.SkipStateCreate, yamlContext)
 		if err != nil {
 			return ret, err
@@ -392,36 +397,12 @@ func (d *Deploy) multilockPlanAndApply(ctx context.Context, state *statefile.Sta
 	}
 }
 
-func (d *Deploy) multilockRun(ctx context.Context) error {
+func (d *Deploy) multilockDeploy(ctx context.Context, state *statefile.StateData, stateRes *apiv1.GetStateResponse_State, yamlContext *client.YAMLContext) (*statefile.StateData, error) {
+	partialLock := (len(d.opts.TargetApps) > 0 || len(d.opts.SkipApps) > 0) && !stateRes.StateCreated
 	verify := d.opts.Verify
-	partialLock := len(d.opts.TargetApps) > 0 || len(d.opts.SkipApps) > 0
-	yamlContext := &client.YAMLContext{
-		Prefix: "$.state",
-		Data:   d.cfg.YAMLData(),
-	}
-
-	// Get state.
-	state, stateRes, err := getState(ctx, d.cfg.State, false, d.opts.LockWait, d.opts.SkipStateCreate, yamlContext)
-	if err != nil {
-		return err
-	}
-
-	switch {
-	case stateRes.StateCreated:
-		d.log.Infof("New state created: '%s' for environment: '%s'\n", stateRes.StateName, d.cfg.State.Env())
-
-		verify = true
-		partialLock = false
-	case d.opts.SkipStateCreate && state.IsEmpty():
-		d.log.Infof("State for environment: '%s' is empty or does not exist\n", d.cfg.State.Env())
-		return nil
-	}
 
 	// Acquire locks and plan+apply.
-	res, err := d.multilockPlanAndApply(ctx, state, partialLock, verify, yamlContext)
-	if err != nil {
-		return err
-	}
+	res, err := d.multilockPlanAndApplyDeploy(ctx, state, partialLock, verify, yamlContext)
 
 	if res.shouldSave() {
 		d.log.Debugln("Saving state.")
@@ -431,7 +412,9 @@ func (d *Deploy) multilockRun(ctx context.Context) error {
 		state, stateRes, stateErr = getState(context.Background(), d.cfg.State, true, stateLockWait, d.opts.SkipStateCreate, yamlContext)
 		if stateErr != nil {
 			_ = releaseLocks(d.cfg, res.acquiredLocks)
-			return stateErr
+			d.log.Debugf("Released locks: %s\n", res.acquiredLocks)
+
+			return nil, stateErr
 		}
 
 		// These are "less important" errors.
@@ -457,14 +440,16 @@ func (d *Deploy) multilockRun(ctx context.Context) error {
 		err = releaseErr
 	}
 
+	d.log.Debugf("Released locks: %s\n", res.acquiredLocks)
+
 	switch {
 	case err != nil:
-		return err
+		return nil, err
 	case res.canceled:
-		return nil
+		return nil, nil
 	}
 
-	return d.showStateStatus(state.Apps, state.Dependencies, state.DNSRecords)
+	return state, nil
 }
 
 func (d *Deploy) Run(ctx context.Context) error {
@@ -473,18 +458,54 @@ func (d *Deploy) Run(ctx context.Context) error {
 		return err
 	}
 
-	if d.opts.Lock && d.cfg.State.Plugin() != nil && d.cfg.State.Plugin().HasAction(plugins.ActionLock) {
-		return d.multilockRun(ctx)
+	stateLock := d.opts.Lock
+	if d.cfg.State.Plugin() != nil && d.cfg.State.Plugin().HasAction(plugins.ActionLock) {
+		stateLock = false
 	}
 
-	return d.stateLockRun(ctx)
+	yamlContext := &client.YAMLContext{
+		Prefix: "$.state",
+		Data:   d.cfg.YAMLData(),
+	}
+
+	// Get state.
+	state, stateRes, err := getState(ctx, d.cfg.State, stateLock, d.opts.LockWait, d.opts.SkipStateCreate, yamlContext)
+	if err != nil {
+		return err
+	}
+
+	switch {
+	case stateRes.StateCreated:
+		d.log.Infof("New state created: '%s' for environment: '%s'\n", stateRes.StateName, d.cfg.State.Env())
+
+		d.opts.Verify = true
+	case d.opts.SkipStateCreate && state.IsEmpty():
+		d.log.Infof("State for environment: '%s' is empty or does not exist\n", d.cfg.State.Env())
+		return nil
+	}
+
+	if !stateLock {
+		state, err = d.multilockDeploy(ctx, state, stateRes, yamlContext)
+	} else {
+		state, err = d.stateLockDeploy(ctx, state, stateRes)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	if state != nil {
+		return d.showStateStatus(state.Apps, state.Dependencies, state.DNSRecords)
+	}
+
+	return nil
 }
 
-func (d *Deploy) promptDiff(deployChanges []*change, acquiredLocks map[string]string, checkLocks bool) (empty, canceled bool, missingLocks []string) {
+func (d *Deploy) promptDiff(deployChanges, dnsChanges []*change, acquiredLocks map[string]string, checkLocks bool) (empty, canceled bool, missingLocks []string) {
 	missingLocksMap := make(map[string]struct{})
 
 	if checkLocks {
-		for _, chg := range deployChanges {
+		for _, chg := range append(deployChanges, dnsChanges...) {
 			var lockID string
 
 			switch {
@@ -511,15 +532,102 @@ func (d *Deploy) promptDiff(deployChanges []*change, acquiredLocks map[string]st
 	}
 
 	if d.opts.SkipDiff {
-		return len(deployChanges) == 0, false, missingLocks
+		return len(deployChanges) == 0 && len(dnsChanges) == 0, false, missingLocks
 	}
 
-	empty, canceled = planPrompt(d.log, d.cfg.Env(), deployChanges, nil, d.opts.AutoApprove, d.opts.ForceApprove)
+	empty, canceled = planPrompt(d.log, d.cfg.Env(), deployChanges, dnsChanges, d.opts.AutoApprove, d.opts.ForceApprove)
 
 	return empty, canceled, missingLocks
 }
 
-func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (planAndApplyResults, error) {
+func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv1.DomainInfo {
+	projectDomains := types.NewDomainInfoMatcher(cfg.DomainInfoProto())
+	stateDomains := types.NewDomainInfoMatcher(state.DomainsInfo)
+	m := make(map[*apiv1.DomainInfo]struct{})
+
+	var missingHosts []string
+
+	var ret []*apiv1.DomainInfo
+
+	for _, app := range state.Apps {
+		if app.App == nil {
+			continue
+		}
+
+		u, _ := config.ParseAppURL(app.App.Url)
+		if u == nil {
+			continue
+		}
+
+		match := projectDomains.Match(u.Host)
+		if match == nil {
+			match = stateDomains.Match(u.Host)
+		}
+
+		if match == nil {
+			missingHosts = append(missingHosts, u.Host)
+			continue
+		}
+
+		if _, ok := m[match]; ok {
+			continue
+		}
+
+		m[match] = struct{}{}
+
+		ret = append(ret, match)
+	}
+
+	for _, app := range cfg.Apps {
+		u := app.URL()
+		if u == nil {
+			continue
+		}
+
+		match := projectDomains.Match(u.Host)
+		if match == nil {
+			match = stateDomains.Match(u.Host)
+		}
+
+		if match == nil {
+			missingHosts = append(missingHosts, u.Host)
+			continue
+		}
+
+		if _, ok := m[match]; ok {
+			continue
+		}
+
+		m[match] = struct{}{}
+
+		ret = append(ret, match)
+	}
+
+	addedHosts := make(map[string]struct{})
+	plug := cfg.Defaults.DNS.Plugin
+
+	for _, h := range missingHosts {
+		parts := strings.SplitN(h, ".", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		wildcard := fmt.Sprintf("*.%s", parts[1])
+		if _, ok := addedHosts[wildcard]; ok {
+			continue
+		}
+
+		ret = append(ret, &apiv1.DomainInfo{
+			Domains:   []string{wildcard},
+			DnsPlugin: plug,
+		})
+		addedHosts[wildcard] = struct{}{}
+	}
+
+	return ret
+}
+
+func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (planAndApplyResults, error) { // nolint: gocyclo
 	var domains []*apiv1.DomainInfo
 
 	ret := planAndApplyResults{}
@@ -528,7 +636,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 	if d.opts.SkipDNS {
 		domains = state.DomainsInfo
 	} else {
-		domains = d.cfg.DomainInfoProto()
+		domains = computeDomainsInfo(d.cfg, state)
 	}
 
 	// Plan and apply.
@@ -539,13 +647,13 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 
 	deps := filterDependencies(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
 
-	planMap, err := calculatePlanMap(d.cfg, apps, deps, d.opts.TargetApps, skipAppIDs)
+	planDeployMap, err := calculatePlanDeployMap(d.cfg, apps, deps, d.opts.TargetApps, skipAppIDs)
 	if err != nil {
 		return ret, err
 	}
 
 	// Start plugins.
-	for plug := range planMap {
+	for plug := range planDeployMap {
 		err = plug.Client().Start(ctx)
 		if err != nil {
 			return ret, err
@@ -563,7 +671,25 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 	oldState := *state
 	state.Reset()
 
-	planRetMap, err := plan(ctx, state, planMap, domains, verify, destroy)
+	state.DomainsInfo = domains
+
+	err = d.prePlanHook(ctx, state, apps, deps, verify, destroy)
+	if err != nil {
+		spinner.Stop()
+
+		return ret, err
+	}
+
+	planRetMap, err := d.planDeploy(ctx, state, planDeployMap, verify, destroy)
+	if err != nil {
+		spinner.Stop()
+
+		return ret, err
+	}
+
+	planDNSMap := calculatePlanDNSMap(d.cfg, state.DNSRecords, state.DomainsInfo)
+
+	planDNSRetMap, err := d.planDNS(ctx, state, planDNSMap, verify, destroy)
 	if err != nil {
 		spinner.Stop()
 
@@ -572,9 +698,10 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 
 	spinner.Stop()
 
-	deployChanges := computeChange(d.cfg, &oldState, state, planRetMap)
+	deployChanges := computeDeployChange(d.cfg, &oldState, state, planRetMap)
+	dnsChanges := computeDNSChange(d.cfg, &oldState, state, planDNSRetMap)
 
-	ret.empty, ret.canceled, ret.missingLocks = d.promptDiff(deployChanges, acquiredLocks, checkLocks)
+	ret.empty, ret.canceled, ret.missingLocks = d.promptDiff(deployChanges, dnsChanges, acquiredLocks, checkLocks)
 	if len(ret.missingLocks) != 0 {
 		return ret, nil
 	}
@@ -585,8 +712,19 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 	if !ret.canceled && !ret.empty && !d.opts.SkipApply {
 		state.Reset()
 
-		callback := applyProgress(d.log, deployChanges, nil)
-		err = apply(context.Background(), state, planMap, domains, destroy, callback)
+		err = d.preApplyHook(ctx, state, apps, deps, verify, destroy)
+
+		if err == nil {
+			err = d.applyDeploy(context.Background(), state, planDeployMap, destroy, applyProgress(d.log, deployChanges))
+		}
+
+		if err == nil {
+			err = d.applyDNS(context.Background(), state, planDNSMap, destroy, applyProgress(d.log, dnsChanges))
+		}
+
+		if err == nil {
+			err = d.postApplyHook(ctx, state, apps, deps, verify, destroy)
+		}
 	}
 
 	ret.dur = time.Since(start)
@@ -608,7 +746,9 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 		state.Dependencies[dep.State.Dependency.Id] = &apiv1.DependencyState{Dependency: dep.State.Dependency}
 	}
 
-	state.DomainsInfo = domains
+	if err == nil {
+		err = d.postDeployHook(ctx, state, apps, deps, verify, destroy)
+	}
 
 	var diffErr error
 
@@ -894,8 +1034,8 @@ func getState(ctx context.Context, state *config.State, lock bool, lockWait time
 	return stateData, ret, err
 }
 
-func calculatePlanMap(cfg *config.Project, apps []*apiv1.AppPlan, deps []*apiv1.DependencyPlan, targetAppIDs, skipAppIDs []string) (map[*plugins.Plugin]*planParams, error) {
-	planMap := make(map[*plugins.Plugin]*planParams)
+func calculatePlanDeployMap(cfg *config.Project, apps []*apiv1.AppPlan, deps []*apiv1.DependencyPlan, targetAppIDs, skipAppIDs []string) (map[*plugins.Plugin]*planDeployParams, error) {
+	planMap := make(map[*plugins.Plugin]*planDeployParams)
 
 	for _, app := range apps {
 		if app.State.App == nil {
@@ -908,8 +1048,9 @@ func calculatePlanMap(cfg *config.Project, apps []*apiv1.AppPlan, deps []*apiv1.
 		}
 
 		if _, ok := planMap[deployPlugin]; !ok {
-			planMap[deployPlugin] = &planParams{
-				args: deployPlugin.CommandArgs(deployCommand),
+			planMap[deployPlugin] = &planDeployParams{
+				priority: deployPlugin.PriorityFor(deployCommand),
+				args:     deployPlugin.CommandArgs(deployCommand),
 			}
 		}
 
@@ -924,8 +1065,9 @@ func calculatePlanMap(cfg *config.Project, apps []*apiv1.AppPlan, deps []*apiv1.
 		}
 
 		if _, ok := planMap[deployPlugin]; !ok {
-			planMap[deployPlugin] = &planParams{
-				args: deployPlugin.CommandArgs(deployCommand),
+			planMap[deployPlugin] = &planDeployParams{
+				priority: deployPlugin.PriorityFor(deployCommand),
+				args:     deployPlugin.CommandArgs(deployCommand),
 			}
 		}
 
@@ -934,10 +1076,60 @@ func calculatePlanMap(cfg *config.Project, apps []*apiv1.AppPlan, deps []*apiv1.
 		})
 	}
 
+	for _, plug := range cfg.LoadedPlugins() {
+		if !plug.HasAction(plugins.ActionDeploy) {
+			continue
+		}
+
+		if _, ok := planMap[plug]; ok {
+			continue
+		}
+
+		planMap[plug] = &planDeployParams{
+			priority: plug.PriorityFor(deployCommand),
+			args:     plug.CommandArgs(deployCommand),
+		}
+	}
+
 	return addPlanTargetAndSkipApps(planMap, targetAppIDs, skipAppIDs), nil
 }
 
-func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetAppIDs, skipAppIDs []string) map[*plugins.Plugin]*planParams {
+func calculatePlanDNSMap(cfg *config.Project, records statefile.DNSRecordMap, domains []*apiv1.DomainInfo) map[*plugins.Plugin]*planDNSParams {
+	planMap := make(map[*plugins.Plugin]*planDNSParams)
+	matcher := types.NewDomainInfoMatcher(domains)
+
+	for rec, val := range records {
+		m := matcher.Match(rec.Record)
+		if m == nil || m.DnsPlugin == "" {
+			continue
+		}
+
+		plug := cfg.FindLoadedPlugin(m.DnsPlugin)
+		if plug == nil {
+			continue
+		}
+
+		params := planMap[plug]
+		if params == nil {
+			planMap[plug] = &planDNSParams{
+				records: make([]*apiv1.DNSRecord, 0),
+				args:    plug.CommandArgs(deployCommand),
+			}
+			params = planMap[plug]
+		}
+
+		params.records = append(params.records, &apiv1.DNSRecord{
+			Record:  rec.Record,
+			Type:    rec.Type,
+			Created: val.Created,
+			Value:   val.Value,
+		})
+	}
+
+	return planMap
+}
+
+func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planDeployParams, targetAppIDs, skipAppIDs []string) map[*plugins.Plugin]*planDeployParams {
 	if len(targetAppIDs) == 0 && len(skipAppIDs) == 0 {
 		return planMap
 	}
@@ -957,8 +1149,10 @@ func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planParams, targetApp
 	return planMap
 }
 
-func mergeState(state *statefile.StateData, pluginName string, pluginState *apiv1.PluginState, appStates map[string]*apiv1.AppState, depStates map[string]*apiv1.DependencyState, dnsRecords []*apiv1.DNSRecord) {
-	state.Plugins[pluginName] = statefile.PluginStateFromProto(pluginState)
+func mergeState(state *statefile.StateData, pluginName string, pluginState *apiv1.PluginState, appStates map[string]*apiv1.AppState, depStates map[string]*apiv1.DependencyState, domains []*apiv1.DomainInfo, dnsRecords []*apiv1.DNSRecord) {
+	if pluginState != nil {
+		state.Plugins[pluginName] = statefile.PluginStateFromProto(pluginState)
+	}
 
 	// Merge state with new changes.
 	for k, v := range appStates {
@@ -972,15 +1166,54 @@ func mergeState(state *statefile.StateData, pluginName string, pluginState *apiv
 	for _, v := range dnsRecords {
 		state.AddDNSRecord(v)
 	}
+
+	if len(domains) != 0 {
+		state.DomainsInfo = domains
+	}
 }
 
-func plan(ctx context.Context, state *statefile.StateData, planMap map[*plugins.Plugin]*planParams, domains []*apiv1.DomainInfo, verify, destroy bool) (retMap map[*plugins.Plugin]*apiv1.PlanResponse, err error) {
+type priorityPluginMap struct {
+	priority int
+	plugins  []*plugins.Plugin
+}
+
+func sortedPlanDeployMap(planMap map[*plugins.Plugin]*planDeployParams) []*priorityPluginMap {
+	m := make(map[int]*priorityPluginMap)
+
+	var keys []int
+
+	for plug, params := range planMap {
+		for _, prio := range params.priority {
+			if _, ok := m[prio]; !ok {
+				m[prio] = &priorityPluginMap{priority: prio}
+			}
+
+			m[prio].plugins = append(m[prio].plugins, plug)
+		}
+	}
+
+	for key := range m {
+		keys = append(keys, key)
+	}
+
+	sort.Ints(keys)
+
+	ret := make([]*priorityPluginMap, len(keys))
+	for i, k := range keys {
+		ret[i] = m[k]
+	}
+
+	return ret
+}
+
+func (d *Deploy) planDeploy(ctx context.Context, state *statefile.StateData, planMap map[*plugins.Plugin]*planDeployParams, verify, destroy bool) (retMap map[*plugins.Plugin][]*apiv1.PlanResponse, err error) {
 	if state.Plugins == nil {
 		state.Plugins = make(map[string]*statefile.PluginState)
 	}
 
-	retMap = make(map[*plugins.Plugin]*apiv1.PlanResponse, len(planMap))
+	retMap = make(map[*plugins.Plugin][]*apiv1.PlanResponse, len(planMap))
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
+	groups := sortedPlanDeployMap(planMap)
 
 	var mu sync.Mutex
 
@@ -991,10 +1224,105 @@ func plan(ctx context.Context, state *statefile.StateData, planMap map[*plugins.
 
 		mu.Lock()
 
+		retMap[plug] = append(retMap[plug], ret)
+
+		// Merge state with new changes.
+		mergeState(state, plug.Name, ret.State, ret.AppStates, ret.DependencyStates, ret.Domains, ret.DnsRecords)
+
+		mu.Unlock()
+	}
+
+	// Plan all plugins concurrently.
+	for _, plugs := range groups {
+		for _, plug := range plugs.plugins {
+			plug := plug
+			params := planMap[plug]
+
+			g.Go(func() error {
+				ret, err := plug.Client().Plan(ctx, state, params.appPlans, params.depPlans, plugs.priority, params.args, verify, destroy)
+				if err != nil {
+					return err
+				}
+
+				processResponse(plug, ret)
+
+				return nil
+			})
+		}
+
+		err = g.Wait()
+		if err != nil {
+			return retMap, err
+		}
+	}
+
+	return retMap, nil
+}
+
+func (d *Deploy) applyDeploy(ctx context.Context, state *statefile.StateData, planMap map[*plugins.Plugin]*planDeployParams, destroy bool, callback func(*apiv1.ApplyAction)) error {
+	if state.Plugins == nil {
+		state.Plugins = make(map[string]*statefile.PluginState)
+	}
+
+	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
+	groups := sortedPlanDeployMap(planMap)
+
+	var mu sync.Mutex
+
+	processResponse := func(plug *plugins.Plugin, ret *apiv1.ApplyDoneResponse) {
+		if ret == nil {
+			return
+		}
+
+		mu.Lock()
+
+		// Merge state with new changes.
+		mergeState(state, plug.Name, ret.State, ret.AppStates, ret.DependencyStates, ret.Domains, ret.DnsRecords)
+
+		mu.Unlock()
+	}
+
+	var err error
+
+	for _, plugs := range groups {
+		for _, plug := range plugs.plugins {
+			plug := plug
+			params := planMap[plug]
+
+			g.Go(func() error {
+				ret, err := plug.Client().Apply(ctx, state, params.appPlans, params.depPlans, plugs.priority, params.args, destroy, callback)
+				processResponse(plug, ret)
+
+				return err
+			})
+		}
+
+		e := g.Wait()
+		if err == nil {
+			err = e
+		}
+	}
+
+	return err
+}
+
+func (d *Deploy) planDNS(ctx context.Context, state *statefile.StateData, planMap map[*plugins.Plugin]*planDNSParams, verify, destroy bool) (retMap map[*plugins.Plugin]*apiv1.PlanDNSResponse, err error) {
+	retMap = make(map[*plugins.Plugin]*apiv1.PlanDNSResponse, len(planMap))
+	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
+
+	var mu sync.Mutex
+
+	processResponse := func(plug *plugins.Plugin, ret *apiv1.PlanDNSResponse) {
+		if ret == nil {
+			return
+		}
+
+		mu.Lock()
+
 		retMap[plug] = ret
 
 		// Merge state with new changes.
-		mergeState(state, plug.Name, ret.State, ret.AppStates, ret.DependencyStates, ret.DnsRecords)
+		mergeState(state, plug.Name, ret.State, nil, nil, ret.Domains, ret.DnsRecords)
 
 		mu.Unlock()
 	}
@@ -1005,7 +1333,7 @@ func plan(ctx context.Context, state *statefile.StateData, planMap map[*plugins.
 		params := params
 
 		g.Go(func() error {
-			ret, err := plug.Client().Plan(ctx, state, params.appPlans, params.depPlans, domains, params.args, verify, destroy)
+			ret, err := plug.Client().PlanDNS(ctx, state, params.records, params.args, verify, destroy)
 			if err != nil {
 				return err
 			}
@@ -1021,7 +1349,7 @@ func plan(ctx context.Context, state *statefile.StateData, planMap map[*plugins.
 	return retMap, err
 }
 
-func apply(ctx context.Context, state *statefile.StateData, planMap map[*plugins.Plugin]*planParams, domains []*apiv1.DomainInfo, destroy bool, callback func(*apiv1.ApplyAction)) error {
+func (d *Deploy) applyDNS(ctx context.Context, state *statefile.StateData, planMap map[*plugins.Plugin]*planDNSParams, destroy bool, callback func(*apiv1.ApplyAction)) error {
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 
 	if state.Plugins == nil {
@@ -1030,7 +1358,7 @@ func apply(ctx context.Context, state *statefile.StateData, planMap map[*plugins
 
 	var mu sync.Mutex
 
-	processResponse := func(plug *plugins.Plugin, ret *apiv1.ApplyDoneResponse) {
+	processResponse := func(plug *plugins.Plugin, ret *apiv1.ApplyDNSDoneResponse) {
 		if ret == nil {
 			return
 		}
@@ -1038,15 +1366,14 @@ func apply(ctx context.Context, state *statefile.StateData, planMap map[*plugins
 		mu.Lock()
 
 		// Merge state with new changes.
-		mergeState(state, plug.Name, ret.State, ret.AppStates, ret.DependencyStates, ret.DnsRecords)
+		mergeState(state, plug.Name, ret.State, nil, nil, ret.Domains, ret.DnsRecords)
 
 		mu.Unlock()
 	}
 
-	// Apply second pass plan (DNS and deployments with DNS).
 	for plug, params := range planMap {
 		g.Go(func() error {
-			ret, err := plug.Client().Apply(ctx, state, params.appPlans, params.depPlans, domains, params.args, destroy, callback)
+			ret, err := plug.Client().ApplyDNS(ctx, state, params.records, params.args, destroy, callback)
 			processResponse(plug, ret)
 
 			return err

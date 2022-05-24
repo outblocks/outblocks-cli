@@ -130,11 +130,32 @@ func computeChangeInfo(cfg *config.Project, state *statefile.StateData, plugin *
 	return changes
 }
 
-func computeChange(cfg *config.Project, oldState, state *statefile.StateData, planMap map[*plugins.Plugin]*apiv1.PlanResponse) []*change { // nolint:unparam
+func computeDeployChange(cfg *config.Project, oldState, state *statefile.StateData, m map[*plugins.Plugin][]*apiv1.PlanResponse) []*change { // nolint:unparam
 	var changes []*change
 
-	for plugin, p := range planMap {
-		chg := computeChangeInfo(cfg, state, plugin, p.Deploy.Actions)
+	for plugin, reslist := range m {
+		for _, p := range reslist {
+			if p.Deploy == nil {
+				continue
+			}
+
+			chg := computeChangeInfo(cfg, state, plugin, p.Deploy.Actions)
+			changes = append(changes, chg...)
+		}
+	}
+
+	return changes
+}
+
+func computeDNSChange(cfg *config.Project, oldState, state *statefile.StateData, m map[*plugins.Plugin]*apiv1.PlanDNSResponse) []*change { // nolint:unparam
+	var changes []*change
+
+	for plugin, p := range m {
+		if p.Dns == nil {
+			continue
+		}
+
+		chg := computeChangeInfo(cfg, state, plugin, p.Dns.Actions)
 		changes = append(changes, chg...)
 	}
 
@@ -247,7 +268,6 @@ func planPrompt(log logger.Logger, env string, deploy, dns []*change, approve, f
 	}
 
 	// DNS
-	// TODO: handle dns as a diff of records
 	dnsInfo, dnsCritical := planChangeInfo("DNS:", dns)
 	if dnsInfo != "" {
 		empty = false
@@ -325,8 +345,7 @@ func applyActionType(act *apiv1.ApplyAction) string {
 	return "unknown"
 }
 
-func applyProgress(log logger.Logger, deployChanges, dnsChanges []*change) func(*apiv1.ApplyAction) {
-	changes := append(deployChanges, dnsChanges...) // nolint: gocritic
+func applyProgress(log logger.Logger, changes []*change) func(*apiv1.ApplyAction) {
 	total := calculateTotalSteps(changes)
 
 	// Create progressbar as fork from the default progressbar.

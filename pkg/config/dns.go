@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
+	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
@@ -23,33 +23,33 @@ type SSLInfo struct {
 }
 
 type DNS struct {
-	Domain  string   `json:"domain,omitempty"`
-	Domains []string `json:"domains,omitempty"`
-	Plugin  string   `json:"plugin,omitempty"`
-	SSLInfo *SSLInfo `json:"ssl,omitempty"`
+	Domain  string                 `json:"domain,omitempty"`
+	Domains []string               `json:"domains,omitempty"`
+	Plugin  string                 `json:"plugin,omitempty"`
+	SSLInfo *SSLInfo               `json:"ssl,omitempty"`
+	Other   map[string]interface{} `yaml:"-,remain"`
 
-	domainsRegex []*regexp.Regexp
-	used         bool
-
-	plugin *plugins.Plugin
+	dnsPlugin *plugins.Plugin
 }
 
-func (s *DNS) Match(d string) bool {
-	for _, r := range s.domainsRegex {
-		if r.MatchString(d) {
-			return true
-		}
+func (s *DNS) DNSPlugin() *plugins.Plugin {
+	return s.dnsPlugin
+}
+
+func (s *DNS) Proto() *apiv1.DomainInfo {
+	dnsPlugin := ""
+
+	if s.dnsPlugin != nil {
+		dnsPlugin = s.dnsPlugin.Name
 	}
 
-	return false
-}
-
-func (s *DNS) MarkAsUsed() {
-	s.used = true
-}
-
-func (s *DNS) IsUsed() bool {
-	return s.used
+	return &apiv1.DomainInfo{
+		Domains:   s.Domains,
+		Cert:      s.SSLInfo.loadedCert,
+		Key:       s.SSLInfo.loadedKey,
+		DnsPlugin: dnsPlugin,
+		Other:     plugin_util.MustNewStruct(s.Other),
+	}
 }
 
 func (s *DNS) Normalize(i int, cfg *Project) error {
@@ -64,12 +64,6 @@ func (s *DNS) Normalize(i int, cfg *Project) error {
 
 	if len(s.Domains) == 0 {
 		return cfg.yamlError(fmt.Sprintf("$.dns[%d]", i), "at least one domain has to be specified")
-	}
-
-	s.domainsRegex = make([]*regexp.Regexp, len(s.Domains))
-
-	for k, v := range s.Domains {
-		s.domainsRegex[k] = plugin_util.DomainRegex(v)
 	}
 
 	if s.SSLInfo == nil {
@@ -111,15 +105,12 @@ func (s *DNS) Normalize(i int, cfg *Project) error {
 
 func (s *DNS) Check(i int, cfg *Project) error {
 	if s.Plugin != "" {
-		s.plugin = cfg.FindLoadedPlugin(s.Plugin)
-	} else {
-		for _, plug := range cfg.LoadedPlugins() {
-			if plug.HasAction(plugins.ActionDNS) {
-				s.plugin = plug
-
-				break
-			}
+		s.dnsPlugin = cfg.FindLoadedPlugin(s.Plugin)
+		if s.dnsPlugin == nil || s.dnsPlugin.HasAction(plugins.ActionDNS) {
+			return cfg.yamlError(fmt.Sprintf("$.dns[%d].plugin", i), fmt.Sprintf("dns plugin '%s' not found", s.Plugin))
 		}
+	} else {
+		s.dnsPlugin = cfg.FindLoadedPlugin(cfg.Defaults.DNS.Plugin)
 	}
 
 	return nil

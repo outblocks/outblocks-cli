@@ -90,7 +90,7 @@ func printer(a ...interface{}) {
 			return
 		}
 
-		color.Print(color.Sprint(pterm.Sprint(a...)))
+		color.Print(a...)
 
 		return
 	}

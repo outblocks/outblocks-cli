@@ -80,7 +80,7 @@ func (d *Dependency) Check(key string, cfg *Project) error {
 	// Check deploy plugin.
 	deployPlugin := d.Deploy.Plugin
 
-	for _, plug := range cfg.loadedPlugins {
+	for _, plug := range cfg.LoadedPlugins() {
 		if !plug.HasAction(plugins.ActionDeploy) {
 			continue
 		}
@@ -102,7 +102,7 @@ func (d *Dependency) Check(key string, cfg *Project) error {
 	// Check run plugin.
 	runPlugin := d.Run.Plugin
 
-	for _, plug := range cfg.loadedPlugins {
+	for _, plug := range cfg.LoadedPlugins() {
 		if !plug.HasAction(plugins.ActionRun) {
 			continue
 		}

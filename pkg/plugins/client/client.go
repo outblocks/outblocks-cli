@@ -88,6 +88,14 @@ func (c *Client) logsPlugin() apiv1.LogsPluginServiceClient {
 	return apiv1.NewLogsPluginServiceClient(c.conn)
 }
 
+func (c *Client) dnsPlugin() apiv1.DNSPluginServiceClient {
+	return apiv1.NewDNSPluginServiceClient(c.conn)
+}
+
+func (c *Client) deployHook() apiv1.DeployHookServiceClient {
+	return apiv1.NewDeployHookServiceClient(c.conn)
+}
+
 func (c *Client) init(ctx context.Context) error {
 	c.log.Debugf("Initializing connection to plugin: %s\n", c.name)
 

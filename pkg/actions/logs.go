@@ -179,7 +179,7 @@ func (l *Logs) Run(ctx context.Context) error {
 	req := &apiv1.LogsRequest{
 		Apps:         apps,
 		Dependencies: deps,
-		PluginState:  state.Plugins[deployPluginName].Proto(),
+		State:        state.Plugins[deployPluginName].Proto(),
 		Start:        timestamppb.New(l.opts.Start),
 		End:          timestamppb.New(l.opts.End),
 		Severity:     l.opts.Severity,

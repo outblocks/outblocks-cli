@@ -343,8 +343,15 @@
           "description": "Deploy plugin override. Defaults to first supported plugin available.",
           "type": "string"
         }
+      },
+      "env": {
+        "description": "Additional environment variables added to every app that supports environment variables.",
+        "type": "object",
+        "additionalProperties": {
+          "type": "string"
+        }
       }
-    },
+  },
     "DefaultDNS": {
       "title": "DNS defaults",
       "type": "object",

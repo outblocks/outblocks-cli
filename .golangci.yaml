@@ -45,7 +45,7 @@ linters-settings:
 linters:
   disable-all: true
   enable:
-    - bodyclose
+    # - bodyclose
     - deadcode
     - depguard
     - dogsled
@@ -65,16 +65,16 @@ linters:
     - ineffassign
     - misspell
     - nakedret
-    - noctx
+    # - noctx
     - nolintlint
     - revive
-    - rowserrcheck
+    # - rowserrcheck
     - staticcheck
-    - structcheck
+    # - structcheck
     - stylecheck
     - typecheck
     - unconvert
-    - unparam
+    # - unparam
     - unused
     - varcheck
     - whitespace

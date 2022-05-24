@@ -19,7 +19,7 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20220428150459-262b053acc7f
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20220523125847-c49b06ddbefa
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.41
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
@@ -27,6 +27,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.11.0
 	github.com/txn2/txeh v1.3.0
+	golang.org/x/exp v0.0.0-20220428152302-39d4317da171
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5
 	golang.org/x/term v0.0.0-20220411215600-e5f449aeb171
 	golang.org/x/text v0.3.7
