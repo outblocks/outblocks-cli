@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.107](https://github.com/outblocks/outblocks-cli/compare/v0.1.106...v0.1.107)
+
+> 2022-05-24
+
+### FEATURES
+
+[`df5ac86`](https://github.com/outblocks/outblocks-cli/commit/df5ac867fe0905dca86563363b02095a386bb4fc) dns and hooks support. multi priority deployments
+
 ## [v0.1.106](https://github.com/outblocks/outblocks-cli/compare/v0.1.105...v0.1.106)
 
 > 2022-04-28
