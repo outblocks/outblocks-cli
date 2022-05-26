@@ -47,6 +47,7 @@ type InitOptions struct {
 	Name              string
 	DeployPlugin      string
 	RunPlugin         string
+	DNSPlugin         string
 	DNSDomain         string
 	Template          string
 	TemplateValueOpts *values.Options
@@ -58,6 +59,7 @@ type InitOptions struct {
 
 	defaultRunPlugin    string
 	defaultDeployPlugin string
+	defaultDNSPlugin    string
 	statePlugin         string
 }
 
@@ -383,6 +385,7 @@ func (d *Init) Run(ctx context.Context) error {
 	d.opts.RunPlugin = getMapStringVal(d.input, d.opts.RunPlugin, "project", "run_plugin")
 	d.opts.defaultDeployPlugin = getMapStringVal(d.input, d.opts.defaultDeployPlugin, "project", "default_deploy_plugin")
 	d.opts.defaultRunPlugin = getMapStringVal(d.input, d.opts.defaultRunPlugin, "project", "default_run_plugin")
+	d.opts.defaultDNSPlugin = getMapStringVal(d.input, d.opts.defaultDNSPlugin, "project", "default_dns_plugin")
 	d.opts.statePlugin = getMapStringVal(d.input, d.opts.statePlugin, "project", "state_plugin")
 
 	d.opts.GCP.Project = getMapStringVal(d.input, d.opts.GCP.Project, "project", "gcp", "project")
@@ -449,6 +452,19 @@ func (d *Init) promptPlugins(cfg *projectInit) error {
 		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Run plugin to be used:"), pterm.Cyan(d.opts.RunPlugin))
 	}
 
+	if d.opts.DNSPlugin == "" {
+		qs = append(qs, &survey.Question{
+			Name: "dnsPlugin",
+			Prompt: &survey.Select{
+				Message: "DNS plugin to be used:",
+				Options: []string{"none", "cloudflare"},
+				Default: "cloudflare",
+			},
+		})
+	} else {
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("DNS plugin to be used:"), pterm.Cyan(d.opts.DNSPlugin))
+	}
+
 	// Ask questions.
 	if len(qs) != 0 {
 		err := survey.Ask(qs, d.opts)
@@ -460,6 +476,10 @@ func (d *Init) promptPlugins(cfg *projectInit) error {
 	cfg.Plugins = []*config.Plugin{
 		{Name: d.opts.DeployPlugin, Version: ""},
 		{Name: d.opts.RunPlugin, Version: ""},
+	}
+
+	if d.opts.DNSPlugin != "" && d.opts.DNSPlugin != "none" {
+		cfg.Plugins = append(cfg.Plugins, &config.Plugin{Name: d.opts.DNSPlugin, Version: ""})
 	}
 
 	return nil
@@ -507,8 +527,9 @@ func (d *Init) prompt(ctx context.Context, cfg *projectInit) error { // nolint:g
 
 	// Proceed to questions about defaults.
 	var (
-		runPlugins    []string
 		deployPlugins []string
+		runPlugins    []string
+		dnsPlugins    []string
 		statePlugins  []string
 	)
 
@@ -521,9 +542,26 @@ func (d *Init) prompt(ctx context.Context, cfg *projectInit) error { // nolint:g
 			deployPlugins = append(deployPlugins, plug.Name)
 		}
 
+		if plug.HasAction(plugins.ActionDNS) {
+			dnsPlugins = append(dnsPlugins, plug.Name)
+		}
+
 		if plug.HasAction(plugins.ActionState) {
 			statePlugins = append(statePlugins, plug.Name)
 		}
+	}
+
+	if len(deployPlugins) > 1 {
+		err = survey.AskOne(&survey.Select{
+			Message: "Default deploy plugin:",
+			Options: deployPlugins,
+		}, &d.opts.defaultDeployPlugin)
+		if err != nil {
+			return err
+		}
+	} else if len(deployPlugins) == 1 {
+		d.opts.defaultDeployPlugin = deployPlugins[0]
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Default deploy plugin:"), pterm.Cyan(d.opts.defaultDeployPlugin))
 	}
 
 	runPlugins = append(runPlugins, config.RunPluginDirect)
@@ -542,17 +580,17 @@ func (d *Init) prompt(ctx context.Context, cfg *projectInit) error { // nolint:g
 		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Default run plugin:"), pterm.Cyan(d.opts.defaultRunPlugin))
 	}
 
-	if len(deployPlugins) > 1 {
+	if len(dnsPlugins) > 1 {
 		err = survey.AskOne(&survey.Select{
-			Message: "Default deploy plugin:",
-			Options: deployPlugins,
-		}, &d.opts.defaultDeployPlugin)
+			Message: "Default DNS plugin:",
+			Options: dnsPlugins,
+		}, &d.opts.defaultDNSPlugin)
 		if err != nil {
 			return err
 		}
-	} else if len(deployPlugins) == 1 {
-		d.opts.defaultDeployPlugin = deployPlugins[0]
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Default deploy plugin:"), pterm.Cyan(d.opts.defaultDeployPlugin))
+	} else if len(dnsPlugins) == 1 {
+		d.opts.defaultDNSPlugin = deployPlugins[0]
+		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Default DNS plugin:"), pterm.Cyan(d.opts.defaultDNSPlugin))
 	}
 
 	cfg.Defaults = &config.Defaults{
@@ -561,6 +599,9 @@ func (d *Init) prompt(ctx context.Context, cfg *projectInit) error { // nolint:g
 		},
 		Deploy: config.DefaultsDeploy{
 			Plugin: d.opts.defaultDeployPlugin,
+		},
+		DNS: config.DefaultsDNS{
+			Plugin: d.opts.defaultDNSPlugin,
 		},
 	}
 
