@@ -1,5 +1,19 @@
 # Outblocks CLI Changelog
 
+## [v0.1.108](https://github.com/outblocks/outblocks-cli/compare/v0.1.107...v0.1.108)
+
+> 2022-05-26
+
+### BUG FIXES
+
+[`4adbd61`](https://github.com/outblocks/outblocks-cli/commit/4adbd61a4ba01aabb6c48831e74622d8622579b4) lint
+
+### FEATURES
+
+[`09b975b`](https://github.com/outblocks/outblocks-cli/commit/09b975b7b224c469ea316597e784d19dc02c68c4) fixed flow for plan/apply in multilock and statelock
+
+[`cc82f13`](https://github.com/outblocks/outblocks-cli/commit/cc82f13517a391ada1dbf4abc6d6452effa8e2fb) add dns plugin to init
+
 ## [v0.1.107](https://github.com/outblocks/outblocks-cli/compare/v0.1.106...v0.1.107)
 
 > 2022-05-24
