@@ -104,6 +104,9 @@ func (d *Deploy) stateLockDeploy(ctx context.Context, state *statefile.StateData
 	}
 
 	res, err := d.planAndApplyDeploy(ctx, verify, state, nil, false)
+	if res == nil && err != nil {
+		return nil, err
+	}
 
 	// Proceed with saving.
 	if res.shouldSave() {
@@ -114,7 +117,7 @@ func (d *Deploy) stateLockDeploy(ctx context.Context, state *statefile.StateData
 		}
 	}
 
-	if !res.canceled && !res.empty && err == nil && !d.opts.SkipApply {
+	if res != nil && !res.canceled && !res.empty && err == nil && !d.opts.SkipApply {
 		d.log.Printf("All changes applied in %s.\n", res.dur.Truncate(timeTruncate))
 	}
 
@@ -126,7 +129,7 @@ func (d *Deploy) stateLockDeploy(ctx context.Context, state *statefile.StateData
 	switch {
 	case err != nil:
 		return nil, err
-	case res.canceled:
+	case res != nil && res.canceled:
 		return nil, nil
 	}
 
@@ -315,10 +318,14 @@ type planAndApplyResults struct {
 }
 
 func (r *planAndApplyResults) shouldSave() bool {
+	if r == nil {
+		return false
+	}
+
 	return !r.canceled && (!r.empty || !r.stateDiff.IsEmpty())
 }
 
-func (d *Deploy) multilockPlanAndApplyDeploy(ctx context.Context, state *statefile.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (planAndApplyResults, error) {
+func (d *Deploy) multilockPlanAndApplyDeploy(ctx context.Context, state *statefile.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (*planAndApplyResults, error) {
 	var (
 		locks []string
 	)
@@ -333,12 +340,11 @@ func (d *Deploy) multilockPlanAndApplyDeploy(ctx context.Context, state *statefi
 	buildDone := false
 	showWarnings := true
 	statePlugin := d.cfg.State.Plugin()
-	ret := planAndApplyResults{}
 
 	for {
 		acquiredLocks, err := statePlugin.Client().AcquireLocks(ctx, d.cfg.State.Other, locks, d.opts.LockWait, yamlContext)
 		if err != nil {
-			return ret, err
+			return nil, err
 		}
 
 		d.log.Debugf("Acquired locks: %s\n", acquiredLocks)
@@ -350,7 +356,7 @@ func (d *Deploy) multilockPlanAndApplyDeploy(ctx context.Context, state *statefi
 				_ = releaseLocks(d.cfg, acquiredLocks)
 				d.log.Debugf("Released locks: %s\n", acquiredLocks)
 
-				return ret, err
+				return nil, err
 			}
 
 			buildDone = true
@@ -362,37 +368,35 @@ func (d *Deploy) multilockPlanAndApplyDeploy(ctx context.Context, state *statefi
 			_ = releaseLocks(d.cfg, acquiredLocks)
 			d.log.Debugf("Released locks: %s\n", acquiredLocks)
 
-			return ret, err
+			return nil, err
 		}
 
 		showWarnings = false
 
-		ret, err = d.planAndApplyDeploy(ctx, verify, state, acquiredLocks, true)
+		res, err := d.planAndApplyDeploy(ctx, verify, state, acquiredLocks, true)
 		if err != nil {
 			_ = releaseLocks(d.cfg, acquiredLocks)
 			d.log.Debugf("Released locks: %s\n", acquiredLocks)
 
-			return ret, err
+			return res, err
 		}
 
-		ret.acquiredLocks = acquiredLocks
-
-		if len(ret.missingLocks) == 0 {
-			return ret, nil
+		if len(res.missingLocks) == 0 {
+			return res, nil
 		}
 
-		locks = append(locks, ret.missingLocks...)
+		locks = append(locks, res.missingLocks...)
 
-		err = releaseLocks(d.cfg, ret.acquiredLocks)
+		err = releaseLocks(d.cfg, acquiredLocks)
 		if err != nil {
-			return ret, err
+			return nil, err
 		}
 
-		d.log.Debugf("Released locks: %s\n", ret.acquiredLocks)
+		d.log.Debugf("Released locks: %s\n", acquiredLocks)
 
 		state, _, err = getState(ctx, d.cfg.State, false, d.opts.LockWait, d.opts.SkipStateCreate, yamlContext)
 		if err != nil {
-			return ret, err
+			return nil, err
 		}
 	}
 }
@@ -403,6 +407,9 @@ func (d *Deploy) multilockDeploy(ctx context.Context, state *statefile.StateData
 
 	// Acquire locks and plan+apply.
 	res, err := d.multilockPlanAndApplyDeploy(ctx, state, partialLock, verify, yamlContext)
+	if res == nil && err != nil {
+		return nil, err
+	}
 
 	if res.shouldSave() {
 		d.log.Debugln("Saving state.")
@@ -431,7 +438,7 @@ func (d *Deploy) multilockDeploy(ctx context.Context, state *statefile.StateData
 		}
 	}
 
-	if !res.canceled && !res.empty && err == nil && !d.opts.SkipApply {
+	if res != nil && !res.canceled && !res.empty && err == nil && !d.opts.SkipApply {
 		d.log.Printf("All changes applied in %s.\n", res.dur.Truncate(timeTruncate))
 	}
 
@@ -459,7 +466,9 @@ func (d *Deploy) Run(ctx context.Context) error {
 	}
 
 	stateLock := d.opts.Lock
+	pluginLock := false
 	if d.cfg.State.Plugin() != nil && d.cfg.State.Plugin().HasAction(plugins.ActionLock) {
+		pluginLock = true
 		stateLock = false
 	}
 
@@ -484,7 +493,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 		return nil
 	}
 
-	if !stateLock {
+	if pluginLock {
 		state, err = d.multilockDeploy(ctx, state, stateRes, yamlContext)
 	} else {
 		state, err = d.stateLockDeploy(ctx, state, stateRes)
@@ -627,10 +636,12 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 	return ret
 }
 
-func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (planAndApplyResults, error) { // nolint: gocyclo
+func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (*planAndApplyResults, error) { // nolint: gocyclo
 	var domains []*apiv1.DomainInfo
 
-	ret := planAndApplyResults{}
+	ret := &planAndApplyResults{
+		acquiredLocks: acquiredLocks,
+	}
 	stateBefore := state.DeepCopy()
 
 	if d.opts.SkipDNS {
@@ -642,21 +653,21 @@ func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *sta
 	// Plan and apply.
 	apps, skipAppIDs, destroy, err := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps, d.opts.Destroy)
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
 
 	deps := filterDependencies(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
 
 	planDeployMap, err := calculatePlanDeployMap(d.cfg, apps, deps, d.opts.TargetApps, skipAppIDs)
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
 
 	// Start plugins.
 	for plug := range planDeployMap {
 		err = plug.Client().Start(ctx)
 		if err != nil {
-			return ret, err
+			return nil, err
 		}
 	}
 
@@ -677,14 +688,14 @@ func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *sta
 	if err != nil {
 		spinner.Stop()
 
-		return ret, err
+		return nil, err
 	}
 
 	planRetMap, err := d.planDeploy(ctx, state, planDeployMap, verify, destroy)
 	if err != nil {
 		spinner.Stop()
 
-		return ret, err
+		return nil, err
 	}
 
 	planDNSMap := calculatePlanDNSMap(d.cfg, state.DNSRecords, state.DomainsInfo)
@@ -693,7 +704,7 @@ func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *sta
 	if err != nil {
 		spinner.Stop()
 
-		return ret, err
+		return nil, err
 	}
 
 	spinner.Stop()

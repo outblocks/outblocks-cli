@@ -9,7 +9,7 @@ import (
 func (e *Executor) newStatusCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "Deploy status stack",
+		Short: "Deploy stack status",
 		Long:  `Shows Outblocks stack status.`,
 		Annotations: map[string]string{
 			cmdGroupAnnotation:           cmdGroupMain,

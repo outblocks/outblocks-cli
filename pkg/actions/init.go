@@ -206,7 +206,7 @@ func (d *Init) installTemplate() error {
 func (d *Init) processProjectTemplate(cfg *projectInit, input map[string]interface{}) error {
 	if d.template.HasProjectPrompt() {
 		d.log.Println("Parsing project template...")
-		fmt.Println()
+		d.log.Println()
 	}
 
 	err := d.template.ParseProjectTemplate(d.opts.Name, input)
@@ -232,7 +232,7 @@ func (d *Init) processProjectTemplate(cfg *projectInit, input map[string]interfa
 func (d *Init) processValuesTemplate(input map[string]interface{}) ([]byte, error) {
 	if d.template.HasValuesPrompt() {
 		d.log.Println("Parsing values template...")
-		fmt.Println()
+		d.log.Println()
 	}
 
 	return d.template.ParseValuesTemplate(input)
