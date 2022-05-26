@@ -467,6 +467,7 @@ func (d *Deploy) Run(ctx context.Context) error {
 
 	stateLock := d.opts.Lock
 	pluginLock := false
+
 	if d.cfg.State.Plugin() != nil && d.cfg.State.Plugin().HasAction(plugins.ActionLock) {
 		pluginLock = true
 		stateLock = false
