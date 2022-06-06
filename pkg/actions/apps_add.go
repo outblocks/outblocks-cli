@@ -18,7 +18,6 @@ import (
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
-	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins"
 	"github.com/outblocks/outblocks-cli/templates"
 	"github.com/outblocks/outblocks-plugin-go/types"
@@ -30,12 +29,6 @@ var (
 	errAppAddCanceled = errors.New("adding app canceled")
 	validURLRegex     = regexp.MustCompile(`^(https?://)?[a-zA-Z0-9{}\-_.]+$`)
 )
-
-type AppAdd struct {
-	log  logger.Logger
-	cfg  *config.Project
-	opts *AppAddOptions
-}
 
 type staticAppInfo struct {
 	App config.StaticApp
@@ -70,23 +63,15 @@ func (o *AppAddOptions) Validate() error {
 	)
 }
 
-func NewAppAdd(log logger.Logger, cfg *config.Project, opts *AppAddOptions) *AppAdd {
-	return &AppAdd{
-		log:  log,
-		cfg:  cfg,
-		opts: opts,
-	}
-}
-
-func (d *AppAdd) Run(ctx context.Context) error {
+func (m *AppManager) Add(ctx context.Context, opts *AppAddOptions) error {
 	_, err := os.Getwd()
 	if err != nil {
 		return merry.Errorf("can't get current working dir: %w", err)
 	}
 
-	appInfo, err := d.prompt()
+	appInfo, err := m.promptAdd(opts)
 	if errors.Is(err, errAppAddCanceled) {
-		d.log.Println("Adding application canceled.")
+		m.log.Println("Adding application canceled.")
 		return nil
 	}
 
@@ -157,26 +142,26 @@ func validateAppAddDir(cfg *config.Project) func(val interface{}) error {
 	}
 }
 
-func (d *AppAdd) promptBasic() error { // nolint: gocyclo
+func (m *AppManager) promptAddBasic(opts *AppAddOptions) error { // nolint: gocyclo
 	var qs []*survey.Question
 
 	// 1st pass - get app name and type.
-	if d.opts.Name == "" {
+	if opts.Name == "" {
 		qs = append(qs, &survey.Question{
 			Name:     "name",
 			Prompt:   &survey.Input{Message: "Application name:"},
 			Validate: validateAppAddName,
 		})
 	} else {
-		err := validateAppAddName(d.opts.Name)
+		err := validateAppAddName(opts.Name)
 		if err != nil {
 			return err
 		}
 
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Application name:"), pterm.Cyan(d.opts.Name))
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Application name:"), pterm.Cyan(opts.Name))
 	}
 
-	if d.opts.Type == "" {
+	if opts.Type == "" {
 		qs = append(qs, &survey.Question{
 			Name: "type",
 			Prompt: &survey.Select{
@@ -186,13 +171,13 @@ func (d *AppAdd) promptBasic() error { // nolint: gocyclo
 			},
 		})
 	} else {
-		d.opts.Type = strings.ToLower(d.opts.Type)
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Application type:"), pterm.Cyan(d.opts.Type))
+		opts.Type = strings.ToLower(opts.Type)
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Application type:"), pterm.Cyan(opts.Type))
 	}
 
 	// Get basic info about app.
 	if len(qs) != 0 {
-		err := survey.Ask(qs, d.opts)
+		err := survey.Ask(qs, opts)
 		if err != nil {
 			if err == terminal.InterruptErr {
 				return errAppAddCanceled
@@ -202,7 +187,7 @@ func (d *AppAdd) promptBasic() error { // nolint: gocyclo
 		}
 	}
 
-	err := d.opts.Validate()
+	err := opts.Validate()
 	if err != nil {
 		return err
 	}
@@ -210,10 +195,10 @@ func (d *AppAdd) promptBasic() error { // nolint: gocyclo
 	// 2nd pass - get app dir.
 	qs = []*survey.Question{}
 
-	validateAppDir := validateAppAddDir(d.cfg)
+	validateAppDir := validateAppAddDir(m.cfg)
 
-	if d.opts.Dir == "" {
-		defaultDir := filepath.Join(d.cfg.Dir, d.opts.Type, d.opts.Name)
+	if opts.Dir == "" {
+		defaultDir := filepath.Join(m.cfg.Dir, opts.Type, opts.Name)
 
 		qs = append(qs, &survey.Question{
 			Name:     "dir",
@@ -221,18 +206,18 @@ func (d *AppAdd) promptBasic() error { // nolint: gocyclo
 			Validate: validateAppDir,
 		})
 	} else {
-		d.opts.Dir, _ = filepath.Abs(d.opts.Dir)
+		opts.Dir, _ = filepath.Abs(opts.Dir)
 
-		err := validateAppDir(d.opts.Dir)
+		err := validateAppDir(opts.Dir)
 		if err != nil {
 			return err
 		}
 
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Application dir:"), pterm.Cyan(d.opts.Dir))
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Application dir:"), pterm.Cyan(opts.Dir))
 	}
 
 	if len(qs) != 0 {
-		err := survey.Ask(qs, d.opts)
+		err := survey.Ask(qs, opts)
 		if err != nil {
 			if err == terminal.InterruptErr {
 				return errAppAddCanceled
@@ -246,31 +231,31 @@ func (d *AppAdd) promptBasic() error { // nolint: gocyclo
 	qs = []*survey.Question{}
 
 	// Get output dir.
-	validateOutputDir := validateAppAddOutputDir(d.cfg)
+	validateOutputDir := validateAppAddOutputDir(m.cfg)
 
-	if d.opts.OutputDir == "" {
+	if opts.OutputDir == "" {
 		qs = append(qs, &survey.Question{
 			Name:     "outputdir",
-			Prompt:   &survey.Input{Message: "Dir to save application YAML:", Default: d.opts.Dir},
+			Prompt:   &survey.Input{Message: "Dir to save application YAML:", Default: opts.Dir},
 			Validate: validateOutputDir,
 		})
 	} else {
-		d.opts.OutputDir, _ = filepath.Abs(d.opts.OutputDir)
+		opts.OutputDir, _ = filepath.Abs(opts.OutputDir)
 
-		err := validateOutputDir(d.opts.OutputDir)
+		err := validateOutputDir(opts.OutputDir)
 		if err != nil {
 			return err
 		}
 
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Dir to save application YAML:"), pterm.Cyan(d.opts.OutputDir))
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Dir to save application YAML:"), pterm.Cyan(opts.OutputDir))
 	}
 
 	// Get app URL.
-	if d.opts.URL == "" {
+	if opts.URL == "" {
 		defaultURL := ""
 
-		if len(d.cfg.DNS) > 0 {
-			defaultURL = d.cfg.DNS[0].Domain
+		if len(m.cfg.DNS) > 0 {
+			defaultURL = m.cfg.DNS[0].Domain
 		}
 
 		qs = append(qs, &survey.Question{
@@ -279,33 +264,33 @@ func (d *AppAdd) promptBasic() error { // nolint: gocyclo
 			Validate: validateAppAddURL,
 		})
 	} else {
-		err := validateAppAddURL(d.opts.URL)
+		err := validateAppAddURL(opts.URL)
 		if err != nil {
 			return err
 		}
 
-		d.opts.URL = strings.ToLower(d.opts.URL)
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("URL of application:"), pterm.Cyan(d.opts.URL))
+		opts.URL = strings.ToLower(opts.URL)
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("URL of application:"), pterm.Cyan(opts.URL))
 	}
 
 	// Run info and plugins.
-	if d.opts.RunCommand == "" {
+	if opts.RunCommand == "" {
 		qs = append(qs, &survey.Question{
 			Name:   "RunCommand",
 			Prompt: &survey.Input{Message: "Run command of application to serve app during dev (optional, e.g. yarn dev):"},
 		})
 	} else {
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Run command of application:"), pterm.Cyan(d.opts.RunCommand))
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Run command of application:"), pterm.Cyan(opts.RunCommand))
 	}
 
-	if d.opts.RunPlugin == "" {
-		opts := []string{
+	if opts.RunPlugin == "" {
+		pluginOpts := []string{
 			config.RunPluginDirect,
 		}
 
-		for _, p := range d.cfg.Plugins {
-			if p.Loaded().HasAction(plugins.ActionRun) && p.Loaded().SupportsApp(d.opts.Type) {
-				opts = append(opts, p.Name)
+		for _, p := range m.cfg.Plugins {
+			if p.Loaded().HasAction(plugins.ActionRun) && p.Loaded().SupportsApp(opts.Type) {
+				pluginOpts = append(pluginOpts, p.Name)
 			}
 		}
 
@@ -313,19 +298,19 @@ func (d *AppAdd) promptBasic() error { // nolint: gocyclo
 			Name: "RunPlugin",
 			Prompt: &survey.Select{
 				Message: "Run plugin used for application:",
-				Options: opts,
+				Options: pluginOpts,
 			},
 		})
 	} else {
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Run plugin used for application:"), pterm.Cyan(d.opts.RunPlugin))
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Run plugin used for application:"), pterm.Cyan(opts.RunPlugin))
 	}
 
-	if d.opts.DeployPlugin == "" {
-		opts := []string{}
+	if opts.DeployPlugin == "" {
+		pluginOpts := []string{}
 
-		for _, p := range d.cfg.Plugins {
-			if p.Loaded().HasAction(plugins.ActionDeploy) && p.Loaded().SupportsApp(d.opts.Type) {
-				opts = append(opts, p.Name)
+		for _, p := range m.cfg.Plugins {
+			if p.Loaded().HasAction(plugins.ActionDeploy) && p.Loaded().SupportsApp(opts.Type) {
+				pluginOpts = append(pluginOpts, p.Name)
 			}
 		}
 
@@ -333,38 +318,38 @@ func (d *AppAdd) promptBasic() error { // nolint: gocyclo
 			Name: "DeployPlugin",
 			Prompt: &survey.Select{
 				Message: "Deploy plugin used for application:",
-				Options: opts,
+				Options: pluginOpts,
 			},
 		})
 	} else {
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Deploy plugin used for application:"), pterm.Cyan(d.opts.DeployPlugin))
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Deploy plugin used for application:"), pterm.Cyan(opts.DeployPlugin))
 	}
 
-	err = survey.Ask(qs, d.opts)
+	err = survey.Ask(qs, opts)
 	if err == terminal.InterruptErr {
 		return errAppAddCanceled
 	}
 
 	// Cleanup.
-	if filepath.IsAbs(d.opts.Dir) {
-		d.opts.Dir, _ = filepath.Rel(d.cfg.Dir, d.opts.Dir)
-		d.opts.Dir = "./" + d.opts.Dir
+	if filepath.IsAbs(opts.Dir) {
+		opts.Dir, _ = filepath.Rel(m.cfg.Dir, opts.Dir)
+		opts.Dir = "./" + opts.Dir
 	}
 
 	return err
 }
 
-func (d *AppAdd) prompt() (interface{}, error) {
-	err := d.promptBasic()
+func (m *AppManager) promptAdd(opts *AppAddOptions) (interface{}, error) {
+	err := m.promptAddBasic(opts)
 	if err != nil {
 		return nil, err
 	}
 
-	stat, err := os.Stat(d.opts.OutputDir)
+	stat, err := os.Stat(opts.OutputDir)
 	if os.IsNotExist(err) {
-		err = fileutil.MkdirAll(d.opts.OutputDir, 0o755)
+		err = fileutil.MkdirAll(opts.OutputDir, 0o755)
 		if err != nil {
-			return nil, merry.Errorf("failed to create dir %s: %w", d.opts.OutputDir, err)
+			return nil, merry.Errorf("failed to create dir %s: %w", opts.OutputDir, err)
 		}
 	}
 
@@ -373,10 +358,10 @@ func (d *AppAdd) prompt() (interface{}, error) {
 	}
 
 	if stat != nil && !stat.IsDir() {
-		return nil, merry.Errorf("output dir '%s' is not a directory", d.opts.OutputDir)
+		return nil, merry.Errorf("output dir '%s' is not a directory", opts.OutputDir)
 	}
 
-	if !d.opts.Overwrite && fileutil.FindYAML(filepath.Join(d.opts.OutputDir, config.AppYAMLName)) != "" {
+	if !opts.Overwrite && fileutil.FindYAML(filepath.Join(opts.OutputDir, config.AppYAMLName)) != "" {
 		proceed := false
 		prompt := &survey.Confirm{
 			Message: "Application config already exists! Do you want to overwrite it?",
@@ -389,11 +374,11 @@ func (d *AppAdd) prompt() (interface{}, error) {
 		}
 	}
 
-	switch d.opts.Type {
+	switch opts.Type {
 	case config.AppTypeStatic:
-		return d.promptStatic()
+		return m.promptAddStatic(opts)
 	case config.AppTypeService:
-		return d.promptService()
+		return m.promptAddService(opts)
 		// TODO: add adding function app
 	default:
 		return nil, merry.Errorf("unsupported app type (WIP)")
@@ -444,43 +429,43 @@ func suggestAppStaticBuildDir(cfg *config.Project, opts *AppAddOptions) func(toC
 	}
 }
 
-func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
+func (m *AppManager) promptAddStatic(opts *AppAddOptions) (*staticAppInfo, error) {
 	var qs []*survey.Question
 
-	staticBuildDirValidator := validateAppStaticBuildDir(d.cfg, d.opts)
+	staticBuildDirValidator := validateAppStaticBuildDir(m.cfg, opts)
 	curDir, _ := os.Getwd()
 
-	if d.opts.StaticBuildDir == "" {
-		def := filepath.Join(curDir, d.opts.Dir, config.DefaultStaticAppBuildDir)
+	if opts.StaticBuildDir == "" {
+		def := filepath.Join(curDir, opts.Dir, config.DefaultStaticAppBuildDir)
 
 		qs = append(qs, &survey.Question{
 			Name: "StaticBuildDir",
 			Prompt: &survey.Input{
 				Message: "Build directory of application:",
 				Default: def,
-				Suggest: suggestAppStaticBuildDir(d.cfg, d.opts),
+				Suggest: suggestAppStaticBuildDir(m.cfg, opts),
 			},
 			Validate: staticBuildDirValidator,
 		})
 	} else {
-		err := staticBuildDirValidator(d.opts.StaticBuildDir)
+		err := staticBuildDirValidator(opts.StaticBuildDir)
 		if err != nil {
 			return nil, err
 		}
 
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Build directory of application:"), pterm.Cyan(d.opts.StaticBuildDir))
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Build directory of application:"), pterm.Cyan(opts.StaticBuildDir))
 	}
 
-	if d.opts.StaticBuildCommand == "" {
+	if opts.StaticBuildCommand == "" {
 		qs = append(qs, &survey.Question{
 			Name:   "StaticBuildCommand",
 			Prompt: &survey.Input{Message: "Build command of application (optional, e.g. yarn build):"},
 		})
 	} else {
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Build command of application:"), pterm.Cyan(d.opts.StaticBuildCommand))
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Build command of application:"), pterm.Cyan(opts.StaticBuildCommand))
 	}
 
-	if d.opts.StaticRouting == "" {
+	if opts.StaticRouting == "" {
 		qs = append(qs, &survey.Question{
 			Name: "StaticRouting",
 			Prompt: &survey.Select{
@@ -490,12 +475,12 @@ func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
 			},
 		})
 	} else {
-		d.log.Printf("%s %s\n", pterm.Bold.Sprint("Routing of application:"), pterm.Cyan(d.opts.StaticBuildCommand))
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Routing of application:"), pterm.Cyan(opts.StaticBuildCommand))
 	}
 
 	// Ask questions about static app.
 	if len(qs) != 0 {
-		err := survey.Ask(qs, d.opts)
+		err := survey.Ask(qs, opts)
 		if err != nil {
 			if err == terminal.InterruptErr {
 				return nil, errAppAddCanceled
@@ -506,47 +491,47 @@ func (d *AppAdd) promptStatic() (*staticAppInfo, error) {
 	}
 
 	// Cleanup.
-	if filepath.IsAbs(d.opts.StaticBuildDir) {
-		d.opts.StaticBuildDir, _ = filepath.Rel(filepath.Join(d.cfg.Dir, d.opts.Dir), d.opts.StaticBuildDir)
-		d.opts.StaticBuildDir = "./" + d.opts.StaticBuildDir
+	if filepath.IsAbs(opts.StaticBuildDir) {
+		opts.StaticBuildDir, _ = filepath.Rel(filepath.Join(m.cfg.Dir, opts.Dir), opts.StaticBuildDir)
+		opts.StaticBuildDir = "./" + opts.StaticBuildDir
 	}
 
 	return &staticAppInfo{
 		App: config.StaticApp{
 			BasicApp: config.BasicApp{
-				AppName: d.opts.Name,
+				AppName: opts.Name,
 				AppType: config.AppTypeStatic,
-				AppURL:  d.opts.URL,
-				AppDir:  d.opts.Dir,
+				AppURL:  opts.URL,
+				AppDir:  opts.Dir,
 				AppDeploy: &config.AppDeployInfo{
-					Plugin: d.opts.DeployPlugin,
+					Plugin: opts.DeployPlugin,
 				},
 				AppRun: &config.AppRunInfo{
-					Plugin:  d.opts.RunPlugin,
-					Command: command.NewStringCommandFromString(d.opts.RunCommand),
+					Plugin:  opts.RunPlugin,
+					Command: command.NewStringCommandFromString(opts.RunCommand),
 				},
 			},
 			StaticAppProperties: types.StaticAppProperties{
 				Build: &types.StaticAppBuild{
-					Command: command.NewStringCommandFromString(d.opts.StaticBuildCommand),
-					Dir:     d.opts.StaticBuildDir,
+					Command: command.NewStringCommandFromString(opts.StaticBuildCommand),
+					Dir:     opts.StaticBuildDir,
 				},
-				Routing: d.opts.StaticRouting,
+				Routing: opts.StaticRouting,
 			},
 		},
 	}, nil
 }
 
-func (d *AppAdd) promptService() (*serviceAppInfo, error) { // nolint: unparam
+func (m *AppManager) promptAddService(opts *AppAddOptions) (*serviceAppInfo, error) { // nolint: unparam
 	return &serviceAppInfo{
 		App: config.ServiceApp{
 			BasicApp: config.BasicApp{
-				AppName: d.opts.Name,
+				AppName: opts.Name,
 				AppType: config.AppTypeService,
-				AppURL:  d.opts.URL,
-				AppDir:  d.opts.Dir,
+				AppURL:  opts.URL,
+				AppDir:  opts.Dir,
 				AppRun: &config.AppRunInfo{
-					Command: command.NewStringCommandFromString(d.opts.RunCommand),
+					Command: command.NewStringCommandFromString(opts.RunCommand),
 				},
 			},
 			ServiceAppProperties: types.ServiceAppProperties{

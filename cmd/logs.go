@@ -50,10 +50,6 @@ func (e *Executor) newLogsCmd() *cobra.Command {
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if e.cfg == nil {
-				return config.ErrProjectConfigNotFound
-			}
-
 			for _, t := range target {
 				tsplit := strings.SplitN(t, ".", 2)
 				if len(tsplit) != 2 {

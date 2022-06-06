@@ -96,6 +96,10 @@ func (c *Client) deployHook() apiv1.DeployHookServiceClient {
 	return apiv1.NewDeployHookServiceClient(c.conn)
 }
 
+func (c *Client) secretPlugin() apiv1.SecretPluginServiceClient {
+	return apiv1.NewSecretPluginServiceClient(c.conn)
+}
+
 func (c *Client) init(ctx context.Context) error {
 	c.log.Debugf("Initializing connection to plugin: %s\n", c.name)
 

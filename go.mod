@@ -14,12 +14,13 @@ require (
 	github.com/enescakir/emoji v1.0.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/google/go-github/v35 v35.3.0
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gookit/color v1.5.0
 	github.com/goreleaser/fileglob v1.3.0
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20220523125847-c49b06ddbefa
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20220603193109-1f79419a9a45
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.41
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0

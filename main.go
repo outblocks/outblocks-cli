@@ -19,6 +19,7 @@ func main() {
 	exec := cmd.NewExecutor()
 
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Handle SIGINT and SIGTERM.
 	ch := make(chan os.Signal, 1)
@@ -41,10 +42,10 @@ func main() {
 
 	err := exec.Execute(ctx)
 
-	cancel()
-
 	if err != nil {
-		exec.Log().Errorln("Error occurred:", err)
+		if ctx.Err() != context.Canceled {
+			exec.Log().Errorln("Error occurred:", err)
+		}
 
 		os.Exit(1) // nolint: gocritic
 	}

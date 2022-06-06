@@ -20,6 +20,7 @@ const (
 	cmdProjectLoadModeAnnotation        = "cmd_project_load_mode"
 	cmdProjectSkipCheckAnnotation       = "cmd_project_skip_check"
 	cmdProjectSkipLoadPluginsAnnotation = "cmd_project_skip_load_plugins"
+	cmdSecretsLoadAnnotation            = "cmd_secrets_load"
 	cmdAppsLoadModeAnnotation           = "cmd_apps_load_mode"
 	cmdVersionCheckSkipAnnotation       = "cmd_version_check_skip"
 	cmdGroupAnnotation                  = "cmd_group"
@@ -352,6 +353,7 @@ func (e *Executor) newRoot() *cobra.Command {
 		e.newVersionCmd(),
 		e.newStatusCmd(),
 		e.newLogsCmd(),
+		e.newSecretsCmd(),
 	)
 
 	return cmd

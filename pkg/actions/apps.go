@@ -8,28 +8,24 @@ import (
 	"github.com/pterm/pterm"
 )
 
-type AppList struct {
-	log  logger.Logger
-	cfg  *config.Project
-	opts *AppListOptions
+type AppManager struct {
+	log logger.Logger
+	cfg *config.Project
 }
 
-type AppListOptions struct{}
-
-func NewAppList(log logger.Logger, cfg *config.Project, opts *AppListOptions) *AppList {
-	return &AppList{
-		log:  log,
-		cfg:  cfg,
-		opts: opts,
+func NewAppManager(log logger.Logger, cfg *config.Project) *AppManager {
+	return &AppManager{
+		log: log,
+		cfg: cfg,
 	}
 }
 
-func (d *AppList) appsList() [][]string {
+func (m *AppManager) appsList() [][]string {
 	data := [][]string{
 		{"Name", "Type", "Deployment", "Path"},
 	}
 
-	for _, a := range d.cfg.Apps {
+	for _, a := range m.cfg.Apps {
 		data = append(data, []string{
 			pterm.Yellow(a.Name()),
 			pterm.Magenta(a.Type()),
@@ -45,11 +41,11 @@ func (d *AppList) appsList() [][]string {
 	return nil
 }
 
-func (d *AppList) Run(ctx context.Context) error {
-	appList := d.appsList()
+func (m *AppManager) List(ctx context.Context) error {
+	appList := m.appsList()
 
 	if len(appList) != 0 {
-		err := d.log.Table().WithHasHeader().WithData(pterm.TableData(appList)).Render()
+		err := m.log.Table().WithHasHeader().WithData(pterm.TableData(appList)).Render()
 		if err != nil {
 			return err
 		}

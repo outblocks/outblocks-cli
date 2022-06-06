@@ -22,13 +22,10 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 			cmdGroupAnnotation:           cmdGroupMain,
 			cmdProjectLoadModeAnnotation: cmdLoadModeFull,
 			cmdAppsLoadModeAnnotation:    cmdLoadModeFull,
+			cmdSecretsLoadAnnotation:     "1",
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if e.cfg == nil {
-				return config.ErrProjectConfigNotFound
-			}
-
 			if opts.MergeMode {
 				if len(opts.TargetApps) > 0 || len(opts.SkipApps) > 0 || opts.SkipAllApps {
 					return merry.New("merge-mode already implies which apps are to be targeted/skipped")

@@ -8,6 +8,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/ansel1/merry/v2"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"google.golang.org/grpc"
@@ -16,15 +17,17 @@ import (
 )
 
 type Server struct {
-	srv *grpc.Server
-	log logger.Logger
+	srv     *grpc.Server
+	secrets map[string]string
+	log     logger.Logger
 
 	addr net.Addr
 }
 
-func NewServer(log logger.Logger) *Server {
+func NewServer(log logger.Logger, secrets map[string]string) *Server {
 	return &Server{
-		log: log,
+		log:     log,
+		secrets: secrets,
 	}
 }
 
@@ -65,6 +68,10 @@ func mapPromptError(err error) error {
 }
 
 func (s *Server) PromptConfirmation(ctx context.Context, r *apiv1.PromptConfirmationRequest) (*apiv1.PromptConfirmationResponse, error) {
+	if !util.IsTerminal() {
+		return nil, status.New(codes.Aborted, terminal.InterruptErr.Error()).Err()
+	}
+
 	confirmed := r.Default
 
 	err := survey.AskOne(&survey.Confirm{
@@ -80,6 +87,10 @@ func (s *Server) PromptConfirmation(ctx context.Context, r *apiv1.PromptConfirma
 }
 
 func (s *Server) PromptInput(ctx context.Context, r *apiv1.PromptInputRequest) (*apiv1.PromptInputResponse, error) {
+	if !util.IsTerminal() {
+		return nil, status.New(codes.Aborted, terminal.InterruptErr.Error()).Err()
+	}
+
 	var input string
 
 	err := survey.AskOne(&survey.Input{
@@ -96,6 +107,10 @@ func (s *Server) PromptInput(ctx context.Context, r *apiv1.PromptInputRequest) (
 }
 
 func (s *Server) PromptSelect(ctx context.Context, r *apiv1.PromptSelectRequest) (*apiv1.PromptSelectResponse, error) {
+	if !util.IsTerminal() {
+		return nil, status.New(codes.Aborted, terminal.InterruptErr.Error()).Err()
+	}
+
 	var input string
 
 	sel := &survey.Select{
@@ -138,4 +153,17 @@ func (s *Server) Log(ctx context.Context, r *apiv1.LogRequest) (*apiv1.LogRespon
 	}
 
 	return &apiv1.LogResponse{}, nil
+}
+
+func (s *Server) HostGetSecret(ctx context.Context, r *apiv1.HostGetSecretRequest) (*apiv1.HostGetSecretResponse, error) {
+	if s.secrets == nil {
+		return &apiv1.HostGetSecretResponse{Specified: false}, nil
+	}
+
+	v, ok := s.secrets[r.Key]
+
+	return &apiv1.HostGetSecretResponse{
+		Value:     v,
+		Specified: ok,
+	}, nil
 }

@@ -36,6 +36,7 @@ type Executor struct {
 	srv *server.Server
 
 	cfg                 *config.Project
+	secrets             map[string]string
 	lastUpdateCheckFile string
 
 	opts struct {
@@ -48,9 +49,10 @@ func NewExecutor() *Executor {
 	v := viper.New()
 
 	e := &Executor{
-		v:   v,
-		env: cli.NewEnvironment(v),
-		log: logger.NewLogger(),
+		v:       v,
+		env:     cli.NewEnvironment(v),
+		log:     logger.NewLogger(),
+		secrets: make(map[string]string),
 	}
 
 	e.opts.valueOpts = &values.Options{}
@@ -68,7 +70,7 @@ func setupEnvVars(env *cli.Environment) {
 	env.AddVarWithDefault("log_level", "set logging level (options: debug, notice, info, warn, error)", "info")
 }
 
-func (e *Executor) commandPreRun(ctx context.Context) error {
+func (e *Executor) commandPreRun(ctx context.Context) error { // nolint: gocyclo
 	var (
 		loadProjectOptions LoadProjectOptions
 		loadAppsMode       config.LoadMode
@@ -85,29 +87,9 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	}
 
 	helpFlag := e.rootCmd.PersistentFlags().Lookup("help")
-	cmd, _, err := e.rootCmd.Find(os.Args[1:])
-
-	isHelp := helpFlag.Changed || e.rootCmd == cmd || (len(os.Args) > 1 && strings.EqualFold(os.Args[1], "help"))
-
-	if err == nil {
-		loadProjectOptions.Mode = loadModeFromAnnotation(cmd.Annotations[cmdProjectLoadModeAnnotation])
-		loadProjectOptions.SkipCheck = cmd.Annotations[cmdProjectSkipCheckAnnotation] == "1"
-		loadProjectOptions.SkipLoadPlugins = cmd.Annotations[cmdProjectSkipLoadPluginsAnnotation] == "1"
-
-		loadAppsMode = loadModeFromAnnotation(cmd.Annotations[cmdAppsLoadModeAnnotation])
-
-		if loadProjectOptions.Mode == config.LoadModeSkip {
-			return nil
-		}
-	} else {
-		loadAppsMode = config.LoadModeSkip
-	}
+	isHelp := helpFlag.Changed || (len(os.Args) > 1 && strings.EqualFold(os.Args[1], "help"))
 
 	// Load values.
-	for i, v := range e.opts.valueOpts.ValueFiles {
-		e.opts.valueOpts.ValueFiles[i] = strings.ReplaceAll(v, "<env>", e.opts.env)
-	}
-
 	pwd, err := os.Getwd()
 	if err != nil {
 		return merry.Errorf("cannot find current directory: %w", err)
@@ -120,6 +102,10 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 
 	cfgPath := fileutil.FindYAMLGoingUp(pwd, config.ProjectYAMLName)
 
+	for i, v := range e.opts.valueOpts.ValueFiles {
+		e.opts.valueOpts.ValueFiles[i] = strings.ReplaceAll(v, "<env>", e.opts.env)
+	}
+
 	v, err := e.opts.valueOpts.MergeValues(ctx, filepath.Dir(cfgPath), getter.All())
 	if err != nil {
 		if isHelp && !e.rootCmd.PersistentFlags().Lookup("values").Changed {
@@ -130,21 +116,61 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	}
 
 	vals := map[string]interface{}{
-		"var": v,
-		"env": e.opts.env,
+		"var":     v,
+		"env":     e.opts.env,
+		"secrets": e.secrets,
 	}
 
-	// Load config file.
-	if err := e.loadProject(ctx, cfgPath, e.srv.Addr().String(), vals, loadProjectOptions, loadAppsMode); err != nil && !errors.Is(err, config.ErrProjectConfigNotFound) {
+	// Load essential config file first.
+	if err := e.loadProject(ctx, cfgPath, e.srv.Addr().String(), vals, LoadProjectOptions{
+		Mode: config.LoadModeEssential,
+	}, config.LoadModeSkip); err != nil && (!isHelp || !errors.Is(err, config.ErrProjectConfigNotFound)) {
 		return err
 	}
 
-	if loadProjectOptions.SkipLoadPlugins {
+	// Augment/load new commands.
+	err = e.addPluginsCommands()
+	if err != nil {
+		return err
+	}
+
+	cmd, _, err := e.rootCmd.Find(os.Args[1:])
+	if err != nil {
+		return err
+	}
+
+	loadProjectOptions.Mode = loadModeFromAnnotation(cmd.Annotations[cmdProjectLoadModeAnnotation])
+	loadProjectOptions.SkipCheck = cmd.Annotations[cmdProjectSkipCheckAnnotation] == "1"
+	loadProjectOptions.SkipLoadPlugins = cmd.Annotations[cmdProjectSkipLoadPluginsAnnotation] == "1"
+
+	loadAppsMode = loadModeFromAnnotation(cmd.Annotations[cmdAppsLoadModeAnnotation])
+
+	if loadProjectOptions.Mode == config.LoadModeSkip {
 		return nil
 	}
 
-	// Augment/load new commands.
-	return e.addPluginsCommands()
+	// Load secrets if needed.
+	if cmd.Annotations[cmdSecretsLoadAnnotation] == "1" && e.cfg.Secrets.Plugin() != nil {
+		e.log.Debugf("Loading secrets from plugin: %s\n", e.cfg.Secrets.Plugin().Name)
+
+		secrets, err := e.cfg.Secrets.Plugin().Client().GetSecrets(ctx, e.cfg.Secrets.Type, e.cfg.Secrets.Other)
+		if err != nil {
+			return err
+		}
+
+		for k, v := range secrets {
+			e.secrets[k] = v
+		}
+	}
+
+	// Load config file properly now.
+	loadProjectOptions.SkipLoadPlugins = true
+
+	if err := e.loadProject(ctx, cfgPath, e.srv.Addr().String(), vals, loadProjectOptions, loadAppsMode); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (e *Executor) addPluginsCommands() error {
@@ -171,7 +197,8 @@ func (e *Executor) addPluginsCommands() error {
 					Annotations: map[string]string{
 						cmdGroupAnnotation:           cmdGroupPlugin,
 						cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
-						cmdAppsLoadModeAnnotation:    cmdLoadModeEssential,
+						cmdAppsLoadModeAnnotation:    cmdLoadModeSkip,
+						cmdSecretsLoadAnnotation:     "1",
 					},
 					RunE: func(cmd *cobra.Command, args []string) error {
 						return actions.NewCommand(e.log, e.cfg, &actions.CommandOptions{
@@ -227,7 +254,7 @@ func (e *Executor) addPluginsCommands() error {
 }
 
 func (e *Executor) startHostServer() error {
-	e.srv = server.NewServer(e.log)
+	e.srv = server.NewServer(e.log, e.secrets)
 
 	return e.srv.Serve()
 }

@@ -19,6 +19,10 @@
           "description": "Project-wide state source.",
           "$ref": "#/definitions/State"
         },
+        "secrets": {
+          "description": "Project-wide secrets provider.",
+          "$ref": "#/definitions/Secrets"
+        },
         "dependencies": {
           "description": "Project-wide dependencies to provision.",
           "$ref": "#/definitions/Dependencies"
@@ -113,6 +117,17 @@
         "type"
       ],
       "title": "State"
+    },
+    "Secrets": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "description": "Secrets provider type, plugin specific value e.g. 'gcp' for gcp plugin.",
+          "type": "string"
+        }
+      },
+      "title": "Secrets"
     },
     "Dependencies": {
       "title": "Dependencies",

@@ -21,8 +21,6 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		},
 	}
 
-	listOpts := &actions.AppListOptions{}
-
 	list := &cobra.Command{
 		Use:   "list",
 		Short: "List apps",
@@ -34,12 +32,8 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if e.cfg == nil {
-				return config.ErrProjectConfigNotFound
-			}
-
 			// TODO: list apps from state as well
-			return actions.NewAppList(e.Log(), e.cfg, listOpts).Run(cmd.Context())
+			return actions.NewAppManager(e.Log(), e.cfg).List(cmd.Context())
 		},
 	}
 
@@ -55,10 +49,6 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if e.cfg == nil {
-				return config.ErrProjectConfigNotFound
-			}
-
 			// TODO: app deletion
 			return nil
 		},
@@ -77,11 +67,7 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if e.cfg == nil {
-				return config.ErrProjectConfigNotFound
-			}
-
-			return actions.NewAppAdd(e.Log(), e.cfg, addOpts).Run(cmd.Context())
+			return actions.NewAppManager(e.Log(), e.cfg).Add(cmd.Context(), addOpts)
 		},
 	}
 

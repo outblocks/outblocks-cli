@@ -33,10 +33,18 @@ func (e *Executor) loadProject(ctx context.Context, cfgPath, hostAddr string, va
 		return err
 	}
 
+	var loadedPlugins []*plugins.Plugin
+
+	if e.cfg != nil {
+		loadedPlugins = e.cfg.LoadedPlugins()
+	}
+
 	e.loader = plugins.NewLoader(cfg.Dir, e.PluginsCacheDir())
 	e.cfg = cfg
 
-	if !loadProjectOpts.SkipLoadPlugins {
+	if loadProjectOpts.SkipLoadPlugins {
+		cfg.SetLoadedPlugins(loadedPlugins)
+	} else {
 		if err := cfg.LoadPlugins(ctx, e.log, e.loader, hostAddr); err != nil {
 			return err
 		}

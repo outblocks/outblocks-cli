@@ -36,9 +36,9 @@ var (
 		AppTypeService:  {"services"},
 	}
 
-	essentialProjectKeys    = []string{"name", "dependencies", "plugins", "state"}
+	essentialProjectKeys    = []string{"name", "dependencies", "plugins", "state", "secrets", "defaults.deploy.plugin", "defaults.run.plugin", "defaults.dns.plugin"}
 	essentialProjectKeysMap = util.StringArrayToSet(essentialProjectKeys)
-	essentialAppKeys        = []string{"name", "type", "dir", "url", "deploy.plugin", "run.plugin", "dns.plugin", "defaults.deploy.plugin", "defaults.run.plugin", "defaults.dns.plugin"}
+	essentialAppKeys        = []string{"name", "type", "dir", "url", "deploy.plugin", "run.plugin", "dns.plugin"}
 	essentialAppKeysMap     = util.StringArrayToSet(essentialAppKeys)
 )
 
@@ -77,6 +77,7 @@ type Project struct {
 	Name         string                 `json:"name,omitempty"`
 	Dir          string                 `json:"-"`
 	State        *State                 `json:"state,omitempty"`
+	Secrets      *Secrets               `json:"secrets,omitempty"`
 	Apps         []App                  `json:"-"`
 	Dependencies map[string]*Dependency `json:"dependencies,omitempty"`
 	Plugins      []*Plugin              `json:"plugins,omitempty"`
@@ -343,6 +344,10 @@ func (p *Project) SetLoadedPlugins(plugs []*plugins.Plugin) {
 
 	for _, plug := range plugs {
 		p.loadedPluginsMap[plug.Name] = plug
+	}
+
+	for _, plug := range p.Plugins {
+		plug.SetLoaded(p.loadedPluginsMap[plug.Name])
 	}
 }
 

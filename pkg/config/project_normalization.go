@@ -68,6 +68,14 @@ func (p *Project) Normalize() error {
 			return err
 		}
 
+		if p.Secrets == nil {
+			p.Secrets = &Secrets{}
+		}
+
+		if err := p.Secrets.Normalize(p); err != nil {
+			return err
+		}
+
 		return nil
 	}()
 
@@ -116,6 +124,10 @@ func (p *Project) FullCheck() error {
 		}
 
 		if err := p.State.Check(p); err != nil {
+			return err
+		}
+
+		if err := p.Secrets.Check(p); err != nil {
 			return err
 		}
 

@@ -26,8 +26,10 @@ type Plugin struct {
 	Hooks          []*PluginHooks                    `json:"hooks"`
 	Supports       []string                          `json:"supports"`
 	StateTypes     []string                          `json:"state_types"`
+	SecretsTypes   []string                          `json:"secrets_types"`
 	SupportedTypes []*PluginType                     `json:"supported_types"`
 	Commands       map[string]*PluginCommand         `json:"commands"`
+	Secrets        map[string]*PluginSecret          `json:"secrets"`
 
 	Dir      string          `json:"-"`
 	CacheDir string          `json:"-"`
@@ -48,9 +50,14 @@ const (
 	ActionLock
 	ActionState
 	ActionDeployHook
+	ActionSecrets
 )
 
 const DefaultPriority = 1000
+
+type PluginSecret struct {
+	Description string `json:"description"`
+}
 
 func (p *Plugin) Validate() error {
 	return validation.ValidateStruct(p,
