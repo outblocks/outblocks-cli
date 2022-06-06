@@ -81,6 +81,7 @@ func (e *Executor) newSecretsCmd() *cobra.Command {
 	}
 
 	var importFile string
+
 	imp := &cobra.Command{
 		Use:   "import",
 		Short: "Import secrets from file",
@@ -113,7 +114,7 @@ func (e *Executor) newSecretsCmd() *cobra.Command {
 	}
 
 	imp.Flags().StringVarP(&importFile, "file", "i", "", "secrets file to import")
-	imp.MarkFlagRequired("file")
+	_ = imp.MarkFlagRequired("file")
 
 	cmd.AddCommand(
 		get,

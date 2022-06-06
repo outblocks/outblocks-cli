@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -245,7 +244,7 @@ func (m *SecretsManager) Edit(ctx context.Context) error {
 			return merry.Errorf("run editor error: %w", err)
 		}
 
-		data, err := ioutil.ReadFile(f.Name())
+		data, err := os.ReadFile(f.Name())
 		if err != nil {
 			return merry.Errorf("loading edited file error: %w", err)
 		}
@@ -259,7 +258,7 @@ func (m *SecretsManager) Edit(ctx context.Context) error {
 			ch := make(chan struct{})
 
 			go func() {
-				bufio.NewReader(os.Stdin).ReadByte()
+				_, _ = bufio.NewReader(os.Stdin).ReadByte()
 				close(ch)
 			}()
 
@@ -303,7 +302,7 @@ func (m *SecretsManager) Import(ctx context.Context, f string) error {
 		return err
 	}
 
-	data, err := ioutil.ReadFile(f)
+	data, err := os.ReadFile(f)
 	if err != nil {
 		return merry.Errorf("loading import file error: %w", err)
 	}
