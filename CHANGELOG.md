@@ -1,5 +1,19 @@
 # Outblocks CLI Changelog
 
+## [v0.1.109](https://github.com/outblocks/outblocks-cli/compare/v0.1.108...v0.1.109)
+
+> 2022-06-06
+
+### BUG FIXES
+
+[`e4cb980`](https://github.com/outblocks/outblocks-cli/commit/e4cb980d0237bf9cd710dfa4affc52d380c3fab7) lint
+
+[`231cb32`](https://github.com/outblocks/outblocks-cli/commit/231cb32f2410448717f6448045ce3b5013d92bf7) lint
+
+### FEATURES
+
+[`69866b3`](https://github.com/outblocks/outblocks-cli/commit/69866b3b84c578150e321dd1c17d75abbc11c6ea) secrets management, multiple qol improvements
+
 ## [v0.1.108](https://github.com/outblocks/outblocks-cli/compare/v0.1.107...v0.1.108)
 
 > 2022-05-26
