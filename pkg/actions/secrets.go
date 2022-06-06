@@ -259,6 +259,7 @@ func (m *SecretsManager) Edit(ctx context.Context) error {
 
 			go func() {
 				_, _ = bufio.NewReader(os.Stdin).ReadByte()
+
 				close(ch)
 			}()
 
