@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.110](https://github.com/outblocks/outblocks-cli/compare/v0.1.109...v0.1.110)
+
+> 2022-06-08
+
+### BUG FIXES
+
+[`75769b5`](https://github.com/outblocks/outblocks-cli/commit/75769b5719b55e4d85417d141adb59d605181d0d) typo and empty secrets edit
+
 ## [v0.1.109](https://github.com/outblocks/outblocks-cli/compare/v0.1.108...v0.1.109)
 
 > 2022-06-06
