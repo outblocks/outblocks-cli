@@ -56,7 +56,7 @@ func (m *SecretsManager) View(ctx context.Context) error {
 		return err
 	}
 
-	m.log.Successf("Secrets loaded!!\n")
+	m.log.Successf("Secrets loaded!\n")
 	m.log.Println(out)
 
 	return nil
@@ -130,6 +130,10 @@ func (m *SecretsManager) getSecretsValues(ctx context.Context) (vals map[string]
 	vals, err = m.cfg.Secrets.Plugin().Client().GetSecrets(ctx, m.cfg.Secrets.Type, m.cfg.Secrets.Other)
 	if err != nil {
 		return nil, err
+	}
+
+	if vals == nil {
+		vals = make(map[string]string)
 	}
 
 	for _, plug := range m.cfg.LoadedPlugins() {
