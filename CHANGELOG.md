@@ -1,5 +1,17 @@
 # Outblocks CLI Changelog
 
+## [v0.1.111](https://github.com/outblocks/outblocks-cli/compare/v0.1.110...v0.1.111)
+
+> 2022-06-10
+
+### BUG FIXES
+
+[`3a350d7`](https://github.com/outblocks/outblocks-cli/commit/3a350d7cd9c702a36b24cce0e78829b1d671f4ae) lint
+
+### FEATURES
+
+[`b1d073c`](https://github.com/outblocks/outblocks-cli/commit/b1d073cb0204d5b6b2c6de156fa59e8b74ca59b6) plugin short fix, increase timeout, plugin delete/update/add, app delete/list remote
+
 ## [v0.1.110](https://github.com/outblocks/outblocks-cli/compare/v0.1.109...v0.1.110)
 
 > 2022-06-08
