@@ -50,9 +50,10 @@ func (e *Executor) newSecretsCmd() *cobra.Command {
 	}
 
 	del := &cobra.Command{
-		Use:   "delete [flags] <key>",
-		Short: "Delete secret value",
-		Long:  `Delete secret value through plugin provider of specified key.`,
+		Use:     "delete [flags] <key>",
+		Aliases: []string{"del", "remove"},
+		Short:   "Delete secret value",
+		Long:    `Delete secret value through plugin provider of specified key.`,
 		Annotations: map[string]string{
 			cmdGroupAnnotation:           cmdGroupMain,
 			cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
@@ -112,6 +113,25 @@ func (e *Executor) newSecretsCmd() *cobra.Command {
 			return actions.NewSecretsManager(e.Log(), e.cfg).View(cmd.Context())
 		},
 	}
+
+	var destroyForce bool
+
+	destroy := &cobra.Command{
+		Use:   "destroy",
+		Short: "Destroy all secret values",
+		Long:  `Destroy all secret values through plugin provider.`,
+		Annotations: map[string]string{
+			cmdGroupAnnotation:           cmdGroupMain,
+			cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
+			cmdAppsLoadModeAnnotation:    cmdLoadModeSkip,
+		},
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return actions.NewSecretsManager(e.Log(), e.cfg).Destroy(cmd.Context(), destroyForce)
+		},
+	}
+
+	destroy.Flags().BoolVar(&destroyForce, "force", false, "force destroy without prompt")
 
 	imp.Flags().StringVarP(&importFile, "file", "i", "", "secrets file to import")
 	_ = imp.MarkFlagRequired("file")

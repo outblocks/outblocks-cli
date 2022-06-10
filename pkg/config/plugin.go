@@ -10,7 +10,6 @@ import (
 
 type Plugin struct {
 	Name    string                 `json:"name"`
-	Short   string                 `json:"short"`
 	Version string                 `json:"version"`
 	Source  string                 `json:"source,omitempty"`
 	Other   map[string]interface{} `yaml:"-,remain"`
@@ -34,14 +33,6 @@ func (p *Plugin) VerConstr() *semver.Constraints {
 
 func (p *Plugin) Order() uint {
 	return p.order
-}
-
-func (p *Plugin) ShortName() string {
-	if p.Short != "" {
-		return p.Short
-	}
-
-	return p.Name
 }
 
 func (p *Plugin) Normalize(i int, cfg *Project) error {

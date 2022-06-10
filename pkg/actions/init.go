@@ -138,7 +138,7 @@ func (d *Init) promptEnv(ctx context.Context, cfg *projectInit, env string, inpu
 	}
 
 	for _, plug := range cfg.Plugins {
-		initRes, err := plug.Loaded().Client().ProjectInit(ctx, cfg.Name, []string{d.opts.DeployPlugin}, []string{d.opts.RunPlugin}, pluginOpts[plug.Name])
+		initRes, err := plug.Loaded().Client().ProjectInit(ctx, cfg.Name, []string{d.opts.DeployPlugin}, []string{d.opts.RunPlugin}, d.opts.DNSPlugin, pluginOpts[plug.Name])
 		if err != nil {
 			if st, ok := util.StatusFromError(err); ok && st.Code() == codes.Aborted {
 				return errInitCanceled

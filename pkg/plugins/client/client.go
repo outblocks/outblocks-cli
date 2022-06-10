@@ -44,7 +44,7 @@ type YAMLContext struct {
 }
 
 const (
-	DefaultTimeout = 10 * time.Second
+	DefaultTimeout = 60 * time.Second
 )
 
 func NewClient(log logger.Logger, name, env string, cmd *exec.Cmd, hostAddr string, props map[string]interface{}, yamlContext YAMLContext) (*Client, error) {

@@ -8,7 +8,7 @@ import (
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
-func (c *Client) ProjectInit(ctx context.Context, name string, deployPlugins, runPlugins []string, args map[string]interface{}) (*apiv1.ProjectInitResponse, error) {
+func (c *Client) ProjectInit(ctx context.Context, name string, deployPlugins, runPlugins []string, dnsPlugin string, args map[string]interface{}) (*apiv1.ProjectInitResponse, error) {
 	err := c.Init(ctx)
 	if err != nil {
 		return nil, err
@@ -18,6 +18,7 @@ func (c *Client) ProjectInit(ctx context.Context, name string, deployPlugins, ru
 		Name:          name,
 		DeployPlugins: deployPlugins,
 		RunPlugins:    runPlugins,
+		DnsPlugin:     dnsPlugin,
 		Args:          plugin_util.MustNewStruct(args),
 	})
 

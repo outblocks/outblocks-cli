@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/pkg/actions"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/spf13/cobra"
@@ -32,24 +33,64 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: list apps from state as well
 			return actions.NewAppManager(e.Log(), e.cfg).List(cmd.Context())
 		},
 	}
 
+	delOpts := &actions.DeployOptions{
+		Destroy: true,
+	}
+
 	del := &cobra.Command{
-		Use:     "delete",
+		Use:     "delete [flags] <app name(s)>",
 		Aliases: []string{"del", "remove"},
 		Short:   "Delete an app",
-		Long:    `Delete an existing application config.`,
+		Long:    `Delete an existing application name in a form of <app type>.<name>, e.g.: static.website.`,
 		Annotations: map[string]string{
 			cmdGroupAnnotation:           cmdGroupMain,
 			cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
 			cmdAppsLoadModeAnnotation:    cmdLoadModeEssential,
 		},
 		SilenceUsage: true,
+		Args:         cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// TODO: app deletion
+			var (
+				delApps []string
+				apps    []config.App
+			)
+
+			for _, arg := range args {
+				tsplit := strings.SplitN(arg, ".", 2)
+				if len(tsplit) != 2 {
+					return merry.Errorf("wrong format for app name '%s': specify in a form of <app type>.<name>, e.g.: static.website", arg)
+				}
+
+				appID := config.ComputeAppID(tsplit[0], tsplit[1])
+				delApps = append(delApps, appID)
+				app := e.cfg.AppByID(appID)
+
+				if app != nil {
+					apps = append(apps, app)
+				}
+			}
+
+			delOpts.TargetApps = delApps
+
+			err := actions.NewDeploy(e.Log(), e.cfg, delOpts).Run(cmd.Context())
+			if err != nil {
+				return err
+			}
+
+			if len(apps) > 0 {
+				e.log.Println("All apps deleted.")
+				e.log.Println()
+				e.log.Println("You still need to remove these apps locally:")
+
+				for _, app := range apps {
+					e.log.Printf("  * name: '%s' of type: '%s', path: %s\n", app.Name(), app.Type(), app.Dir())
+				}
+			}
+
 			return nil
 		},
 	}
@@ -71,7 +112,11 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		},
 	}
 
-	f := add.Flags()
+	f := del.Flags()
+	f.BoolVar(&delOpts.AutoApprove, "yes", false, "auto approve changes")
+	f.BoolVar(&delOpts.ForceApprove, "force", false, "force approve even with critical changes")
+
+	f = add.Flags()
 	f.BoolVar(&addOpts.Overwrite, "overwrite", false, "do not ask if application definition already exists")
 	f.StringVarP(&addOpts.Name, "name", "n", "", "application name")
 	f.StringVarP(&addOpts.Dir, "dir", "d", "", "application dir, defaults to: <app_type>/<app_name>")

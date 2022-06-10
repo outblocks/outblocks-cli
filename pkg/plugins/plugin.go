@@ -17,6 +17,7 @@ import (
 
 type Plugin struct {
 	Name           string                            `json:"name"`
+	Short          string                            `json:"short"`
 	Author         string                            `json:"author"`
 	Usage          string                            `json:"usage"`
 	Description    string                            `json:"description"`
@@ -76,6 +77,14 @@ func (p *Plugin) Locked() *lockfile.Plugin {
 		Version: p.Version,
 		Source:  p.source,
 	}
+}
+
+func (p *Plugin) ShortName() string {
+	if p.Short != "" {
+		return p.Short
+	}
+
+	return p.Name
 }
 
 func (p *Plugin) Client() *client.Client {

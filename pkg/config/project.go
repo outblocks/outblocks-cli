@@ -91,6 +91,7 @@ type Project struct {
 	loadedPluginsMap map[string]*plugins.Plugin
 	yamlPath         string
 	yamlData         []byte
+	yamlNode         *ast.MappingNode
 	lock             *lockfile.Lockfile
 	vals             map[string]interface{}
 }
@@ -172,6 +173,7 @@ func LoadProjectConfigData(path string, data []byte, vals map[string]interface{}
 	out := &Project{
 		yamlPath: path,
 		yamlData: data,
+		yamlNode: n,
 		env:      opts.Env,
 		Dir:      filepath.Dir(path),
 		lock:     lock,
@@ -365,6 +367,10 @@ func (p *Project) YAMLData() []byte {
 
 func (p *Project) YAMLPath() string {
 	return p.yamlPath
+}
+
+func (p *Project) YAMLNode() *ast.MappingNode {
+	return p.yamlNode
 }
 
 func (p *Project) FindLoadedPlugin(name string) *plugins.Plugin {

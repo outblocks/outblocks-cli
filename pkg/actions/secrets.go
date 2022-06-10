@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/23doors/go-yaml"
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/statefile"
 	"github.com/outblocks/outblocks-cli/internal/util"
@@ -122,6 +123,47 @@ func (m *SecretsManager) Delete(ctx context.Context, key string) error {
 	} else {
 		m.log.Warnf("Secret for '%s' key not found.\n", key)
 	}
+
+	return nil
+}
+
+func (m *SecretsManager) Destroy(ctx context.Context, force bool) error {
+	err := m.init(ctx)
+	if err != nil {
+		return err
+	}
+
+	vals, err := m.cfg.Secrets.Plugin().Client().GetSecrets(ctx, m.cfg.Secrets.Type, m.cfg.Secrets.Other)
+	if err != nil {
+		return err
+	}
+
+	confirm := false
+
+	all := "all secrets"
+	if len(vals) > 0 {
+		all = fmt.Sprintf("all %d secrets", len(vals))
+	}
+
+	if !force {
+		_ = survey.AskOne(&survey.Confirm{
+			Message: fmt.Sprintf("Are you sure that you want to destroy %s from environment: '%s'?", all, m.cfg.Env()),
+			Default: true,
+		}, &confirm)
+
+		if !confirm {
+			m.log.Println("Destroy canceled.")
+
+			return nil
+		}
+	}
+
+	err = m.cfg.Secrets.Plugin().Client().DeleteSecrets(ctx, m.cfg.Secrets.Type, m.cfg.Secrets.Other)
+	if err != nil {
+		return err
+	}
+
+	m.log.Printf("Destroyed %d secrets.\n", len(vals))
 
 	return nil
 }
