@@ -485,7 +485,7 @@ func (d *Init) promptPlugins(cfg *projectInit) error {
 	return nil
 }
 
-func (d *Init) prompt(ctx context.Context, cfg *projectInit) error { // nolint:gocyclo
+func (d *Init) prompt(ctx context.Context, cfg *projectInit) error { // nolint: gocyclo
 	// Setup config object.
 	cfg.Name = d.opts.Name
 

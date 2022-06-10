@@ -37,6 +37,7 @@ func (m *AppManager) appsList(ctx context.Context) (data [][]string, err error) 
 	for _, a := range m.cfg.Apps {
 		_, ok := state.Apps[a.ID()]
 		delete(state.Apps, a.ID())
+
 		deployed := pterm.Green("\u2713")
 
 		if !ok {

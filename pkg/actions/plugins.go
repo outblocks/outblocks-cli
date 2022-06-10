@@ -50,7 +50,7 @@ func (m *PluginManager) insertInYAML(data []byte) error {
 	}
 
 	configData := m.cfg.YAMLData()
-	result := append(configData, append([]byte("\n"), data...)...)
+	result := append(configData, append([]byte("\n"), data...)...) //nolint: gocritic
 
 	return fileutil.WriteFile(m.cfg.YAMLPath(), result, fi.Mode())
 }
@@ -244,9 +244,9 @@ func (m *PluginManager) Add(ctx context.Context, name string, opts *PluginManage
 		seqNode := pluginsNode.(*ast.SequenceNode)
 		seqNode.Values = append(seqNode.Values, node)
 
-		new, _ := pluginsNode.MarshalYAML()
+		n, _ := pluginsNode.MarshalYAML()
 
-		err = m.replacePluginsInYAML(new)
+		err = m.replacePluginsInYAML(n)
 		if err != nil {
 			return merry.Errorf("error while updating config: %w", err)
 		}
