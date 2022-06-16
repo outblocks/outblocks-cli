@@ -1,5 +1,15 @@
 # Outblocks CLI Changelog
 
+## [v0.1.112](https://github.com/outblocks/outblocks-cli/compare/v0.1.111...v0.1.112)
+
+> 2022-06-16
+
+### BUG FIXES
+
+[`34fd54b`](https://github.com/outblocks/outblocks-cli/commit/34fd54b3f722d27b64de44899f407d82232ec2bb) run plugin direct validation
+
+[`5a2e97a`](https://github.com/outblocks/outblocks-cli/commit/5a2e97a167c4fbd94725c7374a04f1a0554b9fdc) state lock
+
 ## [v0.1.111](https://github.com/outblocks/outblocks-cli/compare/v0.1.110...v0.1.111)
 
 > 2022-06-10
