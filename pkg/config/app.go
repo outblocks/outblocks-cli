@@ -264,7 +264,7 @@ func (a *BasicApp) Check(cfg *Project) error {
 	}
 
 	a.runPlugin = plug
-	a.AppRun.Plugin = plug.Name
+	a.AppRun.Plugin = runPlugin
 
 	for k, need := range a.Needs {
 		if need.dep.deployPlugin != a.deployPlugin {
