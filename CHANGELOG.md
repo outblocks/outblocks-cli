@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.113](https://github.com/outblocks/outblocks-cli/compare/v0.1.112...v0.1.113)
+
+> 2022-06-22
+
+### FEATURES
+
+[`0511456`](https://github.com/outblocks/outblocks-cli/commit/0511456991a6af31ea8a401d459c92097a034f75) multiple appneed, yaml by suffix
+
 ## [v0.1.112](https://github.com/outblocks/outblocks-cli/compare/v0.1.111...v0.1.112)
 
 > 2022-06-16
