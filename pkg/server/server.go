@@ -18,13 +18,13 @@ import (
 
 type Server struct {
 	srv     *grpc.Server
-	secrets map[string]string
+	secrets map[string]interface{}
 	log     logger.Logger
 
 	addr net.Addr
 }
 
-func NewServer(log logger.Logger, secrets map[string]string) *Server {
+func NewServer(log logger.Logger, secrets map[string]interface{}) *Server {
 	return &Server{
 		log:     log,
 		secrets: secrets,
@@ -163,7 +163,7 @@ func (s *Server) HostGetSecret(ctx context.Context, r *apiv1.HostGetSecretReques
 	v, ok := s.secrets[r.Key]
 
 	return &apiv1.HostGetSecretResponse{
-		Value:     v,
+		Value:     v.(string),
 		Specified: ok,
 	}, nil
 }

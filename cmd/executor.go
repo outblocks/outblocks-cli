@@ -36,7 +36,7 @@ type Executor struct {
 	srv *server.Server
 
 	cfg                 *config.Project
-	secrets             map[string]string
+	secrets             map[string]interface{}
 	lastUpdateCheckFile string
 
 	opts struct {
@@ -52,7 +52,7 @@ func NewExecutor() *Executor {
 		v:       v,
 		env:     cli.NewEnvironment(v),
 		log:     logger.NewLogger(),
-		secrets: make(map[string]string),
+		secrets: make(map[string]interface{}),
 	}
 
 	e.opts.valueOpts = &values.Options{}
