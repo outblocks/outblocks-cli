@@ -20,12 +20,14 @@ import (
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/pterm/pterm"
+	"golang.org/x/exp/slices"
 )
 
 const (
-	ProjectYAMLName = "project.outblocks"
-	LockfileName    = "outblocks.lock"
-	AppYAMLName     = "app.outblocks"
+	ProjectYAMLName   = "project.outblocks"
+	LockfileName      = "outblocks.lock"
+	AppYAMLName       = "app.outblocks"
+	AppYAMLNameSuffix = ".app.outblocks"
 )
 
 var (
@@ -196,7 +198,26 @@ func (p *Project) LoadApps(mode LoadMode) error {
 		return nil
 	}
 
-	files := fileutil.FindYAMLFiles(p.Dir, AppYAMLNames...)
+	files := fileutil.FindYAMLFiles(p.Dir, func(f string) bool {
+		idx := strings.LastIndex(f, ".")
+		if idx == -1 {
+			return false
+		}
+
+		ext := f[idx+1:]
+
+		if ext != "yaml" && ext != "yml" {
+			return false
+		}
+
+		name := f[:idx]
+
+		if slices.Contains(AppYAMLNames, name) {
+			return true
+		}
+
+		return strings.HasSuffix(name, AppYAMLNameSuffix)
+	})
 
 	if err := p.LoadAppFiles(files, mode); err != nil {
 		return err

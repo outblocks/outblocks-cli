@@ -91,7 +91,23 @@ func FindSubdirsOfMatching(path string, matching []string) []string {
 	return dirs
 }
 
-func FindYAMLFiles(path string, name ...string) []string {
+func FindYAMLFilesByName(path string, name ...string) []string {
+	return FindYAMLFiles(path, func(f string) bool {
+		for _, ext := range []string{".yaml", ".yml"} {
+			for _, n := range name {
+				if n+ext != f {
+					continue
+				}
+
+				return true
+			}
+		}
+
+		return false
+	})
+}
+
+func FindYAMLFiles(path string, match func(string) bool) []string {
 	var files []string
 
 	pathMap := make(map[string]struct{})
@@ -110,18 +126,12 @@ func FindYAMLFiles(path string, name ...string) []string {
 				return nil
 			}
 
-			for _, ext := range []string{".yaml", ".yml"} {
-				for _, n := range name {
-					if n+ext != info.Name() {
-						continue
-					}
-
-					files = append(files, path)
-					pathMap[path] = struct{}{}
-
-					return nil
-				}
+			if !match(info.Name()) {
+				return nil
 			}
+
+			files = append(files, path)
+			pathMap[path] = struct{}{}
 
 			return nil
 		})

@@ -67,12 +67,17 @@ func (i *AppDeployInfo) Proto() *apiv1.AppDeployInfo {
 }
 
 type AppNeed struct {
+	Dep   string                 `yaml:"dependency,omitempty"`
 	Other map[string]interface{} `yaml:"-,remain"`
 
 	dep *Dependency
 }
 
 func (n *AppNeed) Normalize(name string, cfg *Project, data []byte) error {
+	if n.Dep != "" {
+		name = n.Dep
+	}
+
 	dep := cfg.DependencyByName(name)
 	if dep == nil {
 		return fileutil.YAMLError(fmt.Sprintf("$.needs.%s", name), fmt.Sprintf("'%s' not found in project dependencies", name), data)
