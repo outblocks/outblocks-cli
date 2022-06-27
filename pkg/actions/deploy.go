@@ -553,7 +553,14 @@ func (d *Deploy) promptDiff(deployChanges, dnsChanges []*change, acquiredLocks m
 func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv1.DomainInfo {
 	projectDomains := types.NewDomainInfoMatcher(cfg.DomainInfoProto())
 	stateDomains := types.NewDomainInfoMatcher(state.DomainsInfo)
+	plug := cfg.Defaults.DNS.Plugin
 	m := make(map[*apiv1.DomainInfo]struct{})
+
+	for _, r := range state.DomainsInfo {
+		if r.DnsPlugin == "" {
+			r.DnsPlugin = plug
+		}
+	}
 
 	var missingHosts []string
 
@@ -614,7 +621,6 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 	}
 
 	addedHosts := make(map[string]struct{})
-	plug := cfg.Defaults.DNS.Plugin
 
 	for _, h := range missingHosts {
 		parts := strings.SplitN(h, ".", 2)

@@ -37,7 +37,7 @@ func (e *Executor) newInitCmd() *cobra.Command {
 	f.StringVar(&opts.Name, "name", "", "project name")
 	f.StringVar(&opts.DeployPlugin, "deploy-plugin", "", "deploy plugin to use (e.g. gcp)")
 	f.StringVar(&opts.RunPlugin, "run-plugin", "", "run plugin to use (e.g. docker)")
-	f.StringVar(&opts.DeployPlugin, "dns-plugin", "", "dns plugin to use (e.g. cloudflare)")
+	f.StringVar(&opts.DNSPlugin, "dns-plugin", "", "dns plugin to use (e.g. cloudflare)")
 	f.StringVar(&opts.DNSDomain, "dns-domain", "", "main DNS domain to use with deployments")
 
 	f.StringVar(&opts.GCP.Project, "gcp-project", "", "GCP project to use with GCP deploy plugin")
