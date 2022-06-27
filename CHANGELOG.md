@@ -1,5 +1,15 @@
 # Outblocks CLI Changelog
 
+## [v0.1.115](https://github.com/outblocks/outblocks-cli/compare/v0.1.114...v0.1.115)
+
+> 2022-06-28
+
+### BUG FIXES
+
+[`0b7a22c`](https://github.com/outblocks/outblocks-cli/commit/0b7a22ce71931865b7f1fe3aa785fe3055470808) dns setup
+
+[`09bd35d`](https://github.com/outblocks/outblocks-cli/commit/09bd35d0133c660188171782da621ad1056460ce) yaml schema
+
 ## [v0.1.114](https://github.com/outblocks/outblocks-cli/compare/v0.1.113...v0.1.114)
 
 > 2022-06-22
