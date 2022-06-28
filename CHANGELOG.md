@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.116](https://github.com/outblocks/outblocks-cli/compare/v0.1.115...v0.1.116)
+
+> 2022-06-28
+
+### BUG FIXES
+
+[`cde92d7`](https://github.com/outblocks/outblocks-cli/commit/cde92d734add0e0555ebd3cfb109da3f3424a5da) getting empty secret
+
 ## [v0.1.115](https://github.com/outblocks/outblocks-cli/compare/v0.1.114...v0.1.115)
 
 > 2022-06-28
