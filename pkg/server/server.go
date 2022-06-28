@@ -162,8 +162,14 @@ func (s *Server) HostGetSecret(ctx context.Context, r *apiv1.HostGetSecretReques
 
 	v, ok := s.secrets[r.Key]
 
+	var vstr string
+
+	if ok {
+		vstr = v.(string)
+	}
+
 	return &apiv1.HostGetSecretResponse{
-		Value:     v.(string),
+		Value:     vstr,
 		Specified: ok,
 	}, nil
 }
