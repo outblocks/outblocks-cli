@@ -1,10 +1,16 @@
-# Service app config.
+# Function app config.
 
 # You can use ${var.*} expansion to source it from values.yaml per environment,
 # e.g. url: ${var.base_url}/app1/
 
 # Name of the app.
 name: {{.App.Name}}
+
+# The runtime in which the function is going to run, refer to cloud provider docs for possible options.
+runtime: {{.App.Runtime}}
+
+# Name of the function that will be executed when the function is triggered.
+entrypoint: {{.App.Entrypoint}}
 
 # Working directory of the app where all commands will be run. All other dirs will be relative to this one.
 dir: {{.App.Dir}}
@@ -19,13 +25,6 @@ url: {{.App.AppURL}}
 path_redirect: /
 # If app is not meant to be accessible without auth, mark it as private.
 # private: true
-
-# Build defines how docker image will be built for this application.
-build:
-  # Dockerfile name to be used.
-  dockerfile: {{.App.Build.Dockerfile}}
-  # Directory which is used for dockerfile context.
-  context: {{.App.Build.DockerContext}}
 
 # Deploy defines where how deployment is handled of application during `ok deploy`.
 deploy:

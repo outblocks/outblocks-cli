@@ -14,6 +14,7 @@ func (e *Executor) newStatusCmd() *cobra.Command {
 			cmdGroupAnnotation:           cmdGroupMain,
 			cmdProjectLoadModeAnnotation: cmdLoadModeEssential,
 			cmdAppsLoadModeAnnotation:    cmdLoadModeSkip,
+			cmdSecretsLoadAnnotation:     "1",
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {

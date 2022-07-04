@@ -1,10 +1,14 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/ansel1/merry/v2"
+	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/pkg/actions"
+	"github.com/outblocks/outblocks-cli/pkg/clipath"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/spf13/cobra"
 )
@@ -26,6 +30,17 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.BuildCacheDir = clipath.CacheDir(fmt.Sprintf("builds_%s_%s", e.cfg.Name, e.cfg.Env()))
+
+			_ = os.RemoveAll(opts.BuildCacheDir)
+
+			err := fileutil.MkdirAll(opts.BuildCacheDir, 0o755)
+			if err != nil {
+				return merry.Errorf("cannot create build cache dir %s: %w", opts.BuildCacheDir, err)
+			}
+
+			defer os.RemoveAll(opts.BuildCacheDir)
+
 			if opts.MergeMode {
 				if len(opts.TargetApps) > 0 || len(opts.SkipApps) > 0 || opts.SkipAllApps {
 					return merry.New("merge-mode already implies which apps are to be targeted/skipped")

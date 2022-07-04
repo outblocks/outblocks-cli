@@ -38,6 +38,10 @@ type serviceAppInfo struct {
 	App config.ServiceApp
 }
 
+type functionAppInfo struct {
+	App config.FunctionApp
+}
+
 type AppAddOptions struct {
 	Overwrite bool
 
@@ -54,6 +58,10 @@ type AppAddOptions struct {
 	StaticBuildCommand string
 	StaticBuildDir     string
 	StaticRouting      string
+
+	// Function App Options.
+	FunctionRuntime    string
+	FunctionEntrypoint string
 }
 
 func (o *AppAddOptions) Validate() error {
@@ -92,9 +100,11 @@ func (m *AppManager) Add(ctx context.Context, opts *AppAddOptions) error {
 	case *serviceAppInfo:
 		tmpl = templates.ServiceAppYAMLTemplate()
 		path = app.App.AppDir
-		// TODO: add templates for function app
+	case *functionAppInfo:
+		tmpl = templates.FunctionAppYAMLTemplate()
+		path = app.App.AppDir
 	default:
-		return merry.Errorf("unsupported app type (WIP)")
+		return merry.Errorf("unsupported app type")
 	}
 
 	var appYAML bytes.Buffer
@@ -379,9 +389,10 @@ func (m *AppManager) promptAdd(opts *AppAddOptions) (interface{}, error) {
 		return m.promptAddStatic(opts)
 	case config.AppTypeService:
 		return m.promptAddService(opts)
-		// TODO: add adding function app
+	case config.AppTypeFunction:
+		return m.promptAddFunction(opts)
 	default:
-		return nil, merry.Errorf("unsupported app type (WIP)")
+		return nil, merry.Errorf("unsupported app type")
 	}
 }
 
@@ -539,6 +550,59 @@ func (m *AppManager) promptAddService(opts *AppAddOptions) (*serviceAppInfo, err
 					Dockerfile:    "Dockerfile",
 					DockerContext: ".",
 				},
+			},
+		},
+	}, nil
+}
+
+func (m *AppManager) promptAddFunction(opts *AppAddOptions) (*functionAppInfo, error) { // nolint: unparam
+	var qs []*survey.Question
+
+	if opts.FunctionRuntime == "" {
+		qs = append(qs, &survey.Question{
+			Name:   "FunctionRuntime",
+			Prompt: &survey.Input{Message: "Function runtime (the runtime in which the function is going to run):"},
+		})
+	} else {
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Function runtime:"), pterm.Cyan(opts.FunctionRuntime))
+	}
+
+	if opts.FunctionEntrypoint == "" {
+		qs = append(qs, &survey.Question{
+			Name: "FunctionEntrypoint",
+			Prompt: &survey.Input{
+				Message: "Function entrypoint (name of the function that will be executed when the function is triggered):",
+				Default: opts.Name,
+			},
+		})
+	} else {
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Function entrypoint:"), pterm.Cyan(opts.FunctionEntrypoint))
+	}
+
+	if len(qs) != 0 {
+		err := survey.Ask(qs, opts)
+		if err != nil {
+			if err == terminal.InterruptErr {
+				return nil, errAppAddCanceled
+			}
+
+			return nil, err
+		}
+	}
+	return &functionAppInfo{
+		App: config.FunctionApp{
+			BasicApp: config.BasicApp{
+				AppName: opts.Name,
+				AppType: config.AppTypeService,
+				AppURL:  opts.URL,
+				AppDir:  opts.Dir,
+				AppRun: &config.AppRunInfo{
+					Command: command.NewStringCommandFromString(opts.RunCommand),
+				},
+			},
+			FunctionAppProperties: types.FunctionAppProperties{
+				Runtime:    opts.FunctionRuntime,
+				Entrypoint: opts.FunctionEntrypoint,
 			},
 		},
 	}, nil

@@ -20,6 +20,8 @@ var (
 	StaticAppYAML string
 	//go:embed app-service.yaml.tpl
 	ServiceAppYAML string
+	//go:embed app-function.yaml.tpl
+	FunctionAppYAML string
 )
 
 func funcMap() template.FuncMap {
@@ -59,8 +61,9 @@ func lazyInit(name, tmpl string) func() *template.Template {
 }
 
 var (
-	ProjectYAMLTemplate    = lazyInit("project.yaml", ProjectYAML)
-	ValuesYAMLTemplate     = lazyInit("values.yaml", ValuesYAML)
-	StaticAppYAMLTemplate  = lazyInit("static_app.yaml", StaticAppYAML)
-	ServiceAppYAMLTemplate = lazyInit("service_app.yaml", ServiceAppYAML)
+	ProjectYAMLTemplate     = lazyInit("project.yaml", ProjectYAML)
+	ValuesYAMLTemplate      = lazyInit("values.yaml", ValuesYAML)
+	StaticAppYAMLTemplate   = lazyInit("static_app.yaml", StaticAppYAML)
+	ServiceAppYAMLTemplate  = lazyInit("service_app.yaml", ServiceAppYAML)
+	FunctionAppYAMLTemplate = lazyInit("function_app.yaml", FunctionAppYAML)
 )

@@ -122,10 +122,15 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 	f.StringVarP(&addOpts.Dir, "dir", "d", "", "application dir, defaults to: <app_type>/<app_name>")
 	f.StringVar(&addOpts.URL, "url", "", "application URL")
 	f.StringVar(&addOpts.Type, "type", "", "application type (options: static, function, service)")
-	f.StringVar(&addOpts.StaticBuildCommand, "static-build-command", "", "static app build command")
-	f.StringVar(&addOpts.StaticBuildDir, "static-build-dir", "", "static app build dir")
 	f.StringVar(&addOpts.RunCommand, "run-command", "", "app dev run command")
-	f.StringVar(&addOpts.StaticRouting, "static-routing", config.StaticAppRoutingReact, fmt.Sprintf("static app routing (options: %s)", strings.Join(config.StaticAppRoutings, ", ")))
+
+	f.StringVar(&addOpts.StaticBuildCommand, "static-build-command", "", "(static only) static app build command")
+	f.StringVar(&addOpts.StaticBuildDir, "static-build-dir", "", "(static only) static app build dir")
+	f.StringVar(&addOpts.StaticRouting, "static-routing", config.StaticAppRoutingReact, fmt.Sprintf("(static only) static app routing (options: %s)", strings.Join(config.StaticAppRoutings, ", ")))
+
+	f.StringVar(&addOpts.FunctionRuntime, "function-runtime", "", "(function only) the runtime in which the function is going to run")
+	f.StringVar(&addOpts.FunctionEntrypoint, "function-entrypoint", "", "(function only) name of the function that will be executed when the function is triggered")
+
 	f.StringVarP(&addOpts.OutputDir, "output-dir", "o", "", "output dir, defaults to application dir")
 	f.StringVar(&addOpts.DeployPlugin, "deploy-plugin", "", "deploy plugin, defaults to first available")
 	f.StringVar(&addOpts.RunPlugin, "run-plugin", "direct", "deploy plugin, defaults to direct run")

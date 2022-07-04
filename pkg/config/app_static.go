@@ -60,7 +60,6 @@ func LoadStaticAppData(projectName, path string, n ast.Node) (*StaticApp, error)
 func (s *StaticApp) Validate() error {
 	return validation.ValidateStruct(s,
 		validation.Field(&s.Routing, validation.In(util.InterfaceSlice(StaticAppRoutings)...)),
-		validation.Field(&s.AppURL, validation.Required),
 	)
 }
 

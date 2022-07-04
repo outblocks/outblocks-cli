@@ -17,6 +17,8 @@ url: {{.App.AppURL}}
 # Path redirect rewrites URL to specified path. URL path from 'url' field will be stripped and replaced with value below.
 # '/' should be fine for most apps.
 path_redirect: /
+# If app is not meant to be accessible without auth, mark it as private.
+# private: true
 
 # Build defines where static files are stored and optionally which command should be used to generate them.
 build:

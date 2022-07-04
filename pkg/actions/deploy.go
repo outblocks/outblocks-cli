@@ -55,6 +55,7 @@ type Deploy struct {
 }
 
 type DeployOptions struct {
+	BuildCacheDir        string
 	Verify               bool
 	Destroy              bool
 	SkipBuild            bool
@@ -819,10 +820,11 @@ func (d *Deploy) showAppState(appState *apiv1.AppState, appNameStyle, appURLStyl
 		case appState.Dns.InternalIp != "":
 			privateURL = appState.Dns.InternalIp
 		default:
-			return
 		}
 
-		appInfo = append(appInfo, fmt.Sprintf("%s %s", pterm.Gray("private URL"), appURLStyle.Sprint(privateURL)))
+		if privateURL != "" {
+			appInfo = append(appInfo, fmt.Sprintf("%s %s", pterm.Gray("private URL"), appURLStyle.Sprint(privateURL)))
+		}
 	}
 
 	d.log.Printf("%s (%s)\n  %s\n", appNameStyle.Sprint(app.Name), app.Type, strings.Join(appInfo, "\n  "))

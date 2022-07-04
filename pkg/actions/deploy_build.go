@@ -3,6 +3,7 @@ package actions
 import (
 	"bufio"
 	"context"
+	"encoding/hex"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"github.com/ansel1/merry/v2"
 	dockertypes "github.com/docker/docker/api/types"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/outblocks/outblocks-cli/internal/fileutil"
 	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
@@ -211,6 +213,31 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 	return nil
 }
 
+func (d *Deploy) buildFunctionApp(ctx context.Context, app *config.FunctionApp, eval *util.VarEvaluator) error {
+	out := filepath.Join(d.opts.BuildCacheDir, fmt.Sprintf("%s.zip", app.ID()))
+
+	patterns := []string{
+		"{*.outblocks.yaml,*.outblocks.yml,outblocks.yaml,outblocks.yml,.git,.gitignore,.DS_Store,npm-debug.log}",
+	}
+
+	patterns = append(patterns, app.Package.Patterns...)
+
+	err := fileutil.ArchiveDir(app.Dir(), out, patterns)
+	if err != nil {
+		return merry.Errorf("error creating archive for %s app: %s: %w", app.Type(), app.Name(), err)
+	}
+
+	hash, err := util.HashFile(out)
+	if err != nil {
+		return merry.Errorf("error hashing created archive for %s app: %s: %w", app.Type(), app.Name(), err)
+	}
+
+	app.AppBuild.LocalArchivePath = out
+	app.AppBuild.LocalArchiveHash = hex.EncodeToString(hash)
+
+	return nil
+}
+
 type appPrepare struct {
 	app     config.App
 	prepare func() error
@@ -364,7 +391,6 @@ func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppS
 	for i, app := range apps {
 		eval := util.NewVarEvaluator(types.VarsForApp(appVars, appTypes[i], nil))
 
-		// TODO: add build app function
 		switch app.Type() {
 		case config.AppTypeStatic:
 			a := app.(*config.StaticApp)
@@ -387,6 +413,14 @@ func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppS
 			builders = append(builders, &appBuilder{
 				app:   a,
 				build: func() error { return d.buildServiceApp(ctx, a, eval) },
+			})
+
+		case config.AppTypeFunction:
+			a := app.(*config.FunctionApp)
+
+			builders = append(builders, &appBuilder{
+				app:   a,
+				build: func() error { return d.buildFunctionApp(ctx, a, eval) },
 			})
 		}
 	}
