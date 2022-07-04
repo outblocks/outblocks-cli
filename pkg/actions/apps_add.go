@@ -589,6 +589,7 @@ func (m *AppManager) promptAddFunction(opts *AppAddOptions) (*functionAppInfo, e
 			return nil, err
 		}
 	}
+
 	return &functionAppInfo{
 		App: config.FunctionApp{
 			BasicApp: config.BasicApp{
