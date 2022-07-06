@@ -1,5 +1,15 @@
 # Outblocks CLI Changelog
 
+## [v0.1.119](https://github.com/outblocks/outblocks-cli/compare/v0.1.118...v0.1.119)
+
+> 2022-07-06
+
+### BUG FIXES
+
+[`a39b72c`](https://github.com/outblocks/outblocks-cli/commit/a39b72c171308bf598d3d8860ad46ec1ebfe72af) lint
+
+[`0e5a5f8`](https://github.com/outblocks/outblocks-cli/commit/0e5a5f8213c3c4f07a9e79c492dba709e2f54ea0) dns applying/destroying and progress bar improvements
+
 ## [v0.1.118](https://github.com/outblocks/outblocks-cli/compare/v0.1.117...v0.1.118)
 
 > 2022-07-06
