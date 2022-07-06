@@ -736,6 +736,7 @@ func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *sta
 		if err == nil {
 			prog, cb := applyProgress(d.log, deployChanges)
 			err = d.applyDeploy(context.Background(), state, planDeployMap, destroy, cb)
+
 			prog.Stop()
 		}
 
@@ -744,6 +745,7 @@ func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *sta
 		if err == nil {
 			prog, cb := applyProgress(d.log, dnsChanges)
 			err = d.applyDNS(context.Background(), state, planDNSMap, destroy, cb)
+
 			prog.Stop()
 		}
 

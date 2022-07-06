@@ -345,11 +345,11 @@ func applyActionType(act *apiv1.ApplyAction) string {
 	return "unknown"
 }
 
-func applyProgress(log logger.Logger, changes []*change) (logger.Progressbar, func(*apiv1.ApplyAction)) {
+func applyProgress(log logger.Logger, changes []*change) (progressbar logger.Progressbar, callback func(*apiv1.ApplyAction)) {
 	total := calculateTotalSteps(changes)
 
 	// Create progressbar as fork from the default progressbar.
-	p, _ := log.ProgressBar().WithTotal(total).WithTitle("Applying...").Start()
+	progressbar, _ = log.ProgressBar().WithTotal(total).WithTitle("Applying...").Start()
 
 	startMap := make(map[applyTargetKey]*applyTarget)
 
@@ -379,7 +379,7 @@ func applyProgress(log logger.Logger, changes []*change) (logger.Progressbar, fu
 
 	timeInfo := pterm.NewStyle(pterm.FgWhite, pterm.Reset)
 
-	return p, func(act *apiv1.ApplyAction) {
+	return progressbar, func(act *apiv1.ApplyAction) {
 		key := applyTargetKey{ns: act.Namespace, typ: act.ObjectType, obj: act.ObjectId}
 
 		if act.Progress == 0 {
@@ -409,7 +409,7 @@ func applyProgress(log logger.Logger, changes []*change) (logger.Progressbar, fu
 		log.Successln(success)
 
 		if act.Progress == act.Total || act.Type == apiv1.PlanType_PLAN_TYPE_RECREATE {
-			p.Increment()
+			progressbar.Increment()
 		}
 	}
 }
