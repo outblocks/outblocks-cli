@@ -1,5 +1,17 @@
 # Outblocks CLI Changelog
 
+## [v0.1.118](https://github.com/outblocks/outblocks-cli/compare/v0.1.117...v0.1.118)
+
+> 2022-07-06
+
+### BUG FIXES
+
+[`09e7b45`](https://github.com/outblocks/outblocks-cli/commit/09e7b45d033ceedd5c46ff41514bf443b081e3b5) pull error handling
+
+### FEATURES
+
+[`7dba6a3`](https://github.com/outblocks/outblocks-cli/commit/7dba6a3da6eb13630bec20e66ca17a5fdaa6f0fe) ordered plugin secrets
+
 ## [v0.1.117](https://github.com/outblocks/outblocks-cli/compare/v0.1.116...v0.1.117)
 
 > 2022-07-04
