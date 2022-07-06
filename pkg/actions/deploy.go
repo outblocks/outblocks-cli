@@ -652,7 +652,7 @@ func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *sta
 	}
 	stateBefore := state.DeepCopy()
 
-	if d.opts.SkipDNS {
+	if d.opts.SkipDNS || d.opts.Destroy {
 		domains = state.DomainsInfo
 	} else {
 		domains = computeDomainsInfo(d.cfg, state)
@@ -706,7 +706,7 @@ func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *sta
 		return nil, err
 	}
 
-	planDNSMap := calculatePlanDNSMap(d.cfg, state.DNSRecords, state.DomainsInfo)
+	planDNSMap := calculatePlanDNSMap(d.cfg, state.DNSRecords, state.DomainsInfo, destroy)
 
 	planDNSRetMap, err := d.planDNS(ctx, state, planDNSMap, verify, destroy)
 	if err != nil {
@@ -734,11 +734,17 @@ func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *sta
 		err = d.preApplyHook(ctx, state, apps, deps, verify, destroy)
 
 		if err == nil {
-			err = d.applyDeploy(context.Background(), state, planDeployMap, destroy, applyProgress(d.log, deployChanges))
+			prog, cb := applyProgress(d.log, deployChanges)
+			err = d.applyDeploy(context.Background(), state, planDeployMap, destroy, cb)
+			prog.Stop()
 		}
 
+		planDNSMap := calculatePlanDNSMap(d.cfg, state.DNSRecords, state.DomainsInfo, destroy)
+
 		if err == nil {
-			err = d.applyDNS(context.Background(), state, planDNSMap, destroy, applyProgress(d.log, dnsChanges))
+			prog, cb := applyProgress(d.log, dnsChanges)
+			err = d.applyDNS(context.Background(), state, planDNSMap, destroy, cb)
+			prog.Stop()
 		}
 
 		if err == nil {
@@ -1114,9 +1120,24 @@ func calculatePlanDeployMap(cfg *config.Project, apps []*apiv1.AppPlan, deps []*
 	return addPlanTargetAndSkipApps(planMap, targetAppIDs, skipAppIDs), nil
 }
 
-func calculatePlanDNSMap(cfg *config.Project, records statefile.DNSRecordMap, domains []*apiv1.DomainInfo) map[*plugins.Plugin]*planDNSParams {
+func calculatePlanDNSMap(cfg *config.Project, records statefile.DNSRecordMap, domains []*apiv1.DomainInfo, destroy bool) map[*plugins.Plugin]*planDNSParams {
 	planMap := make(map[*plugins.Plugin]*planDNSParams)
 	matcher := types.NewDomainInfoMatcher(domains)
+
+	if destroy {
+		for _, d := range domains {
+			plug := cfg.FindLoadedPlugin(d.DnsPlugin)
+			if plug == nil {
+				continue
+			}
+
+			planMap[plug] = &planDNSParams{
+				args: plug.CommandArgs(deployCommand),
+			}
+		}
+
+		return planMap
+	}
 
 	for rec, val := range records {
 		m := matcher.Match(rec.Record)

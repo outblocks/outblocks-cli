@@ -25,7 +25,7 @@ func (p *ProgressbarPrinter) WithTitle(name string) Progressbar {
 	}
 }
 
-// // WithTotal sets the total value of the ProgressbarPrinter.
+// WithTotal sets the total value of the ProgressbarPrinter.
 func (p *ProgressbarPrinter) WithTotal(total int) Progressbar {
 	return &ProgressbarPrinter{
 		ProgressbarPrinter: p.ProgressbarPrinter.WithTotal(total),
@@ -166,23 +166,23 @@ func (p *ProgressbarPrinter) Add(count int) {
 	p.m.Lock()
 	defer p.m.Unlock()
 
+	if p.Total == 0 {
+		return
+	}
+
+	p.Current += count
+
+	if p.Current > p.Total {
+		p.Total = p.Current
+	}
+
 	if !util.IsTerminal() {
-		if p.Total == 0 {
-			return
-		}
-
-		p.Current += count
-
-		if p.Current > p.Total {
-			return
-		}
-
 		p.updateProgressRaw()
 
 		return
 	}
 
-	p.ProgressbarPrinter.Add(count)
+	p.ProgressbarPrinter.Add(0)
 }
 
 // Add to current value.

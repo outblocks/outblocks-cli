@@ -345,7 +345,7 @@ func applyActionType(act *apiv1.ApplyAction) string {
 	return "unknown"
 }
 
-func applyProgress(log logger.Logger, changes []*change) func(*apiv1.ApplyAction) {
+func applyProgress(log logger.Logger, changes []*change) (logger.Progressbar, func(*apiv1.ApplyAction)) {
 	total := calculateTotalSteps(changes)
 
 	// Create progressbar as fork from the default progressbar.
@@ -379,7 +379,7 @@ func applyProgress(log logger.Logger, changes []*change) func(*apiv1.ApplyAction
 
 	timeInfo := pterm.NewStyle(pterm.FgWhite, pterm.Reset)
 
-	return func(act *apiv1.ApplyAction) {
+	return p, func(act *apiv1.ApplyAction) {
 		key := applyTargetKey{ns: act.Namespace, typ: act.ObjectType, obj: act.ObjectId}
 
 		if act.Progress == 0 {
