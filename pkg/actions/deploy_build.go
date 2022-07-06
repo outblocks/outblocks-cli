@@ -259,7 +259,7 @@ func (d *Deploy) prepareApps(ctx context.Context) error {
 		a := app.(*config.ServiceApp)
 		isCustom := a.ServiceAppProperties.Build.DockerImage != ""
 
-		if !d.opts.SkipBuild && !a.ServiceAppProperties.Build.SkipBuild {
+		if d.opts.Destroy || (!d.opts.SkipBuild && !a.ServiceAppProperties.Build.SkipBuild) {
 			continue
 		}
 
