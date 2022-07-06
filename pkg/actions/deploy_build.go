@@ -287,8 +287,6 @@ func (d *Deploy) prepareApps(ctx context.Context) error {
 				err = d.runAppCommand(ctx, cmd, app)
 				if err != nil {
 					d.printAppOutput(app, fmt.Sprintf("error pulling custom image: %s", err), true)
-
-					return nil
 				}
 
 				insp, _, err := cli.ImageInspectWithRaw(ctx, a.AppBuild.LocalDockerImage)
