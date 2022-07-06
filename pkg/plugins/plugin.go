@@ -7,11 +7,13 @@ import (
 	"reflect"
 	"runtime"
 
+	"github.com/23doors/go-yaml"
 	"github.com/Masterminds/semver"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/outblocks/outblocks-cli/pkg/lockfile"
 	"github.com/outblocks/outblocks-cli/pkg/logger"
 	"github.com/outblocks/outblocks-cli/pkg/plugins/client"
+	"github.com/outblocks/outblocks-plugin-go/util"
 	"github.com/outblocks/outblocks-plugin-go/util/command"
 )
 
@@ -30,7 +32,7 @@ type Plugin struct {
 	SecretsTypes   []string                          `json:"secrets_types"`
 	SupportedTypes []*PluginType                     `json:"supported_types"`
 	Commands       map[string]*PluginCommand         `json:"commands"`
-	Secrets        map[string]*PluginSecret          `json:"secrets"`
+	SecretsRepr    yaml.MapSlice                     `json:"secrets"`
 
 	Dir      string          `json:"-"`
 	CacheDir string          `json:"-"`
@@ -40,6 +42,7 @@ type Plugin struct {
 	source   string
 	actions  []Action
 	client   *client.Client
+	secrets  []*PluginSecret
 }
 
 type Action int
@@ -57,6 +60,7 @@ const (
 const DefaultPriority = 1000
 
 type PluginSecret struct {
+	Key         string `json:"-"`
 	Description string `json:"description"`
 }
 
@@ -69,6 +73,34 @@ func (p *Plugin) Validate() error {
 		validation.Field(&p.Commands),
 		validation.Field(&p.SupportedTypes),
 	)
+}
+
+func (p *Plugin) Secrets() []*PluginSecret {
+	if p.secrets != nil {
+		return p.secrets
+	}
+
+	p.secrets = make([]*PluginSecret, len(p.SecretsRepr))
+
+	for i, v := range p.SecretsRepr {
+		val, ok := v.Value.(map[string]interface{})
+		if !ok {
+			panic(fmt.Sprintf("plugin '%s': invalid secrets declaration", p.Name))
+		}
+
+		o := &PluginSecret{
+			Key: fmt.Sprintf("%s", v.Key),
+		}
+
+		err := util.MapstructureJSONDecode(val, o)
+		if err != nil {
+			panic(fmt.Sprintf("plugin '%s': error decoding service app properties: %s", p.Name, err))
+		}
+
+		p.secrets[i] = o
+	}
+
+	return p.secrets
 }
 
 func (p *Plugin) Locked() *lockfile.Plugin {

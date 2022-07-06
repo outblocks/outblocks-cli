@@ -57,8 +57,11 @@ func (m *SecretsManager) View(ctx context.Context) error {
 		return err
 	}
 
-	m.log.Successf("Secrets loaded!\n")
-	m.log.Println(out)
+	if out == "" {
+		m.log.Successf("Secrets are empty!\n")
+	} else {
+		m.log.Println(out)
+	}
 
 	return nil
 }
@@ -179,9 +182,9 @@ func (m *SecretsManager) getSecretsValues(ctx context.Context) (vals map[string]
 	}
 
 	for _, plug := range m.cfg.LoadedPlugins() {
-		for k := range plug.Secrets {
-			if _, ok := vals[k]; !ok {
-				vals[k] = ""
+		for _, s := range plug.Secrets() {
+			if _, ok := vals[s.Key]; !ok {
+				vals[s.Key] = ""
 			}
 		}
 	}
@@ -198,12 +201,12 @@ func (m *SecretsManager) generateSecretsYAMLString(ctx context.Context, vals map
 	pluginSecrets := make(map[string][]*plugins.PluginSecret)
 
 	for _, plug := range m.cfg.LoadedPlugins() {
-		for k, v := range plug.Secrets {
-			if _, ok := pluginSecrets[k]; !ok {
-				pluginSecretKeys = append(pluginSecretKeys, k)
+		for _, v := range plug.Secrets() {
+			if _, ok := pluginSecrets[v.Key]; !ok {
+				pluginSecretKeys = append(pluginSecretKeys, v.Key)
 			}
 
-			pluginSecrets[k] = append(pluginSecrets[k], v)
+			pluginSecrets[v.Key] = append(pluginSecrets[v.Key], v)
 		}
 	}
 
