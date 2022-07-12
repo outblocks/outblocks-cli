@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -106,14 +105,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error { // nolint: gocyclo
 		e.opts.valueOpts.ValueFiles[i] = strings.ReplaceAll(v, "<env>", e.opts.env)
 	}
 
-	v, err := e.opts.valueOpts.MergeValues(ctx, filepath.Dir(cfgPath), getter.All())
-	if err != nil {
-		if isHelp && !e.rootCmd.PersistentFlags().Lookup("values").Changed {
-			return nil
-		}
-
-		return merry.Errorf("cannot load values files: %w", err)
-	}
+	v, valuesLoadErr := e.opts.valueOpts.MergeValues(ctx, filepath.Dir(cfgPath), getter.All())
 
 	vals := map[string]interface{}{
 		"var":     v,
@@ -122,11 +114,9 @@ func (e *Executor) commandPreRun(ctx context.Context) error { // nolint: gocyclo
 	}
 
 	// Load essential config file first.
-	if err := e.loadProject(ctx, cfgPath, e.srv.Addr().String(), vals, LoadProjectOptions{
+	configPreloadErr := e.loadProject(ctx, cfgPath, e.srv.Addr().String(), vals, LoadProjectOptions{
 		Mode: config.LoadModeEssential,
-	}, config.LoadModeSkip); err != nil && (!isHelp || !errors.Is(err, config.ErrProjectConfigNotFound)) {
-		return err
-	}
+	}, config.LoadModeSkip)
 
 	// Augment/load new commands.
 	err = e.addPluginsCommands()
@@ -142,6 +132,17 @@ func (e *Executor) commandPreRun(ctx context.Context) error { // nolint: gocyclo
 	loadProjectOptions.Mode = loadModeFromAnnotation(cmd.Annotations[cmdProjectLoadModeAnnotation])
 	loadProjectOptions.SkipCheck = cmd.Annotations[cmdProjectSkipCheckAnnotation] == "1"
 	loadProjectOptions.SkipLoadPlugins = cmd.Annotations[cmdProjectSkipLoadPluginsAnnotation] == "1"
+
+	switch {
+	case loadProjectOptions.Mode == config.LoadModeSkip:
+		return nil
+	case valuesLoadErr != nil:
+		return valuesLoadErr
+	case configPreloadErr != nil:
+		return configPreloadErr
+	case isHelp:
+		return nil
+	}
 
 	loadAppsMode = loadModeFromAnnotation(cmd.Annotations[cmdAppsLoadModeAnnotation])
 
