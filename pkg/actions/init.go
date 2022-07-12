@@ -124,6 +124,16 @@ func (d *Init) promptEnv(ctx context.Context, cfg *projectInit, env string, inpu
 	}
 
 	if len(cfg.DNSTemplate) == 0 {
+		// Add DNS.
+		if len(cfg.DNSTemplate) == 0 {
+			cfg.DNSTemplate = append(cfg.DNSTemplate, &config.DNS{
+				Domains: []string{
+					"*.${var.base_url}",
+					"${var.base_url}",
+				},
+			})
+		}
+
 		if vals.DNSDomain == "" {
 			err := survey.AskOne(&survey.Input{
 				Message: "Main domain you plan to use for deployments:",
@@ -538,7 +548,7 @@ func (d *Init) prompt(ctx context.Context, cfg *projectInit) error { // nolint: 
 			runPlugins = append(runPlugins, plug.Name)
 		}
 
-		if plug.HasAction(plugins.ActionDeploy) {
+		if plug.HasAction(plugins.ActionDeploy) && (len(plug.Supports) > 0 || len(plug.SupportedTypes) > 0) {
 			deployPlugins = append(deployPlugins, plug.Name)
 		}
 
@@ -621,16 +631,6 @@ func (d *Init) prompt(ctx context.Context, cfg *projectInit) error { // nolint: 
 
 	cfg.State = &config.State{
 		Type: d.opts.statePlugin,
-	}
-
-	// Add DNS.
-	if len(cfg.DNSTemplate) == 0 {
-		cfg.DNSTemplate = append(cfg.DNSTemplate, &config.DNS{
-			Domains: []string{
-				"*.${var.base_url}",
-				"${var.base_url}",
-			},
-		})
 	}
 
 	return nil

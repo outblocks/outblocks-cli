@@ -24,7 +24,7 @@ path_redirect: /
 build:
 {{- if .App.Build.Command }}
   # Optional command to be run to generate output files.
-  command: {{.App.Build.Command}}
+  command: {{.App.Build.Command | toJson }}
 {{ end }}
   # Directory where generated files will end up.
   dir: {{.App.Build.Dir}}
@@ -38,7 +38,7 @@ run:
   plugin: {{.App.RunInfo.Plugin}}
 {{- if .App.RunInfo.Command }}
   # Command to be run to for dev mode.
-  command: {{.App.RunInfo.Command}}
+  command: {{.App.RunInfo.Command | toJson }}
 {{ end }}
   # Additional environment variables to pass.
   # env:

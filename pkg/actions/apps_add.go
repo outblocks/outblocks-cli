@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -237,6 +238,8 @@ func (m *AppManager) promptAddBasic(opts *AppAddOptions) error { // nolint: gocy
 		}
 	}
 
+	opts.Dir, _ = filepath.Abs(opts.Dir)
+
 	// 3rd pass - get output dir, plugin info, URL.
 	qs = []*survey.Question{}
 
@@ -340,6 +343,8 @@ func (m *AppManager) promptAddBasic(opts *AppAddOptions) error { // nolint: gocy
 		return errAppAddCanceled
 	}
 
+	opts.OutputDir, _ = filepath.Abs(opts.OutputDir)
+
 	// Cleanup.
 	if filepath.IsAbs(opts.Dir) {
 		opts.Dir, _ = filepath.Rel(m.cfg.Dir, opts.Dir)
@@ -406,6 +411,8 @@ func validateAppStaticBuildDir(cfg *config.Project, opts *AppAddOptions) func(va
 		if !fileutil.IsRelativeSubdir(cfg.Dir, str) {
 			return merry.Errorf("build dir must be somewhere in current project config location tree")
 		}
+
+		fmt.Println(str, "--", opts.OutputDir, "--", fileutil.IsRelativeSubdir(str, opts.OutputDir))
 
 		if fileutil.IsRelativeSubdir(str, opts.OutputDir) {
 			return merry.Errorf("build dir cannot be a parent of output dir")
