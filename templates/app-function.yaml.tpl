@@ -35,7 +35,7 @@ run:
   plugin: {{.App.RunInfo.Plugin}}
 {{- if .App.RunInfo.Command }}
   # Command to be run to for dev mode.
-  command: {{.App.RunInfo.Command}}
+  command: {{.App.RunInfo.Command | toJson }}
 {{ end }}
   # Additional environment variables to pass.
   # env:
