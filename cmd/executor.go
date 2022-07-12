@@ -69,7 +69,7 @@ func setupEnvVars(env *cli.Environment) {
 	env.AddVarWithDefault("log_level", "set logging level (options: debug, notice, info, warn, error)", "info")
 }
 
-func (e *Executor) commandPreRun(ctx context.Context) error { // nolint: gocyclo
+func (e *Executor) commandPreRun(ctx context.Context) error {
 	var (
 		loadProjectOptions LoadProjectOptions
 		loadAppsMode       config.LoadMode
