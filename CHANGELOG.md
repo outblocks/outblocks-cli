@@ -1,5 +1,17 @@
 # Outblocks CLI Changelog
 
+## [v0.1.120](https://github.com/outblocks/outblocks-cli/compare/v0.1.119...v0.1.120)
+
+> 2022-07-12
+
+### BUG FIXES
+
+[`8666c3e`](https://github.com/outblocks/outblocks-cli/commit/8666c3e0c3e199ca886ac1f6e301c39e5b705df7) lint
+
+[`973fbce`](https://github.com/outblocks/outblocks-cli/commit/973fbce506e0fd6400da3be4a63bade5183051fb) commands without values
+
+[`7ca2875`](https://github.com/outblocks/outblocks-cli/commit/7ca2875617e77a611b15f6371d80e7ae619ac23a) destroy with prepare apps
+
 ## [v0.1.119](https://github.com/outblocks/outblocks-cli/compare/v0.1.118...v0.1.119)
 
 > 2022-07-06
