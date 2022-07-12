@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.122](https://github.com/outblocks/outblocks-cli/compare/v0.1.121...v0.1.122)
+
+> 2022-07-12
+
+### BUG FIXES
+
+[`b76a4ea`](https://github.com/outblocks/outblocks-cli/commit/b76a4eabbd5f0aac14edeb42db7be8f621feb5b3) marshaling with empty command
+
 ## [v0.1.121](https://github.com/outblocks/outblocks-cli/compare/v0.1.120...v0.1.121)
 
 > 2022-07-12
