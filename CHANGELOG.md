@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.121](https://github.com/outblocks/outblocks-cli/compare/v0.1.120...v0.1.121)
+
+> 2022-07-12
+
+### BUG FIXES
+
+[`38012ef`](https://github.com/outblocks/outblocks-cli/commit/38012eff3c894b5560f7dfcdb8935b22d0359176) app adding and init
+
 ## [v0.1.120](https://github.com/outblocks/outblocks-cli/compare/v0.1.119...v0.1.120)
 
 > 2022-07-12
