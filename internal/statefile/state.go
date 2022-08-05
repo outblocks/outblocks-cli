@@ -99,8 +99,9 @@ type StateData struct {
 	Dependencies map[string]*apiv1.DependencyState `json:"dependencies"`
 	Plugins      map[string]*PluginState           `json:"plugins_state"` // plugin name -> object -> state
 
-	DNSRecords  DNSRecordMap        `json:"dns_records"`
-	DomainsInfo []*apiv1.DomainInfo `json:"domains_info"`
+	DNSRecords  DNSRecordMap          `json:"dns_records"`
+	DomainsInfo []*apiv1.DomainInfo   `json:"domains_info"`
+	Monitoring  *apiv1.MonitoringData `json:"monitoring"`
 }
 
 func NewStateData() *StateData {

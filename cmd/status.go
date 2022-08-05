@@ -22,6 +22,7 @@ func (e *Executor) newStatusCmd() *cobra.Command {
 				SkipAllApps:     true,
 				SkipBuild:       true,
 				SkipDNS:         true,
+				SkipMonitoring:  true,
 				SkipApply:       true,
 				SkipDiff:        true,
 				SkipStateCreate: true,

@@ -27,6 +27,10 @@
           "description": "Project-wide dependencies to provision.",
           "$ref": "#/definitions/Dependencies"
         },
+        "monitoring": {
+          "description": "Project monitoring setup.",
+          "$ref": "#/definitions/Monitoring"
+        },
         "plugins": {
           "description": "Project-wide plugins.",
           "type": "array",
@@ -317,6 +321,129 @@
         }
       }
     },
+    "Monitoring": {
+      "title": "Monitoring",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "plugin": {
+          "description": "Monitoring plugin override. Defaults to first supported plugin available.",
+          "type": "string"
+        },
+        "channels": {
+          "description": "Monitoring notification channels.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MonitoringChannel"
+          }
+        },
+        "targets": {
+          "description": "Monitoring targets.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/MonitoringTarget"
+          }
+        }
+      }
+    },
+    "MonitoringChannel": {
+      "title": "Monitoring channels",
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "type": {
+          "description": "Notification channel type. Possible values: slack, email.",
+          "type": "string",
+          "enum": [
+            "slack",
+            "email"
+          ]
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "slack"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "token": {
+                "description": "Bot user oauth token used for slack notification.",
+                "type": "string"
+              },
+              "channel": {
+                "description": "Channel used for slack notification.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "token",
+              "channel"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "email"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "email": {
+                "description": "Email used for email channel type.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "email"
+            ]
+          }
+        }
+      ]
+    },
+    "MonitoringTarget": {
+      "title": "Monitoring target",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "url": {
+          "description": "Target full url.",
+          "type": "string"
+        },
+        "frequency": {
+          "description": "Check frequency in minutes. Defaults to 5 minutes.",
+          "type": "integer",
+          "enum": [
+            1,
+            5,
+            10,
+            15
+          ]
+        },
+        "locations": {
+          "description": "Check locations to use. Defaults to 'all'.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
     "Plugin": {
       "title": "Plugin",
       "type": "object",
@@ -366,7 +493,7 @@
           "type": "string"
         }
       }
-  },
+    },
     "DefaultDNS": {
       "title": "DNS defaults",
       "type": "object",

@@ -76,6 +76,14 @@ func (p *Project) Normalize() error {
 			return err
 		}
 
+		if p.Monitoring == nil {
+			p.Monitoring = &Monitoring{}
+		}
+
+		if err := p.Monitoring.Normalize(p); err != nil {
+			return err
+		}
+
 		return nil
 	}()
 
@@ -128,6 +136,10 @@ func (p *Project) FullCheck() error {
 		}
 
 		if err := p.Secrets.Check(p); err != nil {
+			return err
+		}
+
+		if err := p.Monitoring.Check(p); err != nil {
 			return err
 		}
 

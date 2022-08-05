@@ -92,6 +92,10 @@ func (c *Client) dnsPlugin() apiv1.DNSPluginServiceClient {
 	return apiv1.NewDNSPluginServiceClient(c.conn)
 }
 
+func (c *Client) monitoringPlugin() apiv1.MonitoringPluginServiceClient {
+	return apiv1.NewMonitoringPluginServiceClient(c.conn)
+}
+
 func (c *Client) deployHook() apiv1.DeployHookServiceClient {
 	return apiv1.NewDeployHookServiceClient(c.conn)
 }

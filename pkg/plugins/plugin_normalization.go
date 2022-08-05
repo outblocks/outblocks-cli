@@ -17,6 +17,7 @@ var (
 		"state":       ActionState,
 		"deploy_hook": ActionDeployHook,
 		"secrets":     ActionSecrets,
+		"monitoring":  ActionMonitoring,
 	}
 	pluginTypesIgnored = map[string]struct{}{
 		"locking": {},

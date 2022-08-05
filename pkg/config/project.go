@@ -84,6 +84,7 @@ type Project struct {
 	Dependencies map[string]*Dependency `json:"dependencies,omitempty"`
 	Plugins      []*Plugin              `json:"plugins,omitempty"`
 	DNS          []*DNS                 `json:"dns,omitempty"`
+	Monitoring   *Monitoring            `json:"monitoring,omitempty"`
 	Defaults     *Defaults              `json:"defaults,omitempty"`
 
 	appsIDMap        map[string]App
@@ -105,6 +106,7 @@ func (p *Project) ID() string {
 func (p *Project) Validate() error {
 	return validation.ValidateStruct(p,
 		validation.Field(&p.State, validation.Required),
+		validation.Field(&p.Monitoring),
 		validation.Field(&p.Dependencies),
 	)
 }

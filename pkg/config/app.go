@@ -60,9 +60,9 @@ type AppDeployInfo struct {
 
 func (i *AppDeployInfo) Proto() *apiv1.AppDeployInfo {
 	return &apiv1.AppDeployInfo{
-		Plugin: i.Plugin,
-		Env:    i.Env,
-		Other:  plugin_util.MustNewStruct(i.Other),
+		Plugin:     i.Plugin,
+		Env:        i.Env,
+		Properties: plugin_util.MustNewStruct(i.Other),
 	}
 }
 
@@ -132,7 +132,7 @@ func (a *BasicApp) Validate() error {
 	)
 }
 
-func ParseAppURL(u string) (*url.URL, error) {
+func ParseURL(u string, normalize bool) (*url.URL, error) {
 	if u == "" {
 		return nil, nil
 	}
@@ -144,6 +144,12 @@ func ParseAppURL(u string) (*url.URL, error) {
 	parsed, err := url.Parse(u)
 	if err != nil {
 		return nil, err
+	}
+
+	if normalize {
+		if parsed.Path == "" {
+			parsed.Path = "/"
+		}
 	}
 
 	return parsed, nil
@@ -188,7 +194,7 @@ func (a *BasicApp) Normalize(cfg *Project) error {
 	a.AppRun.Plugin = strings.ToLower(a.AppRun.Plugin)
 	a.AppURL = strings.ToLower(a.AppURL)
 
-	a.url, err = ParseAppURL(a.AppURL)
+	a.url, err = ParseURL(a.AppURL, false)
 	if err != nil {
 		return a.YAMLError("$.url", "url is invalid")
 	}

@@ -103,6 +103,7 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 	f.StringSliceVarP(&skipApps, "skip-apps", "s", nil, "skip specified apps (if they exist), can specify multiple or separate values with comma in a form of <app type>.<name>, e.g.: static.website,service.api")
 	f.BoolVar(&opts.SkipAllApps, "skip-all-apps", false, "skip all apps (if they exist)")
 	f.BoolVar(&opts.SkipDNS, "skip-dns", false, "skip DNS setup (including self managed certificates)")
+	f.BoolVar(&opts.SkipMonitoring, "skip-monitoring", false, "skip monitoring setup")
 
 	return cmd
 }

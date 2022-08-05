@@ -135,11 +135,11 @@ func computeDeployChange(cfg *config.Project, oldState, state *statefile.StateDa
 
 	for plugin, reslist := range m {
 		for _, p := range reslist {
-			if p.Deploy == nil {
+			if p.Plan == nil {
 				continue
 			}
 
-			chg := computeChangeInfo(cfg, state, plugin, p.Deploy.Actions)
+			chg := computeChangeInfo(cfg, state, plugin, p.Plan.Actions)
 			changes = append(changes, chg...)
 		}
 	}
@@ -151,11 +151,11 @@ func computeDNSChange(cfg *config.Project, oldState, state *statefile.StateData,
 	var changes []*change
 
 	for plugin, p := range m {
-		if p.Dns == nil {
+		if p.Plan == nil {
 			continue
 		}
 
-		chg := computeChangeInfo(cfg, state, plugin, p.Dns.Actions)
+		chg := computeChangeInfo(cfg, state, plugin, p.Plan.Actions)
 		changes = append(changes, chg...)
 	}
 
@@ -242,7 +242,7 @@ func planChangeInfo(header string, changes []*change) (info string, anyCritical 
 	return info, anyCritical
 }
 
-func planPrompt(log logger.Logger, env string, deploy, dns []*change, approve, force bool) (empty, canceled bool) {
+func planPrompt(log logger.Logger, env string, deploy, dns, monitoring []*change, approve, force bool) (empty, canceled bool) {
 	sort.Slice(deploy, func(i, j int) bool {
 		if deploy[i].app == nil && deploy[j].app != nil {
 			return false
@@ -275,13 +275,21 @@ func planPrompt(log logger.Logger, env string, deploy, dns []*change, approve, f
 		info = append(info, dnsInfo)
 	}
 
+	// Monitoring
+	monitoringInfo, monitoringCritical := planChangeInfo("Monitoring:", monitoring)
+	if monitoringInfo != "" {
+		empty = false
+
+		info = append(info, monitoringInfo)
+	}
+
 	if empty {
 		log.Println("No changes detected.")
 
 		return true, false
 	}
 
-	critical = deployCritical || dnsCritical
+	critical = deployCritical || dnsCritical || monitoringCritical
 
 	log.Println(strings.Join(info, "\n\n"))
 

@@ -55,6 +55,7 @@ const (
 	ActionState
 	ActionDeployHook
 	ActionSecrets
+	ActionMonitoring
 )
 
 const DefaultPriority = 1000

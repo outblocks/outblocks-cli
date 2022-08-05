@@ -68,6 +68,7 @@ type DeployOptions struct {
 	TargetApps, SkipApps []string
 	SkipAllApps          bool
 	SkipDNS              bool
+	SkipMonitoring       bool
 	SkipDiff             bool
 	SkipApply            bool
 	SkipStateCreate      bool
@@ -104,7 +105,7 @@ func (d *Deploy) stateLockDeploy(ctx context.Context, state *statefile.StateData
 		return nil, err
 	}
 
-	res, err := d.planAndApplyDeploy(ctx, verify, state, nil, false)
+	res, err := d.planAndApply(ctx, verify, state, nil, false)
 	if res == nil && err != nil {
 		return nil, err
 	}
@@ -255,7 +256,7 @@ func (d *Deploy) checkIfDNSAreUsed(stateApps map[string]*apiv1.AppState, showWar
 			continue
 		}
 
-		u, _ := config.ParseAppURL(app.App.Url)
+		u, _ := config.ParseURL(app.App.Url, false)
 		if u == nil {
 			continue
 		}
@@ -374,7 +375,7 @@ func (d *Deploy) multilockPlanAndApplyDeploy(ctx context.Context, state *statefi
 
 		showWarnings = false
 
-		res, err := d.planAndApplyDeploy(ctx, verify, state, acquiredLocks, true)
+		res, err := d.planAndApply(ctx, verify, state, acquiredLocks, true)
 		if err != nil {
 			_ = releaseLocks(d.cfg, acquiredLocks)
 			d.log.Debugf("Released locks: %s\n", acquiredLocks)
@@ -512,11 +513,15 @@ func (d *Deploy) Run(ctx context.Context) error {
 	return nil
 }
 
-func (d *Deploy) promptDiff(deployChanges, dnsChanges []*change, acquiredLocks map[string]string, checkLocks bool) (empty, canceled bool, missingLocks []string) {
+func (d *Deploy) promptDiff(deployChanges, dnsChanges, monitoringChanges []*change, acquiredLocks map[string]string, checkLocks bool) (empty, canceled bool, missingLocks []string) {
 	missingLocksMap := make(map[string]struct{})
 
+	changes := deployChanges
+	changes = append(changes, dnsChanges...)
+	changes = append(changes, monitoringChanges...)
+
 	if checkLocks {
-		for _, chg := range append(deployChanges, dnsChanges...) {
+		for _, chg := range changes {
 			var lockID string
 
 			switch {
@@ -543,10 +548,10 @@ func (d *Deploy) promptDiff(deployChanges, dnsChanges []*change, acquiredLocks m
 	}
 
 	if d.opts.SkipDiff {
-		return len(deployChanges) == 0 && len(dnsChanges) == 0, false, missingLocks
+		return len(changes) == 0, false, missingLocks
 	}
 
-	empty, canceled = planPrompt(d.log, d.cfg.Env(), deployChanges, dnsChanges, d.opts.AutoApprove, d.opts.ForceApprove)
+	empty, canceled = planPrompt(d.log, d.cfg.Env(), deployChanges, dnsChanges, monitoringChanges, d.opts.AutoApprove, d.opts.ForceApprove)
 
 	return empty, canceled, missingLocks
 }
@@ -572,7 +577,7 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 			continue
 		}
 
-		u, _ := config.ParseAppURL(app.App.Url)
+		u, _ := config.ParseURL(app.App.Url, false)
 		if u == nil {
 			continue
 		}
@@ -644,13 +649,21 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 	return ret
 }
 
-func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (*planAndApplyResults, error) { // nolint: gocyclo
+func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (*planAndApplyResults, error) { // nolint: gocyclo
 	var domains []*apiv1.DomainInfo
 
 	ret := &planAndApplyResults{
 		acquiredLocks: acquiredLocks,
 	}
 	stateBefore := state.DeepCopy()
+
+	monitoring := d.cfg.Monitoring.Proto()
+
+	if d.opts.SkipMonitoring || d.opts.Destroy {
+		monitoring = state.Monitoring
+	} else {
+		state.Monitoring = monitoring
+	}
 
 	if d.opts.SkipDNS || d.opts.Destroy {
 		domains = state.DomainsInfo
@@ -715,12 +728,19 @@ func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *sta
 		return nil, err
 	}
 
+	monitoringChanges, err := d.planMonitoring(ctx, state, monitoring, verify, destroy)
+	if err != nil {
+		spinner.Stop()
+
+		return nil, err
+	}
+
 	spinner.Stop()
 
 	deployChanges := computeDeployChange(d.cfg, &oldState, state, planRetMap)
 	dnsChanges := computeDNSChange(d.cfg, &oldState, state, planDNSRetMap)
 
-	ret.empty, ret.canceled, ret.missingLocks = d.promptDiff(deployChanges, dnsChanges, acquiredLocks, checkLocks)
+	ret.empty, ret.canceled, ret.missingLocks = d.promptDiff(deployChanges, dnsChanges, monitoringChanges, acquiredLocks, checkLocks)
 	if len(ret.missingLocks) != 0 {
 		return ret, nil
 	}
@@ -745,6 +765,13 @@ func (d *Deploy) planAndApplyDeploy(ctx context.Context, verify bool, state *sta
 		if err == nil {
 			prog, cb := applyProgress(d.log, dnsChanges)
 			err = d.applyDNS(context.Background(), state, planDNSMap, destroy, cb)
+
+			prog.Stop()
+		}
+
+		if err == nil {
+			prog, cb := applyProgress(d.log, monitoringChanges)
+			err = d.applyMonitoring(context.Background(), state, monitoring, destroy, cb)
 
 			prog.Stop()
 		}
@@ -1424,4 +1451,46 @@ func (d *Deploy) applyDNS(ctx context.Context, state *statefile.StateData, planM
 	}
 
 	return g.Wait()
+}
+
+func (d *Deploy) planMonitoring(ctx context.Context, state *statefile.StateData, monitoring *apiv1.MonitoringData, verify, destroy bool) ([]*change, error) {
+	if monitoring.Plugin == "" {
+		return nil, nil
+	}
+
+	plug := d.cfg.FindLoadedPlugin(monitoring.Plugin)
+	if plug == nil {
+		return nil, merry.Errorf("missing monitoring plugin: %s", plug.Name)
+	}
+
+	ret, err := plug.Client().PlanMonitoring(ctx, state, monitoring, plug.CommandArgs(deployCommand), verify, destroy)
+	if err != nil {
+		return nil, err
+	}
+
+	mergeState(state, plug.Name, ret.State, nil, nil, nil, nil)
+
+	chg := computeChangeInfo(d.cfg, state, plug, ret.Plan.Actions)
+
+	return chg, nil
+}
+
+func (d *Deploy) applyMonitoring(ctx context.Context, state *statefile.StateData, monitoring *apiv1.MonitoringData, destroy bool, callback func(*apiv1.ApplyAction)) error {
+	if monitoring.Plugin == "" {
+		return nil
+	}
+
+	plug := d.cfg.FindLoadedPlugin(monitoring.Plugin)
+	if plug == nil {
+		return merry.Errorf("missing monitoring plugin: %s", plug.Name)
+	}
+
+	ret, err := plug.Client().ApplyMonitoring(ctx, state, monitoring, plug.CommandArgs(deployCommand), destroy, callback)
+	if err != nil {
+		return err
+	}
+
+	mergeState(state, plug.Name, ret.State, nil, nil, nil, nil)
+
+	return nil
 }

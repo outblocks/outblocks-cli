@@ -44,11 +44,11 @@ func (s *DNS) Proto() *apiv1.DomainInfo {
 	}
 
 	return &apiv1.DomainInfo{
-		Domains:   s.Domains,
-		Cert:      s.SSLInfo.loadedCert,
-		Key:       s.SSLInfo.loadedKey,
-		DnsPlugin: dnsPlugin,
-		Other:     plugin_util.MustNewStruct(s.Other),
+		Domains:    s.Domains,
+		Cert:       s.SSLInfo.loadedCert,
+		Key:        s.SSLInfo.loadedKey,
+		DnsPlugin:  dnsPlugin,
+		Properties: plugin_util.MustNewStruct(s.Other),
 	}
 }
 
