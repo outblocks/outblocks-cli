@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.123](https://github.com/outblocks/outblocks-cli/compare/v0.1.122...v0.1.123)
+
+> 2022-08-05
+
+### FEATURES
+
+[`2ad051c`](https://github.com/outblocks/outblocks-cli/commit/2ad051c3f6f54a233af5b998db1da00ee704938a) monitoring plugin support
+
 ## [v0.1.122](https://github.com/outblocks/outblocks-cli/compare/v0.1.121...v0.1.122)
 
 > 2022-07-12
