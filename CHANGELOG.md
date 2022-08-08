@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.124](https://github.com/outblocks/outblocks-cli/compare/v0.1.123...v0.1.124)
+
+> 2022-08-08
+
+### BUG FIXES
+
+[`4970ea9`](https://github.com/outblocks/outblocks-cli/commit/4970ea9f64d1276557ab7530c4416f8dec92c0d0) adding new service/function app
+
 ## [v0.1.123](https://github.com/outblocks/outblocks-cli/compare/v0.1.122...v0.1.123)
 
 > 2022-08-05
