@@ -447,6 +447,23 @@ func suggestAppStaticBuildDir(cfg *config.Project, opts *AppAddOptions) func(toC
 	}
 }
 
+func (m *AppManager) createAddedBasicApp(opts *AppAddOptions, appType string) *config.BasicApp {
+	return &config.BasicApp{
+		AppName: opts.Name,
+		AppType: appType,
+		AppURL:  opts.URL,
+		AppDir:  opts.Dir,
+		AppDeploy: &config.AppDeployInfo{
+			Plugin: opts.DeployPlugin,
+		},
+		AppRun: &config.AppRunInfo{
+			Plugin:  opts.RunPlugin,
+			Command: command.NewStringCommandFromString(opts.RunCommand),
+		},
+	}
+
+}
+
 func (m *AppManager) promptAddStatic(opts *AppAddOptions) (*staticAppInfo, error) {
 	var qs []*survey.Question
 
@@ -516,19 +533,7 @@ func (m *AppManager) promptAddStatic(opts *AppAddOptions) (*staticAppInfo, error
 
 	return &staticAppInfo{
 		App: config.StaticApp{
-			BasicApp: config.BasicApp{
-				AppName: opts.Name,
-				AppType: config.AppTypeStatic,
-				AppURL:  opts.URL,
-				AppDir:  opts.Dir,
-				AppDeploy: &config.AppDeployInfo{
-					Plugin: opts.DeployPlugin,
-				},
-				AppRun: &config.AppRunInfo{
-					Plugin:  opts.RunPlugin,
-					Command: command.NewStringCommandFromString(opts.RunCommand),
-				},
-			},
+			BasicApp: *m.createAddedBasicApp(opts, config.AppTypeStatic),
 			StaticAppProperties: types.StaticAppProperties{
 				Build: &types.StaticAppBuild{
 					Command: command.NewStringCommandFromString(opts.StaticBuildCommand),
@@ -543,15 +548,7 @@ func (m *AppManager) promptAddStatic(opts *AppAddOptions) (*staticAppInfo, error
 func (m *AppManager) promptAddService(opts *AppAddOptions) (*serviceAppInfo, error) { // nolint: unparam
 	return &serviceAppInfo{
 		App: config.ServiceApp{
-			BasicApp: config.BasicApp{
-				AppName: opts.Name,
-				AppType: config.AppTypeService,
-				AppURL:  opts.URL,
-				AppDir:  opts.Dir,
-				AppRun: &config.AppRunInfo{
-					Command: command.NewStringCommandFromString(opts.RunCommand),
-				},
-			},
+			BasicApp: *m.createAddedBasicApp(opts, config.AppTypeService),
 			ServiceAppProperties: types.ServiceAppProperties{
 				Build: &types.ServiceAppBuild{
 					Dockerfile:    "Dockerfile",
@@ -599,15 +596,7 @@ func (m *AppManager) promptAddFunction(opts *AppAddOptions) (*functionAppInfo, e
 
 	return &functionAppInfo{
 		App: config.FunctionApp{
-			BasicApp: config.BasicApp{
-				AppName: opts.Name,
-				AppType: config.AppTypeService,
-				AppURL:  opts.URL,
-				AppDir:  opts.Dir,
-				AppRun: &config.AppRunInfo{
-					Command: command.NewStringCommandFromString(opts.RunCommand),
-				},
-			},
+			BasicApp: *m.createAddedBasicApp(opts, config.AppTypeFunction),
 			FunctionAppProperties: types.FunctionAppProperties{
 				Runtime:    opts.FunctionRuntime,
 				Entrypoint: opts.FunctionEntrypoint,
