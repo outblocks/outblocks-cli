@@ -461,7 +461,6 @@ func (m *AppManager) createAddedBasicApp(opts *AppAddOptions, appType string) *c
 			Command: command.NewStringCommandFromString(opts.RunCommand),
 		},
 	}
-
 }
 
 func (m *AppManager) promptAddStatic(opts *AppAddOptions) (*staticAppInfo, error) {
