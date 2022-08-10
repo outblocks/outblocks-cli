@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.126](https://github.com/outblocks/outblocks-cli/compare/v0.1.125...v0.1.126)
+
+> 2022-08-10
+
+### FEATURES
+
+[`a217157`](https://github.com/outblocks/outblocks-cli/commit/a2171573c14fd53cdd3dc33e8bb620a7996b14b5) logs with args as targets
+
 ## [v0.1.125](https://github.com/outblocks/outblocks-cli/compare/v0.1.124...v0.1.125)
 
 > 2022-08-10
