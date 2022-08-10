@@ -48,6 +48,7 @@ type RunOptions struct {
 	ListenPort   int
 	HostsSuffix  string
 	HostsRouting bool
+	Targets      *util.TargetMatcher
 }
 
 type runInfo struct {
@@ -150,36 +151,29 @@ func grabPort(ports map[int]struct{}, lastPort int) int {
 	}
 }
 
-func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
-	info := &runInfo{
-		pluginAppsMap: make(map[*plugins.Plugin]*apiv1.RunRequest),
-		pluginDepsMap: make(map[*plugins.Plugin]*apiv1.RunRequest),
-	}
-
-	loopbackHost := d.loopbackHost()
-	hosts := map[string]string{
-		loopbackHost: loopbackIP,
-	}
-
-	// Apps.
-	port := d.opts.ListenPort + 1
-	ports := make(map[int]struct{})
+func (d *Run) prepareRunApps(info *runInfo, cfg *config.Project, ports map[int]struct{}, port int, hosts map[string]string) error {
+	var apps []config.App
 
 	for _, app := range cfg.Apps {
+		if !d.opts.Targets.IsEmpty() && !d.opts.Targets.Matches(app.ID()) {
+			continue
+		}
+
 		appPort := app.RunInfo().Port
+		apps = append(apps, app)
 
 		if appPort != 0 {
 			if !isPortFree(ports, appPort) {
-				return nil, app.YAMLError("$.run.port", "run.port is already in use")
+				return app.YAMLError("$.run.port", "run.port is already in use")
 			}
 
 			grabPort(ports, appPort)
 		}
 	}
 
-	for _, app := range cfg.Apps {
+	for _, app := range apps {
 		if app.RunInfo().Command.IsEmpty() {
-			return nil, app.YAMLError("$.run.command", "run.command is required to run app")
+			return app.YAMLError("$.run.command", "run.command is required to run app")
 		}
 
 		runInfo := app.RunInfo()
@@ -207,7 +201,7 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 
 		info.apps = append(info.apps, appRun)
 
-		if d.opts.Direct && app.SupportsLocal() {
+		if (d.opts.Direct || runInfo.Plugin == config.RunPluginDirect) && app.SupportsLocal() {
 			info.localApps = append(info.localApps, &run.LocalApp{
 				AppRun: appRun,
 			})
@@ -227,20 +221,30 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		info.pluginAppsMap[runPlugin].Apps = append(info.pluginAppsMap[runPlugin].Apps, appRun)
 	}
 
-	// Dependencies.
+	return nil
+}
+
+func (d *Run) prepareRunDependencies(info *runInfo, cfg *config.Project, ports map[int]struct{}, port int, hosts map[string]string) error {
+	var deps []*config.Dependency
+
 	for _, dep := range cfg.Dependencies {
+		if !d.opts.Targets.IsEmpty() && !d.opts.Targets.Matches(dep.ID()) {
+			continue
+		}
+
+		deps = append(deps, dep)
 		depPort := dep.Run.Port
 
 		if depPort != 0 {
 			if !isPortFree(ports, depPort) {
-				return nil, dep.YAMLError(".run.port", "run.port is already in use")
+				return dep.YAMLError(".run.port", "run.port is already in use")
 			}
 
 			grabPort(ports, depPort)
 		}
 	}
 
-	for _, dep := range cfg.Dependencies {
+	for _, dep := range deps {
 		depType := dep.Proto()
 		depPort := dep.Run.Port
 
@@ -276,6 +280,35 @@ func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
 		}
 
 		info.pluginDepsMap[runPlugin].Dependencies = append(info.pluginDepsMap[runPlugin].Dependencies, depRun)
+	}
+
+	return nil
+}
+
+func (d *Run) prepareRun(cfg *config.Project) (*runInfo, error) {
+	info := &runInfo{
+		pluginAppsMap: make(map[*plugins.Plugin]*apiv1.RunRequest),
+		pluginDepsMap: make(map[*plugins.Plugin]*apiv1.RunRequest),
+	}
+
+	loopbackHost := d.loopbackHost()
+	hosts := map[string]string{
+		loopbackHost: loopbackIP,
+	}
+
+	port := d.opts.ListenPort + 1
+	ports := make(map[int]struct{})
+
+	// Apps.
+	err := d.prepareRunApps(info, cfg, ports, port, hosts)
+	if err != nil {
+		return nil, err
+	}
+
+	// Dependencies.
+	err = d.prepareRunDependencies(info, cfg, ports, port, hosts)
+	if err != nil {
+		return nil, err
 	}
 
 	// Gather hosts.

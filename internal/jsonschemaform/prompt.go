@@ -565,7 +565,7 @@ func addLevelPrefix(level int, msg string) string {
 	return fmt.Sprintf("%s %s", strings.Repeat("#", level+1), msg)
 }
 
-func (n *Node) process(sch *jsonschema.Schema) (interface{}, error) { // nolint: gocyclo
+func (n *Node) process(sch *jsonschema.Schema) (interface{}, error) { //nolint: gocyclo
 	sch = schema(sch)
 
 	typ := getSchemaType(sch)

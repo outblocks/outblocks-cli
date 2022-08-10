@@ -55,23 +55,23 @@ type Deploy struct {
 }
 
 type DeployOptions struct {
-	BuildCacheDir        string
-	Verify               bool
-	Destroy              bool
-	SkipBuild            bool
-	SkipPull             bool
-	Lock                 bool
-	LockWait             time.Duration
-	AutoApprove          bool
-	ForceApprove         bool
-	MergeMode            bool
-	TargetApps, SkipApps []string
-	SkipAllApps          bool
-	SkipDNS              bool
-	SkipMonitoring       bool
-	SkipDiff             bool
-	SkipApply            bool
-	SkipStateCreate      bool
+	BuildCacheDir   string
+	Verify          bool
+	Destroy         bool
+	SkipBuild       bool
+	SkipPull        bool
+	Lock            bool
+	LockWait        time.Duration
+	AutoApprove     bool
+	ForceApprove    bool
+	MergeMode       bool
+	Targets, Skips  *util.TargetMatcher
+	SkipAllApps     bool
+	SkipDNS         bool
+	SkipMonitoring  bool
+	SkipDiff        bool
+	SkipApply       bool
+	SkipStateCreate bool
 }
 
 func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
@@ -204,8 +204,6 @@ func (d *Deploy) partialLockIDs(state *statefile.StateData) []string {
 		return nil
 	}
 
-	targetAppIDsMap := util.StringArrayToSet(d.opts.TargetApps)
-	skipAppIDsMap := util.StringArrayToSet(d.opts.SkipApps)
 	lockIDsMap := make(map[string]struct{})
 
 	for _, app := range d.cfg.Apps {
@@ -220,11 +218,11 @@ func (d *Deploy) partialLockIDs(state *statefile.StateData) []string {
 	lockIDsMapTemp := make(map[string]struct{})
 
 	for key := range lockIDsMap {
-		if len(targetAppIDsMap) > 0 && !targetAppIDsMap[key] {
+		if !d.opts.Targets.IsEmpty() && !d.opts.Targets.Matches(key) {
 			continue
 		}
 
-		if skipAppIDsMap[key] {
+		if d.opts.Skips.Matches(key) {
 			continue
 		}
 
@@ -404,7 +402,7 @@ func (d *Deploy) multilockPlanAndApplyDeploy(ctx context.Context, state *statefi
 }
 
 func (d *Deploy) multilockDeploy(ctx context.Context, state *statefile.StateData, stateRes *apiv1.GetStateResponse_State, yamlContext *client.YAMLContext) (*statefile.StateData, error) {
-	partialLock := (len(d.opts.TargetApps) > 0 || len(d.opts.SkipApps) > 0) && !stateRes.StateCreated
+	partialLock := (!d.opts.Targets.IsEmpty() || d.opts.Skips.IsEmpty()) && !stateRes.StateCreated
 	verify := d.opts.Verify
 
 	// Acquire locks and plan+apply.
@@ -649,7 +647,7 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 	return ret
 }
 
-func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (*planAndApplyResults, error) { // nolint: gocyclo
+func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (*planAndApplyResults, error) { //nolint: gocyclo
 	var domains []*apiv1.DomainInfo
 
 	ret := &planAndApplyResults{
@@ -672,14 +670,14 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 	}
 
 	// Plan and apply.
-	apps, skipAppIDs, destroy, err := filterApps(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps, d.opts.Destroy)
+	apps, skips, destroy, err := filterApps(d.cfg, state, d.opts.Targets, d.opts.Skips, d.opts.SkipAllApps, d.opts.Destroy)
 	if err != nil {
 		return nil, err
 	}
 
-	deps := filterDependencies(d.cfg, state, d.opts.TargetApps, d.opts.SkipApps, d.opts.SkipAllApps)
+	deps := filterDependencies(d.cfg, state, d.opts.Targets, d.opts.Skips, d.opts.SkipAllApps)
 
-	planDeployMap, err := calculatePlanDeployMap(d.cfg, apps, deps, d.opts.TargetApps, skipAppIDs)
+	planDeployMap, err := calculatePlanDeployMap(d.cfg, apps, deps, d.opts.Targets, skips)
 	if err != nil {
 		return nil, err
 	}
@@ -1089,7 +1087,7 @@ func getState(ctx context.Context, state *config.State, lock bool, lockWait time
 	return stateData, ret, err
 }
 
-func calculatePlanDeployMap(cfg *config.Project, apps []*apiv1.AppPlan, deps []*apiv1.DependencyPlan, targetAppIDs, skipAppIDs []string) (map[*plugins.Plugin]*planDeployParams, error) {
+func calculatePlanDeployMap(cfg *config.Project, apps []*apiv1.AppPlan, deps []*apiv1.DependencyPlan, targets, skips *util.TargetMatcher) (map[*plugins.Plugin]*planDeployParams, error) {
 	planMap := make(map[*plugins.Plugin]*planDeployParams)
 
 	for _, app := range apps {
@@ -1146,7 +1144,7 @@ func calculatePlanDeployMap(cfg *config.Project, apps []*apiv1.AppPlan, deps []*
 		}
 	}
 
-	return addPlanTargetAndSkipApps(planMap, targetAppIDs, skipAppIDs), nil
+	return addPlanTargetAndSkipApps(planMap, targets, skips), nil
 }
 
 func calculatePlanDNSMap(cfg *config.Project, records statefile.DNSRecordMap, domains []*apiv1.DomainInfo, destroy bool) map[*plugins.Plugin]*planDNSParams {
@@ -1199,18 +1197,15 @@ func calculatePlanDNSMap(cfg *config.Project, records statefile.DNSRecordMap, do
 	return planMap
 }
 
-func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planDeployParams, targetAppIDs, skipAppIDs []string) map[*plugins.Plugin]*planDeployParams {
-	if len(targetAppIDs) == 0 && len(skipAppIDs) == 0 {
+func addPlanTargetAndSkipApps(planMap map[*plugins.Plugin]*planDeployParams, targets, skips *util.TargetMatcher) map[*plugins.Plugin]*planDeployParams {
+	if targets.IsEmpty() && skips.IsEmpty() {
 		return planMap
 	}
 
 	// Add target and skip app ids.
-	targetAppIDsMap := util.StringArrayToSet(targetAppIDs)
-	skipAppIDsMap := util.StringArrayToSet(skipAppIDs)
-
 	for _, planParam := range planMap {
 		for _, appPlan := range planParam.appPlans {
-			if skipAppIDsMap[appPlan.State.App.Id] || (len(targetAppIDsMap) > 0 && !targetAppIDsMap[appPlan.State.App.Id]) {
+			if skips.Matches(appPlan.State.App.Id) || (!targets.IsEmpty() && !targets.Matches(appPlan.State.App.Id)) {
 				appPlan.Skip = true
 			}
 		}

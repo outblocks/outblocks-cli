@@ -9,12 +9,12 @@ import (
 	plugin_util "github.com/outblocks/outblocks-plugin-go/util"
 )
 
-func filterAppsNormal(cfg *config.Project, state *statefile.StateData, targetAppIDsMap, skipAppIDsMap map[string]bool) map[string]*apiv1.AppPlan {
+func filterAppsNormal(cfg *config.Project, state *statefile.StateData, targets, skips *util.TargetMatcher) map[string]*apiv1.AppPlan {
 	appsMap := make(map[string]*apiv1.AppPlan, len(state.Apps))
 
 	// Use state apps as base unless skip mode is enabled and they are NOT to be skipped.
 	for key, app := range state.Apps {
-		if len(skipAppIDsMap) > 0 && !skipAppIDsMap[key] {
+		if !skips.IsEmpty() && skips.Matches(key) {
 			continue
 		}
 
@@ -25,11 +25,11 @@ func filterAppsNormal(cfg *config.Project, state *statefile.StateData, targetApp
 
 	// Overwrite definition of non-skipped or target apps from project definition.
 	for _, app := range cfg.Apps {
-		if len(targetAppIDsMap) > 0 && !targetAppIDsMap[app.ID()] {
+		if !targets.IsEmpty() && !skips.IsEmpty() {
 			continue
 		}
 
-		if skipAppIDsMap[app.ID()] {
+		if skips.Matches(app.ID()) {
 			continue
 		}
 
@@ -50,21 +50,21 @@ func filterAppsNormal(cfg *config.Project, state *statefile.StateData, targetApp
 	return appsMap
 }
 
-func filterAppsDestroy(state *statefile.StateData, targetAppIDsMap, skipAppIDsMap map[string]bool) (appsMap map[string]*apiv1.AppPlan, skipAppIDs []string) {
-	skipAppIDs = make([]string, 0, len(state.Apps))
-	appsMap = make(map[string]*apiv1.AppPlan, len(state.Apps))
+func filterAppsDestroy(state *statefile.StateData, targets, skips *util.TargetMatcher) map[string]*apiv1.AppPlan {
+	appsMap := make(map[string]*apiv1.AppPlan, len(state.Apps))
 
 	// Use state apps as base unless skip mode is enabled and they are NOT to be skipped or they are targeted.
 	for key, app := range state.Apps {
-		if len(skipAppIDsMap) > 0 && !skipAppIDsMap[key] {
+		if !skips.IsEmpty() && !skips.Matches(key) {
 			continue
 		}
 
 		// Add app to skip IDs as we don't want to deal with it's changes.
-		skipAppIDs = append(skipAppIDs, key)
+		_ = skips.Add(key)
+		skips.Matches(key)
 
-		if len(targetAppIDsMap) > 0 && targetAppIDsMap[key] {
-			delete(targetAppIDsMap, key)
+		if !targets.IsEmpty() && targets.Matches(key) {
+			targets.Remove(key)
 
 			continue
 		}
@@ -74,12 +74,12 @@ func filterAppsDestroy(state *statefile.StateData, targetAppIDsMap, skipAppIDsMa
 		}
 	}
 
-	return appsMap, skipAppIDs
+	return appsMap
 }
 
-func filterApps(cfg *config.Project, state *statefile.StateData, targetAppIDs, skipAppIDs []string, skipAllApps, destroy bool) (apps []*apiv1.AppPlan, retSkipAppIDs []string, retDestroy bool, err error) {
+func filterApps(cfg *config.Project, state *statefile.StateData, targets, skips *util.TargetMatcher, skipAllApps, destroy bool) (apps []*apiv1.AppPlan, retSkips *util.TargetMatcher, retDestroy bool, err error) {
 	if skipAllApps {
-		retSkipAppIDs := make([]string, 0, len(state.Apps))
+		retSkips := util.NewTargetMatcher()
 		apps = make([]*apiv1.AppPlan, 0, len(state.Apps))
 
 		for _, appState := range state.Apps {
@@ -87,14 +87,14 @@ func filterApps(cfg *config.Project, state *statefile.StateData, targetAppIDs, s
 				State: appState,
 			})
 
-			retSkipAppIDs = append(retSkipAppIDs, appState.App.Id)
+			_ = retSkips.AddApp(appState.App.Id)
 		}
 
-		return apps, retSkipAppIDs, destroy, nil
+		return apps, retSkips, destroy, nil
 	}
 
 	// In non target and non skip mode, use config apps and deps.
-	if len(skipAppIDs) == 0 && len(targetAppIDs) == 0 {
+	if targets.IsEmpty() && skips.IsEmpty() {
 		apps = make([]*apiv1.AppPlan, 0, len(cfg.Apps))
 
 		for _, app := range cfg.Apps {
@@ -112,33 +112,26 @@ func filterApps(cfg *config.Project, state *statefile.StateData, targetAppIDs, s
 			})
 		}
 
-		return apps, nil, destroy, nil
+		return apps, skips, destroy, nil
 	}
 
 	var appsMap map[string]*apiv1.AppPlan
 
-	targetAppIDsMap := util.StringArrayToSet(targetAppIDs)
-	skipAppIDsMap := util.StringArrayToSet(skipAppIDs)
-
 	if destroy {
 		// Destroy mode.
-		appsMap, skipAppIDs = filterAppsDestroy(state, targetAppIDsMap, skipAppIDsMap)
+		appsMap = filterAppsDestroy(state, targets, skips)
 	} else {
 		// Normal mode.
-		appsMap = filterAppsNormal(cfg, state, targetAppIDsMap, skipAppIDsMap)
+		appsMap = filterAppsNormal(cfg, state, targets, skips)
 	}
 
 	// If there are any left target/skip apps without definition, that's an error.
-	for app := range targetAppIDsMap {
-		if appsMap[app] == nil {
-			return nil, nil, false, merry.Errorf("unknown target app specified: app with ID '%s' is missing definition", app)
-		}
+	for _, t := range targets.Unmatched() {
+		return nil, nil, false, merry.Errorf("unknown target specified: '%s' is missing definition", t.Input())
 	}
 
-	for app := range skipAppIDsMap {
-		if appsMap[app] == nil {
-			return nil, nil, false, merry.Errorf("unknown skip app specified: app with ID '%s' is missing definition", app)
-		}
+	for _, t := range skips.Unmatched() {
+		return nil, nil, false, merry.Errorf("unknown skip specified: '%s' is missing definition", t.Input())
 	}
 
 	// Flatten maps to list.
@@ -147,10 +140,10 @@ func filterApps(cfg *config.Project, state *statefile.StateData, targetAppIDs, s
 		apps = append(apps, app)
 	}
 
-	return apps, skipAppIDs, false, err
+	return apps, skips, false, err
 }
 
-func filterDependencies(cfg *config.Project, state *statefile.StateData, targetAppIDs, skipAppIDs []string, skipAllApps bool) (deps []*apiv1.DependencyPlan) {
+func filterDependencies(cfg *config.Project, state *statefile.StateData, targets, skips *util.TargetMatcher, skipAllApps bool) (deps []*apiv1.DependencyPlan) {
 	if skipAllApps {
 		deps = make([]*apiv1.DependencyPlan, 0, len(state.Dependencies))
 		for _, dep := range state.Dependencies {
@@ -163,7 +156,7 @@ func filterDependencies(cfg *config.Project, state *statefile.StateData, targetA
 	}
 
 	// In non target and non skip mode, use config apps and deps.
-	if len(skipAppIDs) == 0 && len(targetAppIDs) == 0 {
+	if targets.IsEmpty() && skips.IsEmpty() {
 		deps = make([]*apiv1.DependencyPlan, 0, len(cfg.Dependencies))
 		for _, dep := range cfg.Dependencies {
 			deps = append(deps, &apiv1.DependencyPlan{

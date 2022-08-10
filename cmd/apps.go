@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ansel1/merry/v2"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/actions"
 	"github.com/outblocks/outblocks-cli/pkg/config"
 	"github.com/spf13/cobra"
@@ -54,27 +54,22 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 		SilenceUsage: true,
 		Args:         cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var (
-				delApps []string
-				apps    []config.App
-			)
+			var apps []config.App
+
+			delOpts.Targets = util.NewTargetMatcher()
 
 			for _, arg := range args {
-				tsplit := strings.SplitN(arg, ".", 2)
-				if len(tsplit) != 2 {
-					return merry.Errorf("wrong format for app name '%s': specify in a form of <app type>.<name>, e.g.: static.website", arg)
+				err := delOpts.Targets.AddApp(arg)
+				if err != nil {
+					return err
 				}
 
-				appID := config.ComputeAppID(tsplit[0], tsplit[1])
-				delApps = append(delApps, appID)
-				app := e.cfg.AppByID(appID)
-
-				if app != nil {
-					apps = append(apps, app)
+				for _, ap := range e.cfg.Apps {
+					if delOpts.Targets.Matches(ap.ID()) {
+						apps = append(apps, ap)
+					}
 				}
 			}
-
-			delOpts.TargetApps = delApps
 
 			err := actions.NewDeploy(e.Log(), e.cfg, delOpts).Run(cmd.Context())
 			if err != nil {

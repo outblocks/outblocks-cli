@@ -28,7 +28,7 @@ type Logs struct {
 type LogsOptions struct {
 	Start                 time.Time
 	End                   time.Time
-	Apps, Dependencies    []string
+	Targets               *util.TargetMatcher
 	Contains, NotContains []string
 	Filter                string
 	Severity              apiv1.LogSeverity
@@ -138,34 +138,26 @@ func (l *Logs) Run(ctx context.Context) error {
 		deps []*apiv1.Dependency
 	)
 
-	appsSet := util.StringArrayToSet(l.opts.Apps)
-	depsSet := util.StringArrayToSet(l.opts.Dependencies)
 	idMap := make(map[string]string)
 
 	for _, app := range state.Apps {
-		if len(appsSet) == 0 || appsSet[app.App.Id] {
+		if l.opts.Targets.IsEmpty() || l.opts.Targets.Matches(app.App.Id) {
 			apps = append(apps, app.App)
 			idMap[app.App.Id] = fmt.Sprintf("APP:%s:%s", app.App.Type, app.App.Name)
-			delete(appsSet, app.App.Id)
 		}
 	}
 
 	if !l.opts.OnlyApps {
 		for _, dep := range state.Dependencies {
-			if len(depsSet) == 0 || depsSet[dep.Dependency.Id] {
+			if l.opts.Targets.IsEmpty() || l.opts.Targets.Matches(dep.Dependency.Id) {
 				deps = append(deps, dep.Dependency)
 				idMap[dep.Dependency.Id] = fmt.Sprintf("DEP:%s", dep.Dependency.Name)
-				delete(depsSet, dep.Dependency.Id)
 			}
 		}
 	}
 
-	for id := range appsSet {
-		return merry.Errorf("app '%s' not found in state", id)
-	}
-
-	for id := range depsSet {
-		return merry.Errorf("dependency '%s' not found in state", id)
+	for _, t := range l.opts.Targets.Unmatched() {
+		return merry.Errorf("unknown target specified: '%s' is missing definition", t.Input())
 	}
 
 	// TODO: support multi-deployment plugins

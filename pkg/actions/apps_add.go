@@ -153,7 +153,7 @@ func validateAppAddDir(cfg *config.Project) func(val interface{}) error {
 	}
 }
 
-func (m *AppManager) promptAddBasic(opts *AppAddOptions) error { // nolint: gocyclo
+func (m *AppManager) promptAddBasic(opts *AppAddOptions) error { //nolint: gocyclo
 	var qs []*survey.Question
 
 	// 1st pass - get app name and type.
@@ -544,7 +544,7 @@ func (m *AppManager) promptAddStatic(opts *AppAddOptions) (*staticAppInfo, error
 	}, nil
 }
 
-func (m *AppManager) promptAddService(opts *AppAddOptions) (*serviceAppInfo, error) { // nolint: unparam
+func (m *AppManager) promptAddService(opts *AppAddOptions) (*serviceAppInfo, error) { //nolint: unparam
 	return &serviceAppInfo{
 		App: config.ServiceApp{
 			BasicApp: *m.createAddedBasicApp(opts, config.AppTypeService),
@@ -558,7 +558,7 @@ func (m *AppManager) promptAddService(opts *AppAddOptions) (*serviceAppInfo, err
 	}, nil
 }
 
-func (m *AppManager) promptAddFunction(opts *AppAddOptions) (*functionAppInfo, error) { // nolint: unparam
+func (m *AppManager) promptAddFunction(opts *AppAddOptions) (*functionAppInfo, error) { //nolint: unparam
 	var qs []*survey.Question
 
 	if opts.FunctionRuntime == "" {

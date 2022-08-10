@@ -47,6 +47,6 @@ func main() {
 			exec.Log().Errorln("Error occurred:", err)
 		}
 
-		os.Exit(1) // nolint: gocritic
+		os.Exit(1) //nolint: gocritic
 	}
 }

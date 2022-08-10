@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/actions"
 	"github.com/spf13/cobra"
 )
@@ -20,6 +21,15 @@ func (e *Executor) newRunCmd() *cobra.Command {
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.Targets = util.NewTargetMatcher()
+
+			for _, arg := range args {
+				err := opts.Targets.Add(arg)
+				if err != nil {
+					return err
+				}
+			}
+
 			return actions.NewRun(e.log, e.cfg, opts).Run(cmd.Context())
 		},
 	}

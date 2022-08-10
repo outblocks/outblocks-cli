@@ -130,7 +130,7 @@ func computeChangeInfo(cfg *config.Project, state *statefile.StateData, plugin *
 	return changes
 }
 
-func computeDeployChange(cfg *config.Project, oldState, state *statefile.StateData, m map[*plugins.Plugin][]*apiv1.PlanResponse) []*change { // nolint: unparam
+func computeDeployChange(cfg *config.Project, oldState, state *statefile.StateData, m map[*plugins.Plugin][]*apiv1.PlanResponse) []*change { //nolint: unparam
 	var changes []*change
 
 	for plugin, reslist := range m {
@@ -147,7 +147,7 @@ func computeDeployChange(cfg *config.Project, oldState, state *statefile.StateDa
 	return changes
 }
 
-func computeDNSChange(cfg *config.Project, oldState, state *statefile.StateData, m map[*plugins.Plugin]*apiv1.PlanDNSResponse) []*change { // nolint: unparam
+func computeDNSChange(cfg *config.Project, oldState, state *statefile.StateData, m map[*plugins.Plugin]*apiv1.PlanDNSResponse) []*change { //nolint: unparam
 	var changes []*change
 
 	for plugin, p := range m {

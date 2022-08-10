@@ -90,8 +90,6 @@ func (g *HTTPGetter) httpClient() (*http.Client, error) {
 			return nil, merry.Errorf("can't create TLS config for client: %w", err)
 		}
 
-		tlsConf.BuildNameToCertificate()
-
 		sni, err := urlutil.ExtractHostname(g.opts.url)
 		if err != nil {
 			return nil, err

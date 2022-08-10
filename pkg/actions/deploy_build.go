@@ -360,8 +360,6 @@ func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppS
 
 	apps := d.cfg.Apps
 	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
-	targetAppIDsMap := util.StringArrayToSet(d.opts.TargetApps)
-	skipAppIDsMap := util.StringArrayToSet(d.opts.SkipApps)
 
 	var (
 		appsTemp []config.App
@@ -369,11 +367,11 @@ func (d *Deploy) buildApps(ctx context.Context, stateApps map[string]*apiv1.AppS
 	)
 
 	for _, app := range apps {
-		if len(targetAppIDsMap) > 0 && !targetAppIDsMap[app.ID()] {
+		if !d.opts.Targets.IsEmpty() && !d.opts.Targets.Matches(app.ID()) {
 			continue
 		}
 
-		if skipAppIDsMap[app.ID()] {
+		if d.opts.Skips.Matches(app.ID()) {
 			continue
 		}
 

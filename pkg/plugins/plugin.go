@@ -214,6 +214,10 @@ func (p *Plugin) Stop() error {
 }
 
 func (p *Plugin) CommandArgs(cmd string) map[string]interface{} {
+	if p == nil || p.Commands == nil {
+		return nil
+	}
+
 	c := p.Commands[cmd]
 	if c == nil {
 		return nil

@@ -6,8 +6,8 @@ import (
 
 	"github.com/ansel1/merry/v2"
 	"github.com/araddon/dateparse"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/pkg/actions"
-	"github.com/outblocks/outblocks-cli/pkg/config"
 	apiv1 "github.com/outblocks/outblocks-plugin-go/gen/api/v1"
 	"github.com/spf13/cobra"
 )
@@ -50,16 +50,12 @@ func (e *Executor) newLogsCmd() *cobra.Command {
 		},
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			for _, t := range target {
-				tsplit := strings.SplitN(t, ".", 2)
-				if len(tsplit) != 2 {
-					return merry.Errorf("wrong format for target '%s': specify in a form of <app type>.<name> or dep.<dep name>, e.g.: static.website", t)
-				}
+			opts.Targets = util.NewTargetMatcher()
 
-				if tsplit[0] == "dep" {
-					opts.Dependencies = append(opts.Dependencies, config.ComputeDependencyID(tsplit[1]))
-				} else {
-					opts.Apps = append(opts.Apps, config.ComputeAppID(tsplit[0], tsplit[1]))
+			for _, t := range target {
+				err := opts.Targets.Add(t)
+				if err != nil {
+					return err
 				}
 			}
 
