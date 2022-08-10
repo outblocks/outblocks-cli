@@ -34,7 +34,7 @@ func (e *Executor) newLogsCmd() *cobra.Command {
 	opts := &actions.LogsOptions{}
 
 	var (
-		target     []string
+		targets    []string
 		severity   string
 		start, end string
 	)
@@ -52,7 +52,9 @@ func (e *Executor) newLogsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.Targets = util.NewTargetMatcher()
 
-			for _, t := range target {
+			targets = append(targets, args...)
+
+			for _, t := range targets {
 				err := opts.Targets.Add(t)
 				if err != nil {
 					return err
@@ -100,7 +102,7 @@ func (e *Executor) newLogsCmd() *cobra.Command {
 	}
 
 	f := cmd.Flags()
-	f.StringSliceVarP(&target, "target", "t", nil, "target only specified apps or dependencies, can specify multiple or separate values with comma in a form of <app type>.<name> or dep.<dep name>, e.g.: static.website,service.api,dep.database")
+	f.StringSliceVarP(&targets, "target", "t", nil, "target only specified apps or dependencies, can specify multiple or separate values with comma in a form of <app type>.<name> or dep.<dep name>, e.g.: static.website,service.api,dep.database")
 	f.BoolVarP(&opts.OnlyApps, "only-apps", "a", false, "target only apps, skip all dependencies")
 	f.StringVarP(&start, "start", "s", "5m", "start time")
 	f.StringVarP(&end, "end", "d", "", "end time")
