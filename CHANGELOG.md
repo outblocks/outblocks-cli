@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.125](https://github.com/outblocks/outblocks-cli/compare/v0.1.124...v0.1.125)
+
+> 2022-08-10
+
+### FEATURES
+
+[`6a3f236`](https://github.com/outblocks/outblocks-cli/commit/6a3f2363b739e14073e307aeb638d11d451d0821) unified target matcher, easy app/dep match for deploy, logs and run. sdk and go updates
+
 ## [v0.1.124](https://github.com/outblocks/outblocks-cli/compare/v0.1.123...v0.1.124)
 
 > 2022-08-08
