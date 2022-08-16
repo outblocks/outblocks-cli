@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.127](https://github.com/outblocks/outblocks-cli/compare/v0.1.126...v0.1.127)
+
+> 2022-08-16
+
+### BUG FIXES
+
+[`527f256`](https://github.com/outblocks/outblocks-cli/commit/527f2567e2cafa15e411ccae85b382d1950de21a) local run, status and apps add
+
 ## [v0.1.126](https://github.com/outblocks/outblocks-cli/compare/v0.1.125...v0.1.126)
 
 > 2022-08-10
