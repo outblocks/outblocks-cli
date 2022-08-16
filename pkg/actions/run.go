@@ -203,7 +203,8 @@ func (d *Run) prepareRunApps(info *runInfo, cfg *config.Project, ports map[int]s
 
 		if (d.opts.Direct || runInfo.Plugin == config.RunPluginDirect) && app.SupportsLocal() {
 			info.localApps = append(info.localApps, &run.LocalApp{
-				AppRun: appRun,
+				AppRun:  appRun,
+				Command: app.RunInfo().Command,
 			})
 
 			continue

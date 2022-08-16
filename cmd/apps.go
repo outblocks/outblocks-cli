@@ -121,7 +121,7 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 
 	f.StringVar(&addOpts.StaticBuildCommand, "static-build-command", "", "(static only) static app build command")
 	f.StringVar(&addOpts.StaticBuildDir, "static-build-dir", "", "(static only) static app build dir")
-	f.StringVar(&addOpts.StaticRouting, "static-routing", config.StaticAppRoutingReact, fmt.Sprintf("(static only) static app routing (options: %s)", strings.Join(config.StaticAppRoutings, ", ")))
+	f.StringVar(&addOpts.StaticRouting, "static-routing", "", fmt.Sprintf("(static only) static app routing (options: %s)", strings.Join(config.StaticAppRoutings, ", ")))
 
 	f.StringVar(&addOpts.FunctionRuntime, "function-runtime", "", "(function only) the runtime in which the function is going to run")
 	f.StringVar(&addOpts.FunctionEntrypoint, "function-entrypoint", "", "(function only) name of the function that will be executed when the function is triggered")

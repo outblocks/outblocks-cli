@@ -12,6 +12,7 @@ import (
 
 type LocalApp struct {
 	*apiv1.AppRun
+	Command *command.StringCommand
 }
 
 type LocalAppRunInfo struct {
@@ -32,7 +33,7 @@ func NewLocalAppRunInfo(a *LocalApp) (*LocalAppRunInfo, error) {
 	var err error
 
 	info.Cmd, err = command.New(
-		command.NewStringCommandFromArray(a.Command).ExecCmdAsUser(),
+		a.Command.ExecCmdAsUser(),
 		command.WithDir(a.App.Dir),
 		command.WithEnv(util.FlattenEnvMap(a.App.Env)),
 	)

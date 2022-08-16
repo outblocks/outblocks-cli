@@ -657,7 +657,7 @@ func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile
 
 	monitoring := d.cfg.Monitoring.Proto()
 
-	if d.opts.SkipMonitoring || d.opts.Destroy {
+	if (d.opts.SkipMonitoring || d.opts.Destroy) && state.Monitoring != nil {
 		monitoring = state.Monitoring
 	} else {
 		state.Monitoring = monitoring

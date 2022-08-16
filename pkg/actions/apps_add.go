@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -412,8 +411,6 @@ func validateAppStaticBuildDir(cfg *config.Project, opts *AppAddOptions) func(va
 			return merry.Errorf("build dir must be somewhere in current project config location tree")
 		}
 
-		fmt.Println(str, "--", opts.OutputDir, "--", fileutil.IsRelativeSubdir(str, opts.OutputDir))
-
 		if fileutil.IsRelativeSubdir(str, opts.OutputDir) {
 			return merry.Errorf("build dir cannot be a parent of output dir")
 		}
@@ -509,7 +506,7 @@ func (m *AppManager) promptAddStatic(opts *AppAddOptions) (*staticAppInfo, error
 			},
 		})
 	} else {
-		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Routing of application:"), pterm.Cyan(opts.StaticBuildCommand))
+		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Routing of application:"), pterm.Cyan(opts.StaticRouting))
 	}
 
 	// Ask questions about static app.
