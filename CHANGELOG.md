@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.128](https://github.com/outblocks/outblocks-cli/compare/v0.1.127...v0.1.128)
+
+> 2022-08-22
+
+### FEATURES
+
+[`4ae52a6`](https://github.com/outblocks/outblocks-cli/commit/4ae52a60acb3fe111be4e5e4b9618084d88cecb1) support for target/skips in run
+
 ## [v0.1.127](https://github.com/outblocks/outblocks-cli/compare/v0.1.126...v0.1.127)
 
 > 2022-08-16
