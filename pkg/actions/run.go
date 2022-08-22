@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,18 +44,20 @@ type Run struct {
 }
 
 type RunOptions struct {
-	Direct       bool
-	ListenIP     string
-	ListenPort   int
-	HostsSuffix  string
-	HostsRouting bool
-	Targets      *util.TargetMatcher
+	Direct         bool
+	ListenIP       string
+	ListenPort     int
+	HostsSuffix    string
+	HostsRouting   bool
+	Targets, Skips *util.TargetMatcher
 }
 
 type runInfo struct {
 	apps []*apiv1.AppRun
 	deps []*apiv1.DependencyRun
 
+	pluginApps    []*apiv1.AppRun
+	pluginDeps    []*apiv1.DependencyRun
 	localApps     []*run.LocalApp
 	localDeps     []*run.LocalDependency
 	pluginAppsMap map[*plugins.Plugin]*apiv1.RunRequest
@@ -159,6 +162,10 @@ func (d *Run) prepareRunApps(info *runInfo, cfg *config.Project, ports map[int]s
 			continue
 		}
 
+		if !d.opts.Skips.IsEmpty() && d.opts.Skips.Matches(app.ID()) {
+			continue
+		}
+
 		appPort := app.RunInfo().Port
 		apps = append(apps, app)
 
@@ -210,6 +217,8 @@ func (d *Run) prepareRunApps(info *runInfo, cfg *config.Project, ports map[int]s
 			continue
 		}
 
+		info.pluginApps = append(info.pluginApps, appRun)
+
 		runPlugin := app.RunPlugin()
 
 		if _, ok := info.pluginAppsMap[runPlugin]; !ok {
@@ -228,8 +237,20 @@ func (d *Run) prepareRunApps(info *runInfo, cfg *config.Project, ports map[int]s
 func (d *Run) prepareRunDependencies(info *runInfo, cfg *config.Project, ports map[int]struct{}, port int, hosts map[string]string) error {
 	var deps []*config.Dependency
 
+	depNeeds := make(map[string][]*apiv1.AppNeed)
+
+	for _, app := range info.apps {
+		for k, n := range app.App.Needs {
+			depNeeds[k] = append(depNeeds[k], n)
+		}
+	}
+
 	for _, dep := range cfg.Dependencies {
-		if !d.opts.Targets.IsEmpty() && !d.opts.Targets.Matches(dep.ID()) {
+		if !d.opts.Targets.IsEmpty() && !d.opts.Targets.Matches(dep.ID()) && len(depNeeds[dep.Name]) == 0 {
+			continue
+		}
+
+		if !d.opts.Skips.IsEmpty() && d.opts.Skips.Matches(dep.ID()) {
 			continue
 		}
 
@@ -250,7 +271,7 @@ func (d *Run) prepareRunDependencies(info *runInfo, cfg *config.Project, ports m
 		depPort := dep.Run.Port
 
 		if depPort == 0 {
-			depPort = grabPort(ports, depPort)
+			depPort = grabPort(ports, port)
 		}
 
 		mergedProps := plugin_util.MergeMaps(cfg.Defaults.Run.Other, depType.Properties.AsMap())
@@ -271,6 +292,8 @@ func (d *Run) prepareRunDependencies(info *runInfo, cfg *config.Project, ports m
 
 			continue
 		}
+
+		info.pluginDeps = append(info.pluginDeps, depRun)
 
 		runPlugin := dep.RunPlugin()
 
@@ -383,12 +406,17 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 	}
 
 	// Process env vars.
-	depVars := make(map[string]map[string]string)
+	depVars := make(map[string]interface{})
 
 	for _, ret := range pluginRets {
 		for _, i := range ret.Info {
-			for k, v := range i.Response.Vars {
-				depVars[d.cfg.DependencyByID(k).Name] = v.Vars
+			for id, vars := range i.Response.Vars {
+				m := make(map[string]interface{}, len(vars.Vars))
+				for k, v := range vars.Vars {
+					m[k] = v
+				}
+
+				depVars[d.cfg.DependencyByID(id).Name] = m
 			}
 		}
 	}
@@ -397,7 +425,26 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 
 	appVars := types.AppVarsFromAppRun(runInfo.apps)
 
-	for _, app := range runInfo.apps {
+	for _, app := range runInfo.pluginApps {
+		eval := util.NewVarEvaluator(types.VarsForApp(appVars, app.App, depVars))
+
+		app.App.Env, err = eval.ExpandStringMap(app.App.Env)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	for _, app := range runInfo.localApps {
+		for _, m := range depVars {
+			vars := m.(map[string]interface{})
+
+			for k, v := range vars {
+				if strings.HasPrefix(k, "local:") {
+					vars[k[len("local:"):]] = v
+				}
+			}
+		}
+
 		eval := util.NewVarEvaluator(types.VarsForApp(appVars, app.App, depVars))
 
 		app.App.Env, err = eval.ExpandStringMap(app.App.Env)
