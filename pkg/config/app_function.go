@@ -49,7 +49,7 @@ func LoadFunctionAppData(projectName, path string, n ast.Node) (App, error) {
 }
 
 func (s *FunctionApp) SupportsLocal() bool {
-	return false
+	return true
 }
 
 func (s *FunctionApp) Proto() *apiv1.App {

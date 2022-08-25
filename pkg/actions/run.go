@@ -208,6 +208,10 @@ func (d *Run) prepareRunApps(info *runInfo, cfg *config.Project, ports map[int]s
 
 		info.apps = append(info.apps, appRun)
 
+		if runInfo.Plugin == config.RunPluginDirect && !app.SupportsLocal() {
+			return app.YAMLError("$.run.plugin", fmt.Sprintf("%s app %s does not support direct run", app.Type(), app.Name()))
+		}
+
 		if (d.opts.Direct || runInfo.Plugin == config.RunPluginDirect) && app.SupportsLocal() {
 			info.localApps = append(info.localApps, &run.LocalApp{
 				AppRun:  appRun,
