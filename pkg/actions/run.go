@@ -573,6 +573,10 @@ func (d *Run) addAllHosts(runInfo *runInfo) (map[*url.URL]*url.URL, error) {
 		u, _ := url.Parse(s.Url)
 		hosts[u.Hostname()] = struct{}{}
 
+		if u.Path == "" {
+			u.Path = "/"
+		}
+
 		uLocal := *u
 		uLocal.Host = fmt.Sprintf("%s:%d", s.Ip, s.Port)
 		uLocal.Path = s.App.PathRedirect
