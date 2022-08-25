@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.129](https://github.com/outblocks/outblocks-cli/compare/v0.1.128...v0.1.129)
+
+> 2022-08-25
+
+### BUG FIXES
+
+[`dea1a22`](https://github.com/outblocks/outblocks-cli/commit/dea1a2297ff74e11e6b0eb30724e84e60021d562) path during run, yamlint of templates
+
 ## [v0.1.128](https://github.com/outblocks/outblocks-cli/compare/v0.1.127...v0.1.128)
 
 > 2022-08-22
