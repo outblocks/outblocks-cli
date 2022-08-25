@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.130](https://github.com/outblocks/outblocks-cli/compare/v0.1.129...v0.1.130)
+
+> 2022-08-25
+
+### BUG FIXES
+
+[`def8170`](https://github.com/outblocks/outblocks-cli/commit/def8170b47a6da702e7e05c73dc99a9751e7f473) functions direct run
+
 ## [v0.1.129](https://github.com/outblocks/outblocks-cli/compare/v0.1.128...v0.1.129)
 
 > 2022-08-25
