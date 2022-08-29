@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.131](https://github.com/outblocks/outblocks-cli/compare/v0.1.130...v0.1.131)
+
+> 2022-08-29
+
+### BUG FIXES
+
+[`c912892`](https://github.com/outblocks/outblocks-cli/commit/c912892b851c83f9bb212590272578180e2a3c12) run error code propagation
+
 ## [v0.1.130](https://github.com/outblocks/outblocks-cli/compare/v0.1.129...v0.1.130)
 
 > 2022-08-25
