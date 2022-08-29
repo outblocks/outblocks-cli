@@ -72,6 +72,15 @@ const (
 	healthcheckTimeout = 3 * time.Second
 )
 
+type ErrExit struct {
+	StatusCode int
+	Message    string
+}
+
+func (e *ErrExit) Error() string {
+	return fmt.Sprintf("exit code %d", e.StatusCode)
+}
+
 func NewRun(log logger.Logger, cfg *config.Project, opts *RunOptions) *Run {
 	return &Run{
 		log:  log,
@@ -751,7 +760,14 @@ func (d *Run) runSelfAsSudo() error {
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 
-	return cmd.Run()
+	err := cmd.Run()
+	if e, ok := err.(*exec.ExitError); ok {
+		return &ErrExit{
+			StatusCode: e.ProcessState.ExitCode(),
+		}
+	}
+
+	return err
 }
 
 func (d *Run) Run(ctx context.Context) error {

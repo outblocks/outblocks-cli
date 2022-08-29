@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/outblocks/outblocks-cli/cmd"
+	"github.com/outblocks/outblocks-cli/pkg/actions"
 	"google.golang.org/grpc/grpclog"
 )
 
@@ -43,10 +44,18 @@ func main() {
 	err := exec.Execute(ctx)
 
 	if err != nil {
+		if e, ok := err.(*actions.ErrExit); ok {
+			if e.Message != "" {
+				exec.Log().Errorln(e.Message)
+			}
+
+			os.Exit(e.StatusCode) //nolint
+		}
+
 		if ctx.Err() != context.Canceled {
 			exec.Log().Errorln("Error occurred:", err)
 		}
 
-		os.Exit(1) //nolint: gocritic
+		os.Exit(1)
 	}
 }
