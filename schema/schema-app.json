@@ -137,8 +137,7 @@
           },
           "then": {
             "required": [
-              "type",
-              "runtime"
+              "type"
             ],
             "properties": {
               "private": {
@@ -150,7 +149,7 @@
                 "type": "string"
               },
               "entrypoint": {
-                "description": "Name of the function that will be executed when the function is triggered. Defaults to application name.",
+                "description": "Name of the function that will be executed when the function is triggered. Not all deployment plugins support it. Defaults to application name.",
                 "type": "string"
               },
               "build": {
@@ -243,6 +242,13 @@
         "timeout": {
           "description": "Execution timeout. Execution is considered failed and can be terminated if the function is not completed at the end of the timeout period.",
           "type": "integer"
+        },
+        "patterns": {
+          "description": "File/dir patterns to exclude (or force include if starts with '!').",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -434,7 +440,33 @@
       "title": "Build function app",
       "type": "object",
       "additionalProperties": false,
-      "properties": {}
+      "properties": {
+        "env": {
+          "description": "Additional environment variables available during build.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "description": "Command to be run to generate output files.",
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "dir": {
+          "description": "Output dir to where static files end up.",
+          "type": "string"
+        }
+      }
     },
     "ServiceContainer": {
       "title": "Service app container definition",

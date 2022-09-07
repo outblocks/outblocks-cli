@@ -103,7 +103,7 @@ func (p *Project) Normalize() error {
 			if app.URL() != nil {
 				url := app.URL().String()
 				if cur, ok := urlMap[url]; ok {
-					return merry.Errorf("same URL '%s' used in more than 1 app: '%s' and '%s'", url, app.Name(), cur.Name())
+					return merry.Errorf("same URL '%s' used in more than 1 app: %s '%s' and %s '%s'", url, app.Type(), app.Name(), cur.Type(), cur.Name())
 				}
 
 				urlMap[url] = app

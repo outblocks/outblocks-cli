@@ -33,6 +33,7 @@ type Plugin struct {
 	SupportedTypes []*PluginType                     `json:"supported_types"`
 	Commands       map[string]*PluginCommand         `json:"commands"`
 	SecretsRepr    yaml.MapSlice                     `json:"secrets"`
+	AppOverrides   AppOverrides                      `json:"app_overrides"`
 
 	Dir      string          `json:"-"`
 	CacheDir string          `json:"-"`
@@ -59,6 +60,12 @@ const (
 )
 
 const DefaultPriority = 1000
+
+type AppOverrides struct {
+	Function struct {
+		Archive *bool `json:"archive"`
+	} `json:"function"`
+}
 
 type PluginSecret struct {
 	Key         string `json:"-"`

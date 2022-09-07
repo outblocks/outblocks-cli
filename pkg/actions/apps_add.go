@@ -561,7 +561,7 @@ func (m *AppManager) promptAddFunction(opts *AppAddOptions) (*functionAppInfo, e
 	if opts.FunctionRuntime == "" {
 		qs = append(qs, &survey.Question{
 			Name:   "FunctionRuntime",
-			Prompt: &survey.Input{Message: "Function runtime (the runtime in which the function is going to run):"},
+			Prompt: &survey.Input{Message: "Function runtime (the runtime in which the function is going to run - if deployment plugin supports multiple runtimes):"},
 		})
 	} else {
 		m.log.Printf("%s %s\n", pterm.Bold.Sprint("Function runtime:"), pterm.Cyan(opts.FunctionRuntime))

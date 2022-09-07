@@ -21,7 +21,7 @@ path_redirect: /
 # If app is not meant to be accessible without auth, mark it as private.
 # private: true
 
-# Build defines where static files are stored and optionally which command should be used to generate them.
+# Build optionally defines where static files are stored and optionally which command should be used to generate them.
 build:
 {{- if .App.Build.Command }}
   # Optional command to be run to generate output files.

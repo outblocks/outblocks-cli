@@ -188,11 +188,11 @@ func (d *Run) prepareRunApps(info *runInfo, cfg *config.Project, ports map[int]s
 	}
 
 	for _, app := range apps {
-		if app.RunInfo().Command.IsEmpty() {
+		runInfo := app.RunInfo()
+
+		if runInfo.Plugin == config.RunPluginDirect && runInfo.Command.IsEmpty() {
 			return app.YAMLError("$.run.command", "run.command is required to run app")
 		}
-
-		runInfo := app.RunInfo()
 
 		appPort := runInfo.Port
 		if appPort == 0 {

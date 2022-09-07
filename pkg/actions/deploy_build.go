@@ -214,15 +214,42 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 }
 
 func (d *Deploy) buildFunctionApp(ctx context.Context, app *config.FunctionApp, eval *util.VarEvaluator) error {
+	var err error
+
+	if !app.Build.Command.IsEmpty() {
+		env := plugin_util.MergeStringMaps(app.Env(), app.Build.Env)
+
+		env, err = eval.ExpandStringMap(env)
+		if err != nil {
+			return err
+		}
+
+		cmd, err := command.New(app.Build.Command.ExecCmdAsUser(), command.WithDir(app.Dir()), command.WithEnv(util.FlattenEnvMap(env)))
+		if err != nil {
+			return merry.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
+		}
+
+		err = d.runAppCommand(ctx, cmd, app)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Archive if necessary.
+	archive := app.DeployPlugin().AppOverrides.Function.Archive
+	if archive != nil && !*archive {
+		return nil
+	}
+
 	out := filepath.Join(d.opts.BuildCacheDir, fmt.Sprintf("%s.zip", app.ID()))
 
 	patterns := []string{
-		"{*.outblocks.yaml,*.outblocks.yml,outblocks.yaml,outblocks.yml,.git,.gitignore,.DS_Store,npm-debug.log}",
+		"{*.outblocks.yaml,*.outblocks.yml,outblocks.yaml,outblocks.yml,.git,.gitignore,.DS_Store,node_modules,npm-debug.log}",
 	}
 
 	patterns = append(patterns, app.Package.Patterns...)
 
-	err := fileutil.ArchiveDir(app.Dir(), out, patterns)
+	err = fileutil.ArchiveDir(app.Dir(), out, patterns)
 	if err != nil {
 		return merry.Errorf("error creating archive for %s app: %s: %w", app.Type(), app.Name(), err)
 	}

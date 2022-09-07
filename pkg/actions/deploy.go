@@ -564,6 +564,8 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 		if r.DnsPlugin == "" {
 			r.DnsPlugin = plug
 		}
+
+		r.AppIds = nil
 	}
 
 	var missingHosts []string
@@ -572,6 +574,10 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 
 	for _, app := range state.Apps {
 		if app.App == nil {
+			continue
+		}
+
+		if cfg.AppByID(app.App.Id) != nil {
 			continue
 		}
 
@@ -589,6 +595,8 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 			missingHosts = append(missingHosts, u.Host)
 			continue
 		}
+
+		match.AppIds = append(match.AppIds, app.App.Id)
 
 		if _, ok := m[match]; ok {
 			continue
@@ -614,6 +622,8 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 			missingHosts = append(missingHosts, u.Host)
 			continue
 		}
+
+		match.AppIds = append(match.AppIds, app.ID())
 
 		if _, ok := m[match]; ok {
 			continue

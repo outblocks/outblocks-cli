@@ -13,7 +13,6 @@ require (
 	github.com/docker/docker v20.10.17+incompatible
 	github.com/enescakir/emoji v1.0.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
-	github.com/gobwas/glob v0.2.3
 	github.com/google/go-github/v35 v35.3.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/gookit/color v1.5.0
@@ -21,7 +20,7 @@ require (
 	github.com/mholt/archiver/v3 v3.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/otiai10/copy v1.7.0
-	github.com/outblocks/outblocks-plugin-go v0.0.0-20220818132903-e1628dcab8fb
+	github.com/outblocks/outblocks-plugin-go v0.0.0-20220905223714-aedc83d026a3
 	github.com/pkg/errors v0.9.1
 	github.com/pterm/pterm v0.12.41
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
@@ -51,6 +50,7 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-playground/validator/v10 v10.11.0 // indirect
+	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect

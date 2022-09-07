@@ -5,10 +5,11 @@
 
 # Name of the app.
 name: {{.App.Name}}
+{{- if .App.Runtime }}
 
 # The runtime in which the function is going to run, refer to cloud provider docs for possible options.
 runtime: {{.App.Runtime}}
-
+{{ end }}
 # Name of the function that will be executed when the function is triggered.
 entrypoint: {{.App.Entrypoint}}
 
