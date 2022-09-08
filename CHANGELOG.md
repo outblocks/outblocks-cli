@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.132](https://github.com/outblocks/outblocks-cli/compare/v0.1.131...v0.1.132)
+
+> 2022-09-07
+
+### FEATURES
+
+[`a6d07d2`](https://github.com/outblocks/outblocks-cli/commit/a6d07d26a2750940a1fe28a4c647cfb543c08ad3) support for cloudflare functions and docker production mode
+
 ## [v0.1.131](https://github.com/outblocks/outblocks-cli/compare/v0.1.130...v0.1.131)
 
 > 2022-08-29
