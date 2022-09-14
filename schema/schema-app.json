@@ -123,6 +123,10 @@
               "deploy": {
                 "description": "Service deploy config.",
                 "$ref": "#/definitions/ServiceDeploy"
+              },
+              "scheduler": {
+                "description": "Service scheduler config.",
+                "$ref": "#/definitions/Scheduler"
               }
             }
           }
@@ -163,6 +167,10 @@
               "package": {
                 "description": "Function package config.",
                 "$ref": "#/definitions/FunctionPackage"
+              },
+              "scheduler": {
+                "description": "Function scheduler config.",
+                "$ref": "#/definitions/Scheduler"
               }
             }
           }
@@ -291,6 +299,38 @@
         "container": {
           "description": "Service application container config used for docker based deployments.",
           "$ref": "#/definitions/ServiceContainer"
+        }
+      }
+    },
+    "Scheduler": {
+      "title": "Scheduler config",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "cron"
+        ],
+        "properties": {
+          "cron": {
+            "description": "Scheduler cron, e.g. */30 * * * * runs every 30 minutes.",
+            "type": "string"
+          },
+          "method": {
+            "description": "HTTP method to use. Defaults to 'GET'.",
+            "type": "string"
+          },
+          "path": {
+            "description": "Path to call in current app url.",
+            "type": "string"
+          },
+          "headers": {
+            "description": "Additional headers to use for this call.",
+            "type": "string",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
         }
       }
     },
