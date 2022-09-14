@@ -5,6 +5,7 @@ run:
     - assets
     - proto
     - mocks
+    - example*
 
 issues:
   exclude-rules:
