@@ -216,7 +216,7 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 func (d *Deploy) buildFunctionApp(ctx context.Context, app *config.FunctionApp, eval *util.VarEvaluator) error {
 	var err error
 
-	if !app.Build.Command.IsEmpty() {
+	if app.Build != nil && !app.Build.Command.IsEmpty() {
 		env := plugin_util.MergeStringMaps(app.Env(), app.Build.Env)
 
 		env, err = eval.ExpandStringMap(env)
