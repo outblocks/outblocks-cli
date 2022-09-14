@@ -1,8 +1,20 @@
 # Outblocks CLI Changelog
 
+## [v0.1.133](https://github.com/outblocks/outblocks-cli/compare/v0.1.132...v0.1.133)
+
+> 2022-09-14
+
+### BUG FIXES
+
+[`a956cb6`](https://github.com/outblocks/outblocks-cli/commit/a956cb6e7133198e7895ce580ad50af4c5c28e41) add example to ignore
+
+### FEATURES
+
+[`8907bec`](https://github.com/outblocks/outblocks-cli/commit/8907beca48edc3a259d7ef32c5d843e66ed85d9c) add scheduler to app schema, update sdk
+
 ## [v0.1.132](https://github.com/outblocks/outblocks-cli/compare/v0.1.131...v0.1.132)
 
-> 2022-09-07
+> 2022-09-08
 
 ### FEATURES
 
