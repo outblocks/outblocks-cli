@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.134](https://github.com/outblocks/outblocks-cli/compare/v0.1.133...v0.1.134)
+
+> 2022-09-14
+
+### BUG FIXES
+
+[`e26b2c4`](https://github.com/outblocks/outblocks-cli/commit/e26b2c403f488f8890632d10736bd27178b34d2d) function building being unset
+
 ## [v0.1.133](https://github.com/outblocks/outblocks-cli/compare/v0.1.132...v0.1.133)
 
 > 2022-09-14
