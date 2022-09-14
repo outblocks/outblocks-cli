@@ -318,7 +318,10 @@
           },
           "method": {
             "description": "HTTP method to use. Defaults to 'GET'.",
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "GET", "POST", "HEAD", "PUT", "DELETE", "PATCH", "OPTIONS"
+            ]
           },
           "path": {
             "description": "Path to call in current app url.",
