@@ -36,9 +36,9 @@ type LogsOptions struct {
 	Follow                bool
 }
 
-func NewLogs(log logger.Logger, cfg *config.Project, opts *LogsOptions) *Logs {
+func NewLogs(cfg *config.Project, opts *LogsOptions) *Logs {
 	return &Logs{
-		log:  log,
+		log:  logger.NewLogger(),
 		cfg:  cfg,
 		opts: opts,
 	}

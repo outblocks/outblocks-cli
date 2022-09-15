@@ -97,7 +97,7 @@ func (e *Executor) newLogsCmd() *cobra.Command {
 				return merry.Errorf("while stream logs end time cannot be specified")
 			}
 
-			return actions.NewLogs(e.Log(), e.cfg, opts).Run(cmd.Context())
+			return actions.NewLogs(e.cfg, opts).Run(cmd.Context())
 		},
 	}
 
