@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.135](https://github.com/outblocks/outblocks-cli/compare/v0.1.134...v0.1.135)
+
+> 2022-09-15
+
+### BUG FIXES
+
+[`c52c666`](https://github.com/outblocks/outblocks-cli/commit/c52c6666572128a142532a19044f9806d981c478) log streaming
+
 ## [v0.1.134](https://github.com/outblocks/outblocks-cli/compare/v0.1.133...v0.1.134)
 
 > 2022-09-14
