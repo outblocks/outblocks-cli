@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.137](https://github.com/outblocks/outblocks-cli/compare/v0.1.136...v0.1.137)
+
+> 2022-10-10
+
+### BUG FIXES
+
+[`27ea32d`](https://github.com/outblocks/outblocks-cli/commit/27ea32d5d5fa74e944714a9835aa4e18474e76c8) dns plugin match by default
+
 ## [v0.1.136](https://github.com/outblocks/outblocks-cli/compare/v0.1.135...v0.1.136)
 
 > 2022-10-10
