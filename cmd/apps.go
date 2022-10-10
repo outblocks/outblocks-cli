@@ -57,6 +57,7 @@ func (e *Executor) newAppsCmd() *cobra.Command {
 			var apps []config.App
 
 			delOpts.Targets = util.NewTargetMatcher()
+			delOpts.Skips = util.NewTargetMatcher()
 
 			for _, arg := range args {
 				err := delOpts.Targets.AddApp(arg)
