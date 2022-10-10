@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.136](https://github.com/outblocks/outblocks-cli/compare/v0.1.135...v0.1.136)
+
+> 2022-10-10
+
+### BUG FIXES
+
+[`7add8b5`](https://github.com/outblocks/outblocks-cli/commit/7add8b59ee866eadf7e87fb9c3df637e1a560cea) panic on apps delete
+
 ## [v0.1.135](https://github.com/outblocks/outblocks-cli/compare/v0.1.134...v0.1.135)
 
 > 2022-09-15
