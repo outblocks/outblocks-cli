@@ -561,10 +561,6 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 	m := make(map[*apiv1.DomainInfo]struct{})
 
 	for _, r := range state.DomainsInfo {
-		if r.DnsPlugin == "" {
-			r.DnsPlugin = plug
-		}
-
 		r.AppIds = nil
 	}
 
@@ -652,6 +648,12 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 			DnsPlugin: plug,
 		})
 		addedHosts[wildcard] = struct{}{}
+	}
+
+	for _, r := range ret {
+		if r.DnsPlugin == "" {
+			r.DnsPlugin = plug
+		}
 	}
 
 	return ret
