@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.138](https://github.com/outblocks/outblocks-cli/compare/v0.1.137...v0.1.138)
+
+> 2022-10-31
+
+### BUG FIXES
+
+[`0b1a886`](https://github.com/outblocks/outblocks-cli/commit/0b1a8861867d73afb5e00e8c4c060e8933b2cd0d) respect build dir for functions
+
 ## [v0.1.137](https://github.com/outblocks/outblocks-cli/compare/v0.1.136...v0.1.137)
 
 > 2022-10-10
