@@ -506,7 +506,7 @@
           ]
         },
         "dir": {
-          "description": "Output dir to where static files end up.",
+          "description": "Output dir to where built files end up.",
           "type": "string"
         }
       }

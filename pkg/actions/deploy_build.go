@@ -249,7 +249,12 @@ func (d *Deploy) buildFunctionApp(ctx context.Context, app *config.FunctionApp, 
 
 	patterns = append(patterns, app.Package.Patterns...)
 
-	err = fileutil.ArchiveDir(app.Dir(), out, patterns)
+	appDir := app.Dir()
+	if app.Build != nil {
+		appDir = filepath.Join(appDir, app.Build.Dir)
+	}
+
+	err = fileutil.ArchiveDir(appDir, out, patterns)
 	if err != nil {
 		return merry.Errorf("error creating archive for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
