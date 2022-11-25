@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	ValidURLRegex   = regexp.MustCompile(`^(https?://)?([a-zA-Z][a-zA-Z0-9-]*)((\.)([a-zA-Z][a-zA-Z0-9-]*)){1,}(/[a-zA-Z0-9-_]+)*(/)?$`)
+	ValidURLRegex   = regexp.MustCompile(`^(https?://)?([a-zA-Z0-9-]+)((\.)([a-zA-Z0-9-]+)){1,}(/[a-zA-Z0-9-_]+)*(/)?$`)
 	ValidNameRegex  = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,30}$`)
 	ValidAppTypes   = []string{AppTypeStatic, AppTypeFunction, AppTypeService}
 	RunPluginDirect = "direct"
