@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.140](https://github.com/outblocks/outblocks-cli/compare/v0.1.139...v0.1.140)
+
+> 2022-11-25
+
+### BUG FIXES
+
+[`12507c4`](https://github.com/outblocks/outblocks-cli/commit/12507c4af24c1583b2b8ced5412726607c9a83c9) plugins add regex
+
 ## [v0.1.139](https://github.com/outblocks/outblocks-cli/compare/v0.1.138...v0.1.139)
 
 > 2022-11-25
