@@ -1,7 +1,6 @@
 package actions
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -40,7 +39,7 @@ func NewPluginManager(log logger.Logger, cfg *config.Project, loader *plugins.Lo
 }
 
 func (m *PluginManager) isPluginsListInYAML() bool {
-	return regexp.MustCompile(`((^|\n)plugins:\s*)`).Find(m.cfg.YAMLData()) != nil
+	return regexp.MustCompile(`((^|\n)plugins:[\t ]*)`).Find(m.cfg.YAMLData()) != nil
 }
 
 func (m *PluginManager) insertInYAML(data []byte) error {
@@ -67,7 +66,7 @@ func (m *PluginManager) replacePluginsInYAML(replaced []byte) error {
 		return merry.Errorf("plugins key not found in config yaml")
 	}
 
-	result := regexp.MustCompile(`((^|\n)plugins:\s*).*(\n\s+.*)*`).ReplaceAll(configData, append([]byte("$1"), bytes.TrimLeft(replaced, " ")...))
+	result := regexp.MustCompile(`((^|\n)plugins:)[^\n]*(\n[\t ]+[^\n]+)*`).ReplaceAll(configData, append([]byte("$1\n"), replaced...))
 
 	return fileutil.WriteFile(m.cfg.YAMLPath(), result, fi.Mode())
 }
@@ -84,7 +83,7 @@ func (m *PluginManager) deletePluginsInYAML() error {
 		return merry.Errorf("plugins key not found in config yaml")
 	}
 
-	result := regexp.MustCompile(`(^|\n)plugins:\s*.*(\n\s+.*)*`).ReplaceAll(configData, []byte("$1"))
+	result := regexp.MustCompile(`(^|\n)plugins:[\t ]*.*(\n[-\t ]+.*)*`).ReplaceAll(configData, []byte("$1"))
 
 	return fileutil.WriteFile(m.cfg.YAMLPath(), result, fi.Mode())
 }
