@@ -329,7 +329,7 @@
           },
           "headers": {
             "description": "Additional headers to use for this call.",
-            "type": "string",
+            "type": "object",
             "additionalProperties": {
               "type": "string"
             }
