@@ -316,6 +316,10 @@
             "description": "Scheduler cron, e.g. */30 * * * * runs every 30 minutes.",
             "type": "string"
           },
+          "name": {
+            "description": "Name of cron (just for information purpose).",
+            "type": "string"
+          },
           "method": {
             "description": "HTTP method to use. Defaults to 'GET'.",
             "type": "string",
