@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.141](https://github.com/outblocks/outblocks-cli/compare/v0.1.140...v0.1.141)
+
+> 2023-01-23
+
+### FEATURES
+
+[`9c03f43`](https://github.com/outblocks/outblocks-cli/commit/9c03f436c20d5aae9ac5041a9b1a1300bccf82a1) add name to scheduler and update plugin sdk
+
 ## [v0.1.140](https://github.com/outblocks/outblocks-cli/compare/v0.1.139...v0.1.140)
 
 > 2022-11-25
