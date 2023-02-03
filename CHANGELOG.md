@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.142](https://github.com/outblocks/outblocks-cli/compare/v0.1.141...v0.1.142)
+
+> 2023-02-03
+
+### FEATURES
+
+[`ea02ac6`](https://github.com/outblocks/outblocks-cli/commit/ea02ac6e39c61e716f3006b468078e084c0b1272) add verification for defaults set
+
 ## [v0.1.141](https://github.com/outblocks/outblocks-cli/compare/v0.1.140...v0.1.141)
 
 > 2023-01-23
