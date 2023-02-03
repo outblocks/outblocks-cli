@@ -116,6 +116,36 @@ func (p *Project) Normalize() error {
 	return err
 }
 
+func (p *Project) checkAndNormalizeDefaults() error {
+	if p.Defaults.Run.Plugin != "" && !p.FindLoadedPlugin(p.Defaults.Run.Plugin).HasAction(plugins.ActionRun) {
+		return p.yamlError("$.defaults.run.plugin", fmt.Sprintf("plugin '%s' can't be used for run", p.Defaults.Run.Plugin))
+	}
+
+	if p.Defaults.Deploy.Plugin != "" && !p.FindLoadedPlugin(p.Defaults.Deploy.Plugin).HasAction(plugins.ActionDeploy) {
+		return p.yamlError("$.defaults.deploy.plugin", fmt.Sprintf("plugin '%s' can't be used for deploy", p.Defaults.Deploy.Plugin))
+	}
+
+	if p.Defaults.DNS.Plugin != "" && !p.FindLoadedPlugin(p.Defaults.DNS.Plugin).HasAction(plugins.ActionDNS) {
+		return p.yamlError("$.defaults.dns.plugin", fmt.Sprintf("plugin '%s' can't be used for dns", p.Defaults.DNS.Plugin))
+	}
+
+	for _, plug := range p.LoadedPlugins() {
+		if plug.HasAction(plugins.ActionDeploy) && p.Defaults.Deploy.Plugin == "" {
+			p.Defaults.Deploy.Plugin = plug.Name
+		}
+
+		if plug.HasAction(plugins.ActionDNS) && p.Defaults.DNS.Plugin == "" {
+			p.Defaults.DNS.Plugin = plug.Name
+		}
+
+		if plug.HasAction(plugins.ActionRun) && p.Defaults.Run.Plugin == "" {
+			p.Defaults.Run.Plugin = plug.Name
+		}
+	}
+
+	return nil
+}
+
 // Logic validation after everything is loaded, e.g. check for supported types.
 func (p *Project) FullCheck() error {
 	err := func() error {
@@ -143,21 +173,7 @@ func (p *Project) FullCheck() error {
 			return err
 		}
 
-		for _, plug := range p.LoadedPlugins() {
-			if plug.HasAction(plugins.ActionDeploy) && p.Defaults.Deploy.Plugin == "" {
-				p.Defaults.Deploy.Plugin = plug.Name
-			}
-
-			if plug.HasAction(plugins.ActionDNS) && p.Defaults.DNS.Plugin == "" {
-				p.Defaults.DNS.Plugin = plug.Name
-			}
-
-			if plug.HasAction(plugins.ActionRun) && p.Defaults.Run.Plugin == "" {
-				p.Defaults.Run.Plugin = plug.Name
-			}
-		}
-
-		return nil
+		return p.checkAndNormalizeDefaults()
 	}()
 
 	if err != nil {
