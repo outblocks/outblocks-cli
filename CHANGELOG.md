@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.143](https://github.com/outblocks/outblocks-cli/compare/v0.1.142...v0.1.143)
+
+> 2023-03-10
+
+### BUG FIXES
+
+[`596b244`](https://github.com/outblocks/outblocks-cli/commit/596b244ea49c3381dbdfee618967312bb2b10008) using direct run plugin as default
+
 ## [v0.1.142](https://github.com/outblocks/outblocks-cli/compare/v0.1.141...v0.1.142)
 
 > 2023-02-03
