@@ -117,7 +117,7 @@ func (p *Project) Normalize() error {
 }
 
 func (p *Project) checkAndNormalizeDefaults() error {
-	if p.Defaults.Run.Plugin != "" && !p.FindLoadedPlugin(p.Defaults.Run.Plugin).HasAction(plugins.ActionRun) {
+	if p.Defaults.Run.Plugin != "" && p.Defaults.Run.Plugin != RunPluginDirect && !p.FindLoadedPlugin(p.Defaults.Run.Plugin).HasAction(plugins.ActionRun) {
 		return p.yamlError("$.defaults.run.plugin", fmt.Sprintf("plugin '%s' can't be used for run", p.Defaults.Run.Plugin))
 	}
 
