@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.148](https://github.com/outblocks/outblocks-cli/compare/v0.1.147...v0.1.148)
+
+> 2025-03-17
+
+### BUG FIXES
+
+[`487d962`](https://github.com/outblocks/outblocks-cli/commit/487d962de23f3821d44e1a1e289a93e76561c524) goreleaser tagging
+
 ## [v0.1.147](https://github.com/outblocks/outblocks-cli/compare/v0.1.146...v0.1.147)
 
 > 2025-03-17
