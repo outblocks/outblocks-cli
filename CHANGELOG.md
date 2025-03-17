@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.145](https://github.com/outblocks/outblocks-cli/compare/v0.1.144...v0.1.145)
+
+> 2025-03-17
+
+### BUG FIXES
+
+[`2dce222`](https://github.com/outblocks/outblocks-cli/commit/2dce222162c83493f898a623e352dc48626a0506) github token setup
+
 ## [v0.1.144](https://github.com/outblocks/outblocks-cli/compare/v0.1.143...v0.1.144)
 
 > 2025-03-17
