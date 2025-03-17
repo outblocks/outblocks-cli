@@ -60,6 +60,7 @@ brews:
       owner: outblocks
       name: homebrew-tap
     name: ok
+    directory: Formula
     homepage: https://outblocks.io
     description: Auto devops.
     license: MIT
