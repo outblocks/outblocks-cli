@@ -1,4 +1,5 @@
 project_name: outblocks
+version: 2
 
 release:
   github:
@@ -20,7 +21,7 @@ builds:
       - amd64
       - arm64
       - arm
-      - 386
+      - "386"
     env:
       - CGO_ENABLED=0
     flags:
@@ -55,11 +56,10 @@ changelog:
       - Merge branch
 
 brews:
-  - tap:
+  - repository:
       owner: outblocks
       name: homebrew-tap
     name: ok
-    folder: Formula
     homepage: https://outblocks.io
     description: Auto devops.
     license: MIT
@@ -77,14 +77,14 @@ brews:
     test: |
       system "#{bin}/ok --version"
 
-scoop:
-  bucket:
-    owner: outblocks
-    name: outblocks-scoop
-  commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
-  homepage: https://outblocks.io
-  description: Auto devops.
-  license: MIT
+scoops:
+  - repository:
+      owner: outblocks
+      name: outblocks-scoop
+    commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
+    homepage: https://outblocks.io
+    description: Auto devops.
+    license: MIT
 
 dockers:
   - id: alpine

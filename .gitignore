@@ -3,3 +3,4 @@ vendor/
 outblocks-cli
 example*/
 .outblocks
+/dist
