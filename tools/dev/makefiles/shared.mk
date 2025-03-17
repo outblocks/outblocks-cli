@@ -6,7 +6,7 @@ OS ?= $(shell uname -s | tr [:upper:] [:lower:])
 ARCH ?= $(shell case `uname -m` in \
                 (i386 | i686)   echo "386" ;; \
                 (x86_64) echo "amd64" ;; \
-                (aarch64_be | aarch64 | armv8b | armv8l) echo "arm64" ;; \
+                (aarch64_be | aarch64 | armv8b | armv8l | arm64) echo "arm64" ;; \
 				(*) exit "unsupported" ;; \
         esac)
 DEV_BIN_PATH ?= bin
