@@ -126,6 +126,10 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 
 	cmd, _, err := e.rootCmd.Find(os.Args[1:])
 	if err != nil {
+		if os.Args[1] == "__complete" {
+			return nil
+		}
+
 		return err
 	}
 
