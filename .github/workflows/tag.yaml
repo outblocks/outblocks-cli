@@ -36,7 +36,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: release --rm-dist --release-notes=/tmp/changelog
+          args: release --release-notes=/tmp/changelog
 
       - name: Update version in package.json
         run: |
