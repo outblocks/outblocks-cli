@@ -1,6 +1,6 @@
 module github.com/outblocks/outblocks-cli
 
-go 1.19
+go 1.24
 
 require (
 	github.com/23doors/go-yaml v1.9.6-0.20220328165103-15fd217cc309

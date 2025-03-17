@@ -403,7 +403,6 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 	// Process local dependencies.
 	if len(runInfo.localDeps) > 0 {
 		localRet, err := run.Local(ctx, nil, runInfo.localDeps)
-
 		if err != nil {
 			spinner.Stop()
 			return nil, nil, err
@@ -486,7 +485,6 @@ func (d *Run) runAll(ctx context.Context, runInfo *runInfo) ([]*run.PluginRunRes
 	// Process local apps.
 	if len(runInfo.localApps) > 0 {
 		localRet, err := run.Local(ctx, runInfo.localApps, nil)
-
 		if err != nil {
 			spinner.Stop()
 			return nil, nil, err
@@ -569,9 +567,9 @@ func formatRunOutput(log logger.Logger, cfg *config.Project, r *apiv1.RunOutputR
 	}
 
 	if r.Stream == apiv1.RunOutputResponse_STREAM_STDERR {
-		log.Printf("%s %s\n", pterm.FgRed.Sprintf(prefix), msg)
+		log.Printf("%s %s\n", pterm.FgRed.Sprint(prefix), msg)
 	} else {
-		log.Printf("%s %s\n", pterm.FgGreen.Sprintf(prefix), msg)
+		log.Printf("%s %s\n", pterm.FgGreen.Sprint(prefix), msg)
 	}
 }
 
@@ -674,7 +672,6 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 
 		go func() {
 			err = localRet.Wait()
-
 			if err != nil {
 				runnerCancel()
 				errCh <- err
@@ -700,7 +697,6 @@ func (d *Run) start(ctx context.Context, runInfo *runInfo) (*sync.WaitGroup, err
 
 		go func() {
 			err = pluginRet.Wait()
-
 			if err != nil {
 				runnerCancel()
 				errCh <- err

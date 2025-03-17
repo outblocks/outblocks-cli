@@ -26,6 +26,7 @@ func ArchiveDir(dir, out string, excludes []string) error {
 		if err != nil {
 			return fmt.Errorf("error creating file header: %s", err)
 		}
+
 		fh.Name = filepath.ToSlash(rel)
 		fh.Method = zip.Deflate
 		// fh.Modified alone isn't enough when using a zero value
@@ -35,6 +36,7 @@ func ArchiveDir(dir, out string, excludes []string) error {
 		if err != nil {
 			return fmt.Errorf("error creating file inside archive: %s", err)
 		}
+
 		content, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("error reading file for archival: %s", err)

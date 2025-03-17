@@ -85,6 +85,7 @@ func FindSubdirsOfMatching(path string, matching []string) []string {
 					}
 				}
 			}
+
 			return nil
 		})
 

@@ -227,7 +227,7 @@ func planChangeInfo(header string, changes []*change) (info string, anyCritical 
 	headerInfoStyle := pterm.NewStyle(pterm.FgWhite, pterm.Reset)
 
 	add, change, process, destroy := calculateTotal(changes)
-	info += fmt.Sprintf("%s %s\n", headerStyle.Sprintf(header), headerInfoStyle.Sprintf("(%d to add, %d to change, %d to destroy, %d to process)", add, change, destroy, process))
+	info += fmt.Sprintf("%s %s\n", headerStyle.Sprint(header), headerInfoStyle.Sprintf("(%d to add, %d to change, %d to destroy, %d to process)", add, change, destroy, process))
 
 	for _, chg := range changes {
 		info += fmt.Sprintf("  %s\n", pterm.Bold.Sprintf("\n  %s changes:", chg.Name()))

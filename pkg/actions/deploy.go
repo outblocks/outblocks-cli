@@ -326,9 +326,7 @@ func (r *planAndApplyResults) shouldSave() bool {
 }
 
 func (d *Deploy) multilockPlanAndApplyDeploy(ctx context.Context, state *statefile.StateData, partialLock, verify bool, yamlContext *client.YAMLContext) (*planAndApplyResults, error) {
-	var (
-		locks []string
-	)
+	var locks []string
 
 	// Acquire necessary acquiredLocks.
 	if partialLock {
@@ -1467,7 +1465,7 @@ func (d *Deploy) planMonitoring(ctx context.Context, state *statefile.StateData,
 
 	plug := d.cfg.FindLoadedPlugin(monitoring.Plugin)
 	if plug == nil {
-		return nil, merry.Errorf("missing monitoring plugin: %s", plug.Name)
+		return nil, merry.Errorf("missing monitoring plugin: %s", monitoring.Plugin)
 	}
 
 	ret, err := plug.Client().PlanMonitoring(ctx, state, monitoring, plug.CommandArgs(deployCommand), verify, destroy)
@@ -1489,7 +1487,7 @@ func (d *Deploy) applyMonitoring(ctx context.Context, state *statefile.StateData
 
 	plug := d.cfg.FindLoadedPlugin(monitoring.Plugin)
 	if plug == nil {
-		return merry.Errorf("missing monitoring plugin: %s", plug.Name)
+		return merry.Errorf("missing monitoring plugin: %s", monitoring.Plugin)
 	}
 
 	ret, err := plug.Client().ApplyMonitoring(ctx, state, monitoring, plug.CommandArgs(deployCommand), destroy, callback)

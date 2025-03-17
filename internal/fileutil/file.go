@@ -37,6 +37,7 @@ func ChownRToUser(path string) error {
 		if err == nil {
 			err = ChownToUser(name)
 		}
+
 		return err
 	})
 }
@@ -64,6 +65,7 @@ func LchownRToUser(path string) error {
 		if err == nil {
 			err = LchownToUser(name)
 		}
+
 		return err
 	})
 }

@@ -437,6 +437,7 @@ func suggestAppStaticBuildDir(cfg *config.Project, opts *AppAddOptions) func(toC
 			}
 
 			dirs = append(dirs, path)
+
 			return nil
 		})
 
