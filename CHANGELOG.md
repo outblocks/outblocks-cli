@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.150](https://github.com/outblocks/outblocks-cli/compare/v0.1.149...v0.1.150)
+
+> 2025-12-02
+
+### FEATURES
+
+[`001c593`](https://github.com/outblocks/outblocks-cli/commit/001c59324cfc299357d99a256d0a7d64ec66cd64) schema liveness and startup probe, docker secrets
+
 ## [v0.1.149](https://github.com/outblocks/outblocks-cli/compare/v0.1.148...v0.1.149)
 
 > 2025-03-17
