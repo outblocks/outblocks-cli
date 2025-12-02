@@ -172,6 +172,11 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 
 	buildArgs := util.FlattenEnvMap(buildArgsMap)
 
+	secretsMap, err := eval.ExpandStringMap(app.Build.DockerSecrets)
+	if err != nil {
+		return err
+	}
+
 	cmdArgs := []string{"build", "--platform=linux/amd64", "--tag", app.AppBuild.LocalDockerImage, "--file", app.Build.Dockerfile, "--progress=plain"}
 
 	if !d.opts.SkipPull && !app.Build.SkipPull {
@@ -182,6 +187,13 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 	if len(buildArgs) > 0 {
 		for _, a := range buildArgs {
 			cmdArgs = append(cmdArgs, "--build-arg", a)
+		}
+	}
+
+	// Add secrets if needed.
+	if len(secretsMap) > 0 {
+		for _, secret := range secretsMap {
+			cmdArgs = append(cmdArgs, "--secret", secret)
 		}
 	}
 

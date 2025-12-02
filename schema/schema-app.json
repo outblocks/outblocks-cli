@@ -473,6 +473,13 @@
             "type": "string"
           }
         },
+        "secrets": {
+          "description": "Docker build secrets.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "context": {
           "description": "Docker context directory, relative to application dir.",
           "type": "string"
@@ -551,6 +558,49 @@
               }
             }
           ]
+        },
+        "liveness_probe": {
+          "description": "Liveness probe definition.",
+          "$ref": "#/definitions/ServiceContainerProbe"
+        },
+        "startup_probe": {
+          "description": "Startup probe definition.",
+          "$ref": "#/definitions/ServiceContainerProbe"
+        }
+      }
+    },
+    "ServiceContainerProbe": {
+      "title": "Service app container probe definition",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "http_path": {
+          "description": "HTTP path to probe.",
+          "type": "string"
+        },
+        "grpc_service": {
+          "description": "GRPC service to probe.",
+          "type": "string"
+        },
+        "port": {
+          "description": "Port to use for probing. If not specified, default container port is used.",
+          "type": "integer"
+        },
+        "initial_delay_seconds": {
+          "description": "Number of seconds after the container has started before probes are initiated.",
+          "type": "integer"
+        },
+        "period_seconds": {
+          "description": "How often (in seconds) to perform the probe. Default to 10 seconds.",
+          "type": "integer"
+        },
+        "timeout_seconds": {
+          "description": "Number of seconds after which the probe times out. Defaults to 1 second.",
+          "type": "integer"
+        },
+        "failure_threshold": {
+          "description": "When a probe fails, Kubernetes will try failure_threshold times before giving up. Defaults to 3.",
+          "type": "integer"
         }
       }
     }
