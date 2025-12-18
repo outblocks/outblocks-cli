@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.151](https://github.com/outblocks/outblocks-cli/compare/v0.1.150...v0.1.151)
+
+> 2025-12-18
+
+### FEATURES
+
+[`960e4be`](https://github.com/outblocks/outblocks-cli/commit/960e4be86669ac7ba1b1a80759457ff7fd293ce2) build cache dir, env vars for deploy args, docker dependency upgrade
+
 ## [v0.1.150](https://github.com/outblocks/outblocks-cli/compare/v0.1.149...v0.1.150)
 
 > 2025-12-02
