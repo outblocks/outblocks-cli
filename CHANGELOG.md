@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.152](https://github.com/outblocks/outblocks-cli/compare/v0.1.151...v0.1.152)
+
+> 2025-12-18
+
+### BUG FIXES
+
+[`17eed8a`](https://github.com/outblocks/outblocks-cli/commit/17eed8a1ec5b708ce43d800bab5319281e8fa6bf) attempt to fix npm release
+
 ## [v0.1.151](https://github.com/outblocks/outblocks-cli/compare/v0.1.150...v0.1.151)
 
 > 2025-12-18
