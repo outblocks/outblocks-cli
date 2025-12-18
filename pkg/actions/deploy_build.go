@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
@@ -183,6 +184,19 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 		cmdArgs = append(cmdArgs, "--pull")
 	}
 
+	// Add cache if needed.
+	dockerBuildCacheDir := d.opts.DockerBuildCacheDir
+	if dockerBuildCacheDir != "" {
+		dockerBuildCacheDir = filepath.Join(dockerBuildCacheDir, fmt.Sprintf("%s.%s", app.AppType, app.Name()))
+
+		_ = os.MkdirAll(dockerBuildCacheDir, 0o755)
+
+		cacheFrom := fmt.Sprintf("type=local,modes=max,src=%s", dockerBuildCacheDir)
+		cacheTo := fmt.Sprintf("type=local,dest=%s", dockerBuildCacheDir)
+
+		cmdArgs = append(cmdArgs, "--cache-from", cacheFrom, "--cache-to", cacheTo)
+	}
+
 	// Add build args if needed.
 	if len(buildArgs) > 0 {
 		for _, a := range buildArgs {
@@ -215,7 +229,7 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 		return err
 	}
 
-	insp, _, err := cli.ImageInspectWithRaw(ctx, app.AppBuild.LocalDockerImage)
+	insp, err := cli.ImageInspect(ctx, app.AppBuild.LocalDockerImage)
 	if err != nil {
 		return merry.Errorf("error inspecting created image for %s app: %s: %w", app.Type(), app.Name(), err)
 	}
@@ -253,7 +267,7 @@ func (d *Deploy) buildFunctionApp(ctx context.Context, app *config.FunctionApp, 
 		return nil
 	}
 
-	out := filepath.Join(d.opts.BuildCacheDir, fmt.Sprintf("%s.zip", app.ID()))
+	out := filepath.Join(d.opts.BuildTempDir, fmt.Sprintf("%s.zip", app.ID()))
 
 	patterns := []string{
 		"{*.outblocks.yaml,*.outblocks.yml,outblocks.yaml,outblocks.yml,.git,.gitignore,.DS_Store,node_modules,npm-debug.log}",
@@ -307,7 +321,7 @@ func (d *Deploy) prepareApps(ctx context.Context) error {
 			continue
 		}
 
-		insp, _, err := cli.ImageInspectWithRaw(ctx, a.AppBuild.LocalDockerImage)
+		insp, err := cli.ImageInspect(ctx, a.AppBuild.LocalDockerImage)
 		if err == nil {
 			a.AppBuild.LocalDockerHash = insp.ID
 
@@ -333,7 +347,7 @@ func (d *Deploy) prepareApps(ctx context.Context) error {
 					d.printAppOutput(app, fmt.Sprintf("error pulling custom image: %s", err), true)
 				}
 
-				insp, _, err := cli.ImageInspectWithRaw(ctx, a.AppBuild.LocalDockerImage)
+				insp, err := cli.ImageInspect(ctx, a.AppBuild.LocalDockerImage)
 				if err != nil {
 					return merry.Errorf("error inspecting image %s for %s app: %s: %w", a.AppBuild.LocalDockerImage, app.Type(), app.Name(), err)
 				}

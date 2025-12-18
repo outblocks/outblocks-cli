@@ -156,7 +156,7 @@ func (c *Client) init(ctx context.Context) error {
 
 	c.addr = handshake.Addr
 
-	c.conn, err = grpc.DialContext(ctx, c.addr, grpc.WithBlock(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	c.conn, err = grpc.NewClient(c.addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return err
 	}

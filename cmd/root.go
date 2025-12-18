@@ -334,7 +334,6 @@ func (e *Executor) newRoot() *cobra.Command {
 	addValueOptionsFlags(f, e.opts.valueOpts)
 
 	f.StringVarP(&e.opts.env, "env", "e", "dev", "environment to use")
-	e.env.AddVarWithDefault("env", "environment to use", "dev")
 	e.env.BindCLIFlag("env", f.Lookup("env"))
 
 	f.Lookup("help").Hidden = true

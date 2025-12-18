@@ -55,23 +55,24 @@ type Deploy struct {
 }
 
 type DeployOptions struct {
-	BuildCacheDir   string
-	Verify          bool
-	Destroy         bool
-	SkipBuild       bool
-	SkipPull        bool
-	Lock            bool
-	LockWait        time.Duration
-	AutoApprove     bool
-	ForceApprove    bool
-	MergeMode       bool
-	Targets, Skips  *util.TargetMatcher
-	SkipAllApps     bool
-	SkipDNS         bool
-	SkipMonitoring  bool
-	SkipDiff        bool
-	SkipApply       bool
-	SkipStateCreate bool
+	DockerBuildCacheDir string
+	BuildTempDir        string
+	Verify              bool
+	Destroy             bool
+	SkipBuild           bool
+	SkipPull            bool
+	Lock                bool
+	LockWait            time.Duration
+	AutoApprove         bool
+	ForceApprove        bool
+	MergeMode           bool
+	Targets, Skips      *util.TargetMatcher
+	SkipAllApps         bool
+	SkipDNS             bool
+	SkipMonitoring      bool
+	SkipDiff            bool
+	SkipApply           bool
+	SkipStateCreate     bool
 }
 
 func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
@@ -1287,7 +1288,6 @@ func (d *Deploy) planDeploy(ctx context.Context, state *statefile.StateData, pla
 	}
 
 	retMap = make(map[*plugins.Plugin][]*apiv1.PlanResponse, len(planMap))
-	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 	groups := sortedPlanDeployMap(planMap)
 
 	var mu sync.Mutex
@@ -1309,6 +1309,8 @@ func (d *Deploy) planDeploy(ctx context.Context, state *statefile.StateData, pla
 
 	// Plan all plugins concurrently.
 	for _, plugs := range groups {
+		g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
+
 		for _, plug := range plugs.plugins {
 			plug := plug
 			params := planMap[plug]
@@ -1339,7 +1341,6 @@ func (d *Deploy) applyDeploy(ctx context.Context, state *statefile.StateData, pl
 		state.Plugins = make(map[string]*statefile.PluginState)
 	}
 
-	g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
 	groups := sortedPlanDeployMap(planMap)
 
 	var mu sync.Mutex
@@ -1360,6 +1361,8 @@ func (d *Deploy) applyDeploy(ctx context.Context, state *statefile.StateData, pl
 	var err error
 
 	for _, plugs := range groups {
+		g, _ := errgroup.WithConcurrency(ctx, defaultConcurrency)
+
 		for _, plug := range plugs.plugins {
 			plug := plug
 			params := planMap[plug]
