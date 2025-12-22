@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.153](https://github.com/outblocks/outblocks-cli/compare/v0.1.152...v0.1.153)
+
+> 2025-12-22
+
+### BUG FIXES
+
+[`a2e6b09`](https://github.com/outblocks/outblocks-cli/commit/a2e6b091f6b32e0a17b1885152bc5bae2834a566) grpc status conversion
+
 ## [v0.1.152](https://github.com/outblocks/outblocks-cli/compare/v0.1.151...v0.1.152)
 
 > 2025-12-18
