@@ -55,25 +55,25 @@ type Deploy struct {
 }
 
 type DeployOptions struct {
-	DockerBuildCacheDir string
+	DockerBuildCacheDir       string
 	DockerBuildCacheDirOutput string
-	BuildTempDir        string
-	Verify              bool
-	Destroy             bool
-	SkipBuild           bool
-	SkipPull            bool
-	Lock                bool
-	LockWait            time.Duration
-	AutoApprove         bool
-	ForceApprove        bool
-	MergeMode           bool
-	Targets, Skips      *util.TargetMatcher
-	SkipAllApps         bool
-	SkipDNS             bool
-	SkipMonitoring      bool
-	SkipDiff            bool
-	SkipApply           bool
-	SkipStateCreate     bool
+	BuildTempDir              string
+	Verify                    bool
+	Destroy                   bool
+	SkipBuild                 bool
+	SkipPull                  bool
+	Lock                      bool
+	LockWait                  time.Duration
+	AutoApprove               bool
+	ForceApprove              bool
+	MergeMode                 bool
+	Targets, Skips            *util.TargetMatcher
+	SkipAllApps               bool
+	SkipDNS                   bool
+	SkipMonitoring            bool
+	SkipDiff                  bool
+	SkipApply                 bool
+	SkipStateCreate           bool
 }
 
 func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
