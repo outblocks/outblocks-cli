@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.157](https://github.com/outblocks/outblocks-cli/compare/v0.1.156...v0.1.157)
+
+> 2026-01-26
+
+### FEATURES
+
+[`312fc2c`](https://github.com/outblocks/outblocks-cli/commit/312fc2cfec171b3f7eb9a64826e5c5a715535b9a) docker build cache dir output
+
 ## [v0.1.156](https://github.com/outblocks/outblocks-cli/compare/v0.1.155...v0.1.156)
 
 > 2026-01-26
