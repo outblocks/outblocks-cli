@@ -178,7 +178,7 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 		return err
 	}
 
-	cmdArgs := []string{"build", "--platform=linux/amd64", "--tag", app.AppBuild.LocalDockerImage, "--file", app.Build.Dockerfile, "--progress=plain"}
+	cmdArgs := []string{"buildx", "build", "--platform=linux/amd64", "--tag", app.AppBuild.LocalDockerImage, "--file", app.Build.Dockerfile, "--progress=plain"}
 
 	if !d.opts.SkipPull && !app.Build.SkipPull {
 		cmdArgs = append(cmdArgs, "--pull")
@@ -216,7 +216,7 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 	cmd, err := command.New(
 		exec.Command("docker", cmdArgs...),
 		command.WithDir(dockercontext),
-		command.WithEnv([]string{"DOCKER_BUILDKIT=1"}),
+		// command.WithEnv([]string{"DOCKER_BUILDKIT=1"}),
 	)
 	if err != nil {
 		return merry.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
