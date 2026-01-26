@@ -193,13 +193,21 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 
 	// Add cache if needed.
 	dockerBuildCacheDir := d.opts.DockerBuildCacheDir
+	dockerBuildCacheDirOutput := d.opts.DockerBuildCacheDirOutput
+
+	if dockerBuildCacheDirOutput == "" {
+		dockerBuildCacheDirOutput = dockerBuildCacheDir
+	}
+
 	if dockerBuildCacheDir != "" {
 		dockerBuildCacheDir = filepath.Join(dockerBuildCacheDir, fmt.Sprintf("%s.%s", app.AppType, app.Name()))
+		dockerBuildCacheDirOutput := filepath.Join(dockerBuildCacheDirOutput, fmt.Sprintf("%s.%s", app.AppType, app.Name()))
 
 		_ = os.MkdirAll(dockerBuildCacheDir, 0o755)
+		_ = os.MkdirAll(dockerBuildCacheDirOutput, 0o755)
 
 		cacheFrom := fmt.Sprintf("type=local,modes=max,src=%s", dockerBuildCacheDir)
-		cacheTo := fmt.Sprintf("type=local,dest=%s", dockerBuildCacheDir)
+		cacheTo := fmt.Sprintf("type=local,dest=%s", dockerBuildCacheDirOutput)
 
 		cmdArgs = append(cmdArgs,
 			"--cache-from", cacheFrom,

@@ -93,6 +93,8 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 	e.env.BindCLIFlag("skip_pull", f.Lookup("skip-pull"))
 	f.StringVar(&opts.DockerBuildCacheDir, "docker-build-cache-dir", "", "directory to use for docker build cache")
 	e.env.BindCLIFlag("docker_build_cache_dir", f.Lookup("docker-build-cache-dir"))
+	f.StringVar(&opts.DockerBuildCacheDirOutput, "docker-build-cache-dir-output", "", "directory to output docker build cache")
+	e.env.BindCLIFlag("docker_build_cache_dir_output", f.Lookup("docker-build-cache-dir-output"))
 	f.BoolVar(&opts.Lock, "lock", true, "acquire locks during deploy")
 	e.env.BindCLIFlag("lock", f.Lookup("lock"))
 	f.DurationVar(&opts.LockWait, "lock-wait", 0, "wait for lock if it is already acquired")

@@ -56,6 +56,7 @@ type Deploy struct {
 
 type DeployOptions struct {
 	DockerBuildCacheDir string
+	DockerBuildCacheDirOutput string
 	BuildTempDir        string
 	Verify              bool
 	Destroy             bool
