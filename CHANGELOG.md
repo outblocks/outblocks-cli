@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.158](https://github.com/outblocks/outblocks-cli/compare/v0.1.157...v0.1.158)
+
+> 2026-01-26
+
+### BUG FIXES
+
+[`845b3e2`](https://github.com/outblocks/outblocks-cli/commit/845b3e2e0be05ed7059f1086a94c2d53ab33d258) lint
+
 ## [v0.1.157](https://github.com/outblocks/outblocks-cli/compare/v0.1.156...v0.1.157)
 
 > 2026-01-26
