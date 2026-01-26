@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.156](https://github.com/outblocks/outblocks-cli/compare/v0.1.155...v0.1.156)
+
+> 2026-01-26
+
+### FEATURES
+
+[`61bf262`](https://github.com/outblocks/outblocks-cli/commit/61bf262bf41d07d556ed4fd0ddd40914ff1fbb1f) dont use explicit buildx if not needed
+
 ## [v0.1.155](https://github.com/outblocks/outblocks-cli/compare/v0.1.154...v0.1.155)
 
 > 2026-01-26
