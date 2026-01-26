@@ -178,7 +178,14 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 		return err
 	}
 
-	cmdArgs := []string{"buildx", "build", "--platform=linux/amd64", "--tag", app.AppBuild.LocalDockerImage, "--file", app.Build.Dockerfile, "--progress=plain"}
+	cmdArgs := []string{
+		"buildx", "build",
+		"--platform=linux/amd64",
+		"--tag", app.AppBuild.LocalDockerImage,
+		"--file", app.Build.Dockerfile,
+		"--load", // Load the image into docker after build.
+		"--progress=plain",
+	}
 
 	if !d.opts.SkipPull && !app.Build.SkipPull {
 		cmdArgs = append(cmdArgs, "--pull")
