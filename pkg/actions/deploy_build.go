@@ -178,12 +178,12 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 		return err
 	}
 
+	explicitBuildx := false
+
 	cmdArgs := []string{
-		"buildx", "build",
 		"--platform=linux/amd64",
 		"--tag", app.AppBuild.LocalDockerImage,
 		"--file", app.Build.Dockerfile,
-		"--load", // Load the image into docker after build.
 		"--progress=plain",
 	}
 
@@ -201,7 +201,13 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 		cacheFrom := fmt.Sprintf("type=local,modes=max,src=%s", dockerBuildCacheDir)
 		cacheTo := fmt.Sprintf("type=local,dest=%s", dockerBuildCacheDir)
 
-		cmdArgs = append(cmdArgs, "--cache-from", cacheFrom, "--cache-to", cacheTo)
+		cmdArgs = append(cmdArgs,
+			"--cache-from", cacheFrom,
+			"--cache-to", cacheTo,
+			"--load", // Load the image into docker after build.
+		)
+
+		explicitBuildx = true
 	}
 
 	// Add build args if needed.
@@ -220,10 +226,18 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 
 	cmdArgs = append(cmdArgs, ".")
 
+	if explicitBuildx {
+		// Use buildx for explicit cache usage.
+		cmdArgs = append([]string{"buildx", "build"}, cmdArgs...)
+	} else {
+		// Use normal build.
+		cmdArgs = append([]string{"build"}, cmdArgs...)
+	}
+
 	cmd, err := command.New(
 		exec.Command("docker", cmdArgs...),
 		command.WithDir(dockercontext),
-		// command.WithEnv([]string{"DOCKER_BUILDKIT=1"}),
+		command.WithEnv([]string{"DOCKER_BUILDKIT=1"}),
 	)
 	if err != nil {
 		return merry.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
