@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.160](https://github.com/outblocks/outblocks-cli/compare/v0.1.159...v0.1.160)
+
+> 2026-02-20
+
+### BUG FIXES
+
+[`1f4db67`](https://github.com/outblocks/outblocks-cli/commit/1f4db670adcedf16ae740c53e499fa8c90830ab1) secrets handling
+
 ## [v0.1.159](https://github.com/outblocks/outblocks-cli/compare/v0.1.158...v0.1.159)
 
 > 2026-02-20
