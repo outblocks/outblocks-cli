@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -227,8 +228,15 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 
 	// Add secrets if needed.
 	if len(secretsMap) > 0 {
-		for _, secret := range secretsMap {
-			cmdArgs = append(cmdArgs, "--secret", secret)
+		keys := make([]string, 0, len(secretsMap))
+		for k := range secretsMap {
+			keys = append(keys, k)
+		}
+
+		sort.Strings(keys)
+
+		for _, k := range keys {
+			cmdArgs = append(cmdArgs, "--secret", fmt.Sprintf("id=%s", k))
 		}
 	}
 
@@ -242,10 +250,13 @@ func (d *Deploy) buildServiceApp(ctx context.Context, app *config.ServiceApp, ev
 		cmdArgs = append([]string{"build"}, cmdArgs...)
 	}
 
+	dockerEnv := []string{"DOCKER_BUILDKIT=1"}
+	dockerEnv = append(dockerEnv, util.FlattenEnvMap(secretsMap)...)
+
 	cmd, err := command.New(
 		exec.Command("docker", cmdArgs...),
 		command.WithDir(dockercontext),
-		command.WithEnv([]string{"DOCKER_BUILDKIT=1"}),
+		command.WithEnv(dockerEnv),
 	)
 	if err != nil {
 		return merry.Errorf("error preparing build command for %s app: %s: %w", app.Type(), app.Name(), err)
