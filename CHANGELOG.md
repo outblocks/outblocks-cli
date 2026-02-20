@@ -1,5 +1,9 @@
 # Outblocks CLI Changelog
 
+## [v0.1.159](https://github.com/outblocks/outblocks-cli/compare/v0.1.158...v0.1.159)
+
+> 2026-02-20
+
 ## [v0.1.158](https://github.com/outblocks/outblocks-cli/compare/v0.1.157...v0.1.158)
 
 > 2026-01-26
