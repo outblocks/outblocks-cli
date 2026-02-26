@@ -77,6 +77,14 @@ type DeployOptions struct {
 }
 
 func NewDeploy(log logger.Logger, cfg *config.Project, opts *DeployOptions) *Deploy {
+	// Ensure Targets and Skips are never nil
+	if opts.Targets == nil {
+		opts.Targets = util.NewTargetMatcher()
+	}
+	if opts.Skips == nil {
+		opts.Skips = util.NewTargetMatcher()
+	}
+
 	return &Deploy{
 		log:  log,
 		cfg:  cfg,

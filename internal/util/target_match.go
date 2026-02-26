@@ -53,6 +53,10 @@ func NewTargetMatcher() *TargetMatcher {
 }
 
 func (m *TargetMatcher) ResetMatches() {
+	if m == nil {
+		return
+	}
+
 	for _, t := range m.matchers {
 		t.matched = 0
 	}
