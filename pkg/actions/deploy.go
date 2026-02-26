@@ -659,7 +659,7 @@ func computeDomainsInfo(cfg *config.Project, state *statefile.StateData) []*apiv
 	return ret
 }
 
-func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (*planAndApplyResults, error) { //nolint: gocyclo
+func (d *Deploy) planAndApply(ctx context.Context, verify bool, state *statefile.StateData, acquiredLocks map[string]string, checkLocks bool) (*planAndApplyResults, error) { //nolint:gocyclo
 	var domains []*apiv1.DomainInfo
 
 	ret := &planAndApplyResults{

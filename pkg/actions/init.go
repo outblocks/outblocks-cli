@@ -26,9 +26,7 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-var (
-	errInitCanceled = errors.New("init canceled")
-)
+var errInitCanceled = errors.New("init canceled")
 
 type Init struct {
 	log            logger.Logger
@@ -273,7 +271,7 @@ func (d *Init) promptBasicInfo() error {
 	return err
 }
 
-func (d *Init) runPrompt(ctx context.Context, cfg *projectInit) error { //nolint: gocyclo
+func (d *Init) runPrompt(ctx context.Context, cfg *projectInit) error { //nolint:gocyclo
 	if d.opts.Template != "" && plugin_util.DirExists(d.opts.Path) && !d.opts.Overwrite {
 		proceed := false
 		prompt := &survey.Confirm{
@@ -495,7 +493,7 @@ func (d *Init) promptPlugins(cfg *projectInit) error {
 	return nil
 }
 
-func (d *Init) prompt(ctx context.Context, cfg *projectInit) error { //nolint: gocyclo
+func (d *Init) prompt(ctx context.Context, cfg *projectInit) error { //nolint:gocyclo
 	// Setup config object.
 	cfg.Name = d.opts.Name
 

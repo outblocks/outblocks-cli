@@ -49,7 +49,7 @@ func (m *PluginManager) insertInYAML(data []byte) error {
 	}
 
 	configData := m.cfg.YAMLData()
-	result := append(configData, append([]byte("\n"), data...)...) //nolint: gocritic
+	result := append(configData, append([]byte("\n"), data...)...) //nolint:gocritic
 
 	return fileutil.WriteFile(m.cfg.YAMLPath(), result, fi.Mode())
 }

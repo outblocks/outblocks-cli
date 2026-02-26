@@ -70,7 +70,7 @@ func setupEnvVars(env *cli.Environment) {
 	env.AddVarWithDefault("log_level", "set logging level (options: debug, notice, info, warn, error)", "info")
 }
 
-func (e *Executor) commandPreRun(ctx context.Context) error {
+func (e *Executor) commandPreRun(ctx context.Context) error { //nolint:gocyclo
 	var (
 		loadProjectOptions LoadProjectOptions
 		loadAppsMode       config.LoadMode
@@ -201,14 +201,14 @@ func buildAppsLoadOptions(cmd *cobra.Command, cmdArgs []string) (*config.LoadApp
 		return nil, err
 	}
 
-	var targets []string
-	var skips []string
+	var targets, skips []string
 
 	if cmd.Flags().Lookup("target-apps") != nil {
 		vals, err := cmd.Flags().GetStringSlice("target-apps")
 		if err != nil {
 			return nil, err
 		}
+
 		targets = append(targets, vals...)
 	}
 
@@ -217,6 +217,7 @@ func buildAppsLoadOptions(cmd *cobra.Command, cmdArgs []string) (*config.LoadApp
 		if err != nil {
 			return nil, err
 		}
+
 		targets = append(targets, vals...)
 	}
 
@@ -225,6 +226,7 @@ func buildAppsLoadOptions(cmd *cobra.Command, cmdArgs []string) (*config.LoadApp
 		if err != nil {
 			return nil, err
 		}
+
 		skips = append(skips, vals...)
 	}
 
@@ -233,6 +235,7 @@ func buildAppsLoadOptions(cmd *cobra.Command, cmdArgs []string) (*config.LoadApp
 		if err != nil {
 			return nil, err
 		}
+
 		skips = append(skips, vals...)
 	}
 
