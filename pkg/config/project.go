@@ -52,6 +52,11 @@ const (
 	LoadModeSkip
 )
 
+type LoadAppsOptions struct {
+	Targets *util.TargetMatcher
+	Skips   *util.TargetMatcher
+}
+
 type DefaultsRun struct {
 	Plugin string                 `json:"plugin,omitempty"`
 	Env    map[string]string      `json:"env,omitempty"`
@@ -195,7 +200,7 @@ func LoadProjectConfigData(path string, data []byte, vals map[string]interface{}
 	return out, nil
 }
 
-func (p *Project) LoadApps(mode LoadMode) error {
+func (p *Project) LoadApps(mode LoadMode, opts *LoadAppsOptions) error {
 	if mode == LoadModeSkip {
 		return nil
 	}
@@ -221,27 +226,101 @@ func (p *Project) LoadApps(mode LoadMode) error {
 		return strings.HasSuffix(name, AppYAMLNameSuffix)
 	})
 
-	if err := p.LoadAppFiles(files, mode); err != nil {
+	if err := p.LoadAppFiles(files, mode, opts); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (p *Project) LoadAppFiles(files []string, mode LoadMode) error {
+func (p *Project) LoadAppFiles(files []string, mode LoadMode, opts *LoadAppsOptions) error {
 	var reqKeys map[string]bool
 
 	if mode == LoadModeEssential {
 		reqKeys = essentialAppKeysMap
 	}
 
+	if opts == nil || opts.Targets == nil || opts.Targets.IsEmpty() {
+		for _, f := range files {
+			if err := p.LoadAppFile(f, reqKeys); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
 	for _, f := range files {
+		info, err := p.LoadAppInfo(f)
+		if err != nil {
+			return err
+		}
+
+		if !shouldLoadTargetApp(info, opts) {
+			continue
+		}
+
 		if err := p.LoadAppFile(f, reqKeys); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+type appInfo struct {
+	Name string `yaml:"name"`
+	Type string `yaml:"type"`
+}
+
+func (p *Project) LoadAppInfo(file string) (*appInfo, error) {
+	f, err := parser.ParseFile(file, 0)
+	if err != nil {
+		return nil, merry.Errorf("cannot read application yaml file: %s, cause: %w", file, err)
+	}
+
+	if len(f.Docs) != 1 {
+		return nil, merry.Errorf("multi-document yamls are unsupported, file: %s", file)
+	}
+
+	n, ok := f.Docs[0].Body.(*ast.MappingNode)
+	if !ok {
+		return nil, merry.Errorf("application file %s yaml is invalid", file)
+	}
+
+	_, err = traverseYAMLMapping(n, file, p.env, p.vals, essentialAppKeysMap, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var info appInfo
+	if err := yaml.NodeToValue(n, &info); err != nil {
+		return nil, err
+	}
+
+	return &info, nil
+}
+
+func shouldLoadTargetApp(info *appInfo, opts *LoadAppsOptions) bool {
+	if info == nil || opts == nil || opts.Targets == nil || opts.Targets.IsEmpty() {
+		return false
+	}
+
+	if info.Name == "" || info.Type == "" {
+		return false
+	}
+
+	typ := KnownType(info.Type)
+	if typ == "" {
+		return false
+	}
+
+	id := ComputeAppID(typ, info.Name)
+	if opts.Skips != nil && !opts.Skips.IsEmpty() && opts.Skips.Matches(id) {
+		return false
+	}
+
+	return opts.Targets.Matches(id)
 }
 
 type fileType struct {

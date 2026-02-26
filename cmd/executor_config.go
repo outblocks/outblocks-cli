@@ -17,7 +17,7 @@ type LoadProjectOptions struct {
 	SkipCheck       bool
 }
 
-func (e *Executor) loadProject(ctx context.Context, cfgPath, hostAddr string, vals map[string]interface{}, loadProjectOpts LoadProjectOptions, loadAppsMode config.LoadMode) error {
+func (e *Executor) loadProject(ctx context.Context, cfgPath, hostAddr string, vals map[string]interface{}, loadProjectOpts LoadProjectOptions, loadAppsMode config.LoadMode, loadAppsOpts *config.LoadAppsOptions) error {
 	cfg, err := config.LoadProjectConfig(cfgPath, vals, loadProjectOpts.Mode, &config.ProjectOptions{
 		Env: e.opts.env,
 	})
@@ -25,7 +25,7 @@ func (e *Executor) loadProject(ctx context.Context, cfgPath, hostAddr string, va
 		return err
 	}
 
-	if err := cfg.LoadApps(loadAppsMode); err != nil {
+	if err := cfg.LoadApps(loadAppsMode, loadAppsOpts); err != nil {
 		return err
 	}
 

@@ -10,6 +10,7 @@ import (
 	"github.com/23doors/go-yaml"
 	"github.com/ansel1/merry/v2"
 	"github.com/outblocks/outblocks-cli/internal/fileutil"
+	"github.com/outblocks/outblocks-cli/internal/util"
 	"github.com/outblocks/outblocks-cli/internal/version"
 	"github.com/outblocks/outblocks-cli/pkg/actions"
 	"github.com/outblocks/outblocks-cli/pkg/cli"
@@ -73,6 +74,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	var (
 		loadProjectOptions LoadProjectOptions
 		loadAppsMode       config.LoadMode
+		loadAppsOpts       *config.LoadAppsOptions
 	)
 
 	e.env.SetPFlags()
@@ -116,7 +118,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	// Load essential config file first.
 	configPreloadErr := e.loadProject(ctx, cfgPath, e.srv.Addr().String(), vals, LoadProjectOptions{
 		Mode: config.LoadModeEssential,
-	}, config.LoadModeSkip)
+	}, config.LoadModeSkip, nil)
 
 	// Augment/load new commands.
 	err = e.addPluginsCommands()
@@ -124,7 +126,7 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 		return err
 	}
 
-	cmd, _, err := e.rootCmd.Find(os.Args[1:])
+	cmd, cmdArgs, err := e.rootCmd.Find(os.Args[1:])
 	if err != nil {
 		if os.Args[1] == "__complete" {
 			return nil
@@ -149,6 +151,12 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	}
 
 	loadAppsMode = loadModeFromAnnotation(cmd.Annotations[cmdAppsLoadModeAnnotation])
+	if loadAppsMode != config.LoadModeSkip {
+		loadAppsOpts, err = buildAppsLoadOptions(cmd, cmdArgs)
+		if err != nil {
+			return err
+		}
+	}
 
 	if loadProjectOptions.Mode == config.LoadModeSkip {
 		return nil
@@ -171,11 +179,89 @@ func (e *Executor) commandPreRun(ctx context.Context) error {
 	// Load config file properly now.
 	loadProjectOptions.SkipLoadPlugins = true
 
-	if err := e.loadProject(ctx, cfgPath, e.srv.Addr().String(), vals, loadProjectOptions, loadAppsMode); err != nil {
+	if err := e.loadProject(ctx, cfgPath, e.srv.Addr().String(), vals, loadProjectOptions, loadAppsMode, loadAppsOpts); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func buildAppsLoadOptions(cmd *cobra.Command, cmdArgs []string) (*config.LoadAppsOptions, error) {
+	if cmd == nil {
+		return nil, nil
+	}
+
+	for _, arg := range cmdArgs {
+		if arg == "--help" || arg == "-h" {
+			return nil, nil
+		}
+	}
+
+	if err := cmd.Flags().Parse(cmdArgs); err != nil {
+		return nil, err
+	}
+
+	var targets []string
+	var skips []string
+
+	if cmd.Flags().Lookup("target-apps") != nil {
+		vals, err := cmd.Flags().GetStringSlice("target-apps")
+		if err != nil {
+			return nil, err
+		}
+		targets = append(targets, vals...)
+	}
+
+	if cmd.Flags().Lookup("target") != nil {
+		vals, err := cmd.Flags().GetStringSlice("target")
+		if err != nil {
+			return nil, err
+		}
+		targets = append(targets, vals...)
+	}
+
+	if cmd.Flags().Lookup("skip-apps") != nil {
+		vals, err := cmd.Flags().GetStringSlice("skip-apps")
+		if err != nil {
+			return nil, err
+		}
+		skips = append(skips, vals...)
+	}
+
+	if cmd.Flags().Lookup("skip") != nil {
+		vals, err := cmd.Flags().GetStringSlice("skip")
+		if err != nil {
+			return nil, err
+		}
+		skips = append(skips, vals...)
+	}
+
+	if len(cmd.Flags().Args()) > 0 {
+		targets = append(targets, cmd.Flags().Args()...)
+	}
+
+	if len(targets) == 0 {
+		return nil, nil
+	}
+
+	matchedTargets := util.NewTargetMatcher()
+	for _, t := range targets {
+		if err := matchedTargets.Add(t); err != nil {
+			return nil, err
+		}
+	}
+
+	matchedSkips := util.NewTargetMatcher()
+	for _, s := range skips {
+		if err := matchedSkips.Add(s); err != nil {
+			return nil, err
+		}
+	}
+
+	return &config.LoadAppsOptions{
+		Targets: matchedTargets,
+		Skips:   matchedSkips,
+	}, nil
 }
 
 func (e *Executor) addPluginsCommands() error {
