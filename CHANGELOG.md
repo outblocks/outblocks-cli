@@ -1,5 +1,17 @@
 # Outblocks CLI Changelog
 
+## [v0.1.161](https://github.com/outblocks/outblocks-cli/compare/v0.1.160...v0.1.161)
+
+> 2026-02-26
+
+### BUG FIXES
+
+[`28da29f`](https://github.com/outblocks/outblocks-cli/commit/28da29f9827b88f210f1fe6987f6b5ef2b078335) lint
+
+### FEATURES
+
+[`651734b`](https://github.com/outblocks/outblocks-cli/commit/651734bc0197938baa73a946fe4161749c906ca4) target apps matcher full support
+
 ## [v0.1.160](https://github.com/outblocks/outblocks-cli/compare/v0.1.159...v0.1.160)
 
 > 2026-02-20
