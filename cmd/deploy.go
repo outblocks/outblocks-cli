@@ -30,8 +30,17 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.BuildTempDir = clipath.CacheDir(fmt.Sprintf("builds_%s_%s", e.cfg.Name, e.cfg.Env()))
-			opts.Targets = util.NewTargetMatcher()
-			opts.Skips = util.NewTargetMatcher()
+
+			// Reuse matchers from app loading phase if targets were used there
+			var targetsFromLoading bool
+			if e.loadAppsOpts != nil && e.loadAppsOpts.Targets != nil {
+				opts.Targets = e.loadAppsOpts.Targets
+				opts.Skips = e.loadAppsOpts.Skips
+				targetsFromLoading = true
+			} else {
+				opts.Targets = util.NewTargetMatcher()
+				opts.Skips = util.NewTargetMatcher()
+			}
 
 			targets = append(targets, args...)
 
@@ -54,22 +63,25 @@ func (e *Executor) newDeployCmd() *cobra.Command {
 				}
 			}
 
-			if len(targets) > 0 && len(skips) > 0 {
-				return merry.New("target-apps and skip-apps arguments are mutually exclusive modes")
-			}
-
-			for _, t := range targets {
-				err := opts.Targets.Add(t)
-				if err != nil {
-					return err
+			// Only process targets/skips if not already loaded during app loading
+			if !targetsFromLoading {
+				if len(targets) > 0 && len(skips) > 0 {
+					return merry.New("target-apps and skip-apps arguments are mutually exclusive modes")
 				}
-			}
 
-			if !opts.SkipAllApps {
-				for _, t := range skips {
-					err := opts.Skips.Add(t)
+				for _, t := range targets {
+					err := opts.Targets.Add(t)
 					if err != nil {
 						return err
+					}
+				}
+
+				if !opts.SkipAllApps {
+					for _, t := range skips {
+						err := opts.Skips.Add(t)
+						if err != nil {
+							return err
+						}
 					}
 				}
 			}

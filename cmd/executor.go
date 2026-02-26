@@ -38,6 +38,7 @@ type Executor struct {
 	cfg                 *config.Project
 	secrets             map[string]interface{}
 	lastUpdateCheckFile string
+	loadAppsOpts        *config.LoadAppsOptions
 
 	opts struct {
 		env       string
@@ -156,6 +157,8 @@ func (e *Executor) commandPreRun(ctx context.Context) error { //nolint:gocyclo
 		if err != nil {
 			return err
 		}
+
+		e.loadAppsOpts = loadAppsOpts
 	}
 
 	if loadProjectOptions.Mode == config.LoadModeSkip {

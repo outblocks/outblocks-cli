@@ -25,12 +25,18 @@ func filterAppsNormal(cfg *config.Project, state *statefile.StateData, targets, 
 
 	// Overwrite definition of non-skipped or target apps from project definition.
 	for _, app := range cfg.Apps {
-		if !targets.IsEmpty() && !skips.IsEmpty() {
+		appID := app.ID()
+
+		// Skip if explicitly skipped
+		if skips.Matches(appID) {
 			continue
 		}
 
-		if skips.Matches(app.ID()) {
-			continue
+		// If targets are specified, only include matching apps and mark as matched
+		if !targets.IsEmpty() {
+			if !targets.Matches(appID) {
+				continue
+			}
 		}
 
 		appType := app.Proto()
@@ -39,7 +45,7 @@ func filterAppsNormal(cfg *config.Project, state *statefile.StateData, targets, 
 		appType.Properties = plugin_util.MustNewStruct(mergedProps)
 		appType.Env = plugin_util.MergeStringMaps(cfg.Defaults.Deploy.Env, appType.Env, app.DeployInfo().Env)
 
-		appsMap[app.ID()] = &apiv1.AppPlan{
+		appsMap[appID] = &apiv1.AppPlan{
 			State: &apiv1.AppState{
 				App: appType,
 			},
@@ -78,6 +84,10 @@ func filterAppsDestroy(state *statefile.StateData, targets, skips *util.TargetMa
 }
 
 func filterApps(cfg *config.Project, state *statefile.StateData, targets, skips *util.TargetMatcher, skipAllApps, destroy bool) (apps []*apiv1.AppPlan, retSkips *util.TargetMatcher, retDestroy bool, err error) {
+	// Reset match counts so we can match targets fresh (they may have been used during app loading)
+	targets.ResetMatches()
+	skips.ResetMatches()
+
 	if skipAllApps {
 		retSkips := util.NewTargetMatcher()
 		apps = make([]*apiv1.AppPlan, 0, len(state.Apps))
