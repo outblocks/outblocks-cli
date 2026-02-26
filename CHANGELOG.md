@@ -1,5 +1,17 @@
 # Outblocks CLI Changelog
 
+## [v0.1.162](https://github.com/outblocks/outblocks-cli/compare/v0.1.161...v0.1.162)
+
+> 2026-02-26
+
+### BUG FIXES
+
+[`cd34bc5`](https://github.com/outblocks/outblocks-cli/commit/cd34bc50517650524baa32e2372feba2c6962eb6) lint
+
+[`1afe9bb`](https://github.com/outblocks/outblocks-cli/commit/1afe9bb7f8926be26389ca3ffc5c499a2a13b45d) matches check
+
+[`c874f16`](https://github.com/outblocks/outblocks-cli/commit/c874f165739b6371b11d2524a6ee5adeffed44fc) targets reuse
+
 ## [v0.1.161](https://github.com/outblocks/outblocks-cli/compare/v0.1.160...v0.1.161)
 
 > 2026-02-26
