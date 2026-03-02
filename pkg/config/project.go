@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/23doors/go-yaml"
 	"github.com/23doors/go-yaml/ast"
@@ -50,6 +51,11 @@ const (
 	LoadModeFull LoadMode = iota
 	LoadModeEssential
 	LoadModeSkip
+)
+
+const (
+	pluginDownloadMaxAttempts = 3
+	pluginDownloadRetryDelay  = time.Second
 )
 
 type LoadAppsOptions struct {
@@ -511,16 +517,19 @@ func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *pl
 
 			prog.UpdateTitle(title)
 
-			plugin, err := loader.DownloadPlugin(ctx, plug.Name, plug.VerConstr(), plug.Source, p.PluginLock(plug))
-			plugs[i] = plugin
-
-			plug.SetLoaded(plugin)
+			plugin, err := downloadPluginWithRetry(ctx, pluginDownloadMaxAttempts, pluginDownloadRetryDelay, func() (*plugins.Plugin, error) {
+				return loader.DownloadPlugin(ctx, plug.Name, plug.VerConstr(), plug.Source, p.PluginLock(plug))
+			})
 
 			if err != nil {
 				prog.Stop()
 
 				return merry.Errorf("unable to load '%s' plugin: %w", plug.Name, err)
 			}
+
+			plugs[i] = plugin
+
+			plug.SetLoaded(plugin)
 
 			prog.Increment()
 			pterm.Success.Printf("Downloaded plugin '%s' at version: %s\n", plug.Name, plugin.Version)
@@ -547,6 +556,45 @@ func (p *Project) LoadPlugins(ctx context.Context, log logger.Logger, loader *pl
 	p.SetLoadedPlugins(plugs)
 
 	return nil
+}
+
+func downloadPluginWithRetry(ctx context.Context, maxAttempts int, retryDelay time.Duration, download func() (*plugins.Plugin, error)) (*plugins.Plugin, error) {
+	if maxAttempts < 1 {
+		maxAttempts = 1
+	}
+
+	var lastErr error
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		plugin, err := download()
+		if err == nil {
+			return plugin, nil
+		}
+
+		lastErr = err
+
+		if attempt == maxAttempts {
+			break
+		}
+
+		if retryDelay <= 0 {
+			continue
+		}
+
+		timer := time.NewTimer(time.Duration(attempt) * retryDelay)
+
+		select {
+		case <-ctx.Done():
+			if !timer.Stop() {
+				<-timer.C
+			}
+
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+
+	return nil, lastErr
 }
 
 func (p *Project) DomainInfoProto() []*apiv1.DomainInfo {

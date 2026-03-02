@@ -277,8 +277,13 @@ func (e *Executor) addPluginsCommands() error {
 
 	for _, plug := range e.cfg.Plugins {
 		plug := plug
+		if plug == nil || plug.Loaded() == nil {
+			continue
+		}
 
-		for cmdName, cmdt := range plug.Loaded().Commands {
+		loaded := plug.Loaded()
+
+		for cmdName, cmdt := range loaded.Commands {
 			cmdName := cmdName
 			cmdt := cmdt
 
@@ -287,7 +292,7 @@ func (e *Executor) addPluginsCommands() error {
 			cmd, _, err := e.rootCmd.Find([]string{cmdName})
 			if err != nil {
 				cmd = &cobra.Command{
-					Use:          fmt.Sprintf("%s-%s", plug.Loaded().ShortName(), cmdName),
+					Use:          fmt.Sprintf("%s-%s", loaded.ShortName(), cmdName),
 					Short:        cmdt.Short,
 					Long:         cmdt.Long,
 					SilenceUsage: true,
@@ -301,7 +306,7 @@ func (e *Executor) addPluginsCommands() error {
 						return actions.NewCommand(e.log, e.cfg, &actions.CommandOptions{
 							Name:       cmdName,
 							InputTypes: cmdt.InputTypes(),
-							Plugin:     plug.Loaded(),
+							Plugin:     loaded,
 							Args:       cmdt.Proto(args),
 						}).Run(cmd.Context())
 					},
