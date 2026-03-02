@@ -1,5 +1,13 @@
 # Outblocks CLI Changelog
 
+## [v0.1.163](https://github.com/outblocks/outblocks-cli/compare/v0.1.162...v0.1.163)
+
+> 2026-03-02
+
+### BUG FIXES
+
+[`529747e`](https://github.com/outblocks/outblocks-cli/commit/529747eae9f3ddfaff79c8c55224ccf1f7a8d9b8) download with retry, dont hide error of loaded plugin
+
 ## [v0.1.162](https://github.com/outblocks/outblocks-cli/compare/v0.1.161...v0.1.162)
 
 > 2026-02-26
